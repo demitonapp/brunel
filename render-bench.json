@@ -1,0 +1,65 @@
+{
+  "measured_at": "2026-09-17",
+  "machine": "Mac M1 - 8-core CPU, 7-core GPU, 16 GB, macOS 26.6.2",
+  "engine": "CYCLES",
+  "scene": "spec/mvp/mvp.toml - 547 objects, 3641 polys, 2 suns, no volumetrics",
+  "measurements": [
+    {
+      "device": "CPU",
+      "resolution": [
+        384,
+        682
+      ],
+      "spp": 8,
+      "frames": 48,
+      "wall_seconds": 144.0,
+      "sec_per_frame": 3.0
+    },
+    {
+      "device": "CPU",
+      "resolution": [
+        480,
+        854
+      ],
+      "spp": 8,
+      "frames": 48,
+      "wall_seconds": 215.0,
+      "sec_per_frame": 4.48
+    },
+    {
+      "device": "METAL",
+      "resolution": [
+        384,
+        682
+      ],
+      "spp": 8,
+      "frames": 18,
+      "wall_seconds": 70.36,
+      "sec_per_frame": 3.91
+    }
+  ],
+  "findings": [
+    "Metal was SLOWER than CPU on this scene: 3.91 vs 3.00 s/frame. The M1's 7-core GPU is weak and per-frame overhead dominates on a simple scene. Do not assume the Mac's GPU is the fast path - measure it.",
+    "Scaling with pixel count is close to linear: 1.565x the pixels gave 1.49x the time. That makes the extrapolation below defensible for THIS scene.",
+    "This is a deliberately simple scene. Volumetrics, displacement and high-poly instancing will change the picture completely."
+  ],
+  "extrapolation": {
+    "method": "linear in pixels and samples from the 384x682 @ 8 spp CPU row. This is an OPTIMISTIC lower bound: it ignores VRAM pressure and out-of-core fallback.",
+    "target": "1080x1920 @ 32 spp (spec/ep01/ep01.toml)",
+    "pixel_ratio": 7.92,
+    "sample_ratio": 4.0,
+    "sec_per_frame_on_M1_CPU": 95.0,
+    "ep01_total_frames": 2160,
+    "ep01_hours_on_M1_CPU": 57.0
+  },
+  "not_measured": [
+    "RTX 3080 / OptiX throughput - the number that actually governs the schedule. UNKNOWN.",
+    "VRAM behaviour and the out-of-core fallback on a 10-12 GB card",
+    "Cost of volumetrics, displacement, instancing and the denoiser",
+    "EEVEE, as a preview engine"
+  ],
+  "next_actions": [
+    "Run this same scene on the Windows node with --device OPTIX and fill in the 3080 row. Until that exists, every schedule claim in ROADMAP.md is an estimate.",
+    "Re-run at the start of each quarter and after any Blender or driver bump."
+  ]
+}

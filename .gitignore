@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Build artefacts. The spec is the source of truth; these are outputs.
+renders/
+*.blend
+*.blend1
+blender_tx/
+*.exr
+
+.DS_Store

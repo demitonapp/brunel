@@ -1,0 +1,254 @@
+{
+  "episode": "ep01",
+  "schema": 1,
+  "subject": "Marc Isambard Brunel's tunnelling shield, Thames Tunnel, 1825-1843",
+  "ledger_state": "WORK IN PROGRESS - not yet publishable",
+  "gate_note": "Every fact below is marked 'documented' rather than 'verified' because the accessible sources at time of writing were encyclopaedic (tier 5). The factgate rule is that no fact may be 'verified' while resting only on tier 5. Upgrading these to tier 1-3 primary sources is a listed next action, not an oversight.",
+
+  "evidence_tiers": {
+    "1": "primary - patent, Act of Parliament, contemporary engineering drawing, museum object record",
+    "2": "contemporary_account - Illustrated London News and other 1820s-1840s press",
+    "3": "scholarly - academic or peer-reviewed engineering history",
+    "4": "popular_secondary - books, documentaries, reputable trade press",
+    "5": "encyclopaedic - Wikipedia and its mirrors. May never break a tie.",
+    "6": "unsourced - must not appear on screen as fact"
+  },
+
+  "sources": [
+    {
+      "id": "src_wiki_thames",
+      "title": "Thames Tunnel",
+      "publisher": "Wikipedia",
+      "tier": 5,
+      "url": "https://en.wikipedia.org/wiki/Thames_Tunnel",
+      "retrieved": "2026-09-17",
+      "archived": false
+    },
+    {
+      "id": "src_wiki_shield",
+      "title": "Tunnelling shield",
+      "publisher": "Wikipedia",
+      "tier": 5,
+      "url": "https://en.wikipedia.org/wiki/Tunnelling_shield",
+      "retrieved": "2026-09-17",
+      "archived": false
+    },
+    {
+      "id": "src_iln",
+      "title": "Illustrated London News, description of the shield in operation",
+      "publisher": "Illustrated London News",
+      "tier": 2,
+      "url": "quoted in src_wiki_thames",
+      "retrieved": "2026-09-17",
+      "archived": false,
+      "note": "The quoted description is contemporary and detailed. The original issue has NOT been located - do that before relying on it."
+    },
+    {
+      "id": "src_becket",
+      "title": "Brunel's Britain, ch. 10 'Tunnels'",
+      "publisher": "Derrick Becket, David & Charles, 1980",
+      "tier": 4,
+      "url": "ISBN 0-7153-7973-9",
+      "retrieved": "2026-09-17",
+      "archived": false
+    },
+    {
+      "id": "src_smithsonian",
+      "title": "Bulletin 240, Contributions from the Museum of History and Technology",
+      "publisher": "Smithsonian Institution",
+      "tier": 3,
+      "url": "https://www.gutenberg.org/files/40782/old/40782-h/40782-h.htm",
+      "retrieved": "2026-09-17",
+      "archived": false
+    }
+  ],
+
+  "facts": [
+    {
+      "id": "f01",
+      "claim": "Brunel patented the tunnelling shield in January 1818, jointly with Lord Cochrane (Thomas Cochrane, 10th Earl of Dundonald).",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_shield", "tier": 5}, {"source": "src_becket", "tier": 4}],
+      "counter_evidence": [],
+      "on_screen": "Shield introduced as Brunel's patent; Cochrane credited in narration.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f02",
+      "claim": "The shield measured 37 ft 6 in by 22 ft 3 in and was made of cast iron.",
+      "status": "documented",
+      "confidence": "medium",
+      "evidence": [{"source": "src_smithsonian", "tier": 3}],
+      "counter_evidence": [
+        "Some secondary accounts give 38 ft by 22 ft. The synthesis pass produced '38 x 22' and was corrected to the Smithsonian figures.",
+        "A separate note in circulation gives wrought iron. Cast iron is the standard account."
+      ],
+      "would_settle": "The original 1818 patent drawing, or the Maudslay works records.",
+      "on_screen": "Dimension callout at 37 ft 6 in x 22 ft 3 in.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f03",
+      "claim": "The shield was divided into 12 frames, each of 3 levels, presenting 36 working cells, one man per cell.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_iln", "tier": 2}, {"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "on_screen": "The hero shot. Cells must be countable: 12 across, 3 down.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f04",
+      "claim": "Each of the twelve frames weighed over 7 long tons.",
+      "status": "documented",
+      "confidence": "medium",
+      "evidence": [{"source": "src_becket", "tier": 4}, {"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "would_settle": "Maudslay works records or the Thames Tunnel Company accounts.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f05",
+      "claim": "Each cell was advanced by two screws, one at its head and one at its foot, bearing on the finished brickwork.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_iln", "tier": 2}],
+      "counter_evidence": [],
+      "on_screen": "Shot 5 - the mechanism cycle. This is the engineering payload of the episode.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f06",
+      "claim": "The finished bore is 35 ft wide by 20 ft high, 1,300 ft long, running about 75 ft below the river at high tide.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "would_settle": "Thames Tunnel Company engineering drawings.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f07",
+      "claim": "Construction ran from 1825 to 1843, with tunnelling beginning after the Rotherhithe shaft was in place in November 1825.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f08",
+      "claim": "The Rotherhithe shaft was a 50 ft diameter iron ring with a 40 ft brick wall above it, weighing about 1,000 long tons, sunk under its own weight.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "on_screen": "Shot 3.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f09",
+      "claim": "The shaft jammed during sinking and 50,000 bricks were added as temporary weights; the later Wapping shaft was tapered to avoid the problem.",
+      "status": "documented",
+      "confidence": "medium",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "would_settle": "Brunel's own site notebooks.",
+      "on_screen": "Shot 3 - the dramatic beat.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f10",
+      "claim": "Progress averaged only 1 to 8 feet per week.",
+      "status": "documented",
+      "confidence": "medium",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "on_screen": "The number that explains why it took 18 years.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f11",
+      "claim": "The tunnel flooded on 18 May 1827 after 549 ft had been dug; Isambard used a diving bell to repair the breach, then held a banquet inside.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f12",
+      "claim": "The tunnel flooded again on 12 January 1828 and six men died.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "on_screen": "Shot 7. Named and treated with weight, not spectacle.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f13",
+      "claim": "Isambard Kingdom Brunel took over as resident engineer in April 1826 at the age of 20, and was pulled out unconscious after the 1828 flood.",
+      "status": "contested",
+      "confidence": "medium",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [
+        "The Wikipedia article carries a 'citation needed' tag on the age-20 claim.",
+        "Some accounts give his age as 19 or 20 depending on the month. Born 9 April 1806."
+      ],
+      "would_settle": "Contemporary correspondence, or the Thames Tunnel Company minutes.",
+      "on_screen": "Say 'barely twenty' rather than a precise age.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f14",
+      "claim": "Brunel took the idea for the shield from the shipworm, Teredo navalis, which he had observed boring through submerged timber.",
+      "status": "contested",
+      "confidence": "low",
+      "evidence": [{"source": "src_wiki_shield", "tier": 5}, {"source": "src_becket", "tier": 4}],
+      "counter_evidence": [
+        "This is consistently phrased as 'is said to have been inspired by' - an attribution, not a documented act.",
+        "Brunel's own writing on the shield emphasises the mining practice of poling boards, not the mollusc.",
+        "The 1818 patent was joint with Cochrane, who had his own tunnelling ideas."
+      ],
+      "would_settle": "Brunel's notebooks for 1818, where he would have sketched the worm.",
+      "on_screen": "Present as the popular story, flagged as such, not as established fact. Do NOT build shot 2 as 'the moment he saw the worm'.",
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f15",
+      "claim": "Sightseers were charged a shilling to view the shield at work, with an estimated 600-800 visitors a day.",
+      "status": "documented",
+      "confidence": "medium",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "reviewed_by_human": false
+    },
+    {
+      "id": "f16",
+      "claim": "The tunnel opened as a pedestrian crossing in 1843 and was converted to a railway in 1869 for the East London line; it is part of London Overground today.",
+      "status": "documented",
+      "confidence": "high",
+      "evidence": [{"source": "src_wiki_thames", "tier": 5}],
+      "counter_evidence": [],
+      "on_screen": "Shot 8, the payoff.",
+      "reviewed_by_human": false
+    }
+  ],
+
+  "dubious_claims_to_avoid": [
+    "That Brunel invented the shield unaided. The patent is joint with Lord Cochrane.",
+    "That the shipworm inspiration is documented. It is an attribution.",
+    "That the tunnel was a failure. It was a commercial failure and an engineering triumph; conflating the two is the lazy version.",
+    "That the shield was the first tunnel under a river of any kind. It was the first successful tunnel under a navigable river; earlier attempts failed and the Thames Archway driftway came first."
+  ],
+
+  "next_actions": [
+    "Upgrade f02, f04, f06, f08, f09, f10, f11, f12, f13, f15 from tier 5 to tier 1-3 primary sources.",
+    "Locate the original Illustrated London News issue behind the shield description (f03, f05).",
+    "Retrieve the 1818 patent drawing - it settles f01, f02 and the Cochrane question at once.",
+    "Archive every URL (Wayback) before publication; the gate requires it.",
+    "Human review pass: every fact currently has reviewed_by_human = false."
+  ]
+}

@@ -1,0 +1,147 @@
+# MVP — low-fidelity preview of the hero asset, rendered on the Mac.
+#
+# This is deliberately ugly. It exists to prove the pipeline end to end:
+# spec -> compiler -> assertions -> Cycles frames -> mp4.
+# Full settings live in spec/ep01/ep01.toml.
+
+[meta]
+id = "mvp"
+title = "MVP - Brunel's shield, low fidelity"
+fps = 12
+width = 384
+height = 682
+samples = 8
+engine = "CYCLES"
+device = "CPU"
+units = "metric"
+
+# --- materials -----------------------------------------------------------
+
+[[material]]
+id = "iron"
+base_color = [0.09, 0.10, 0.12]
+roughness = 0.55
+metallic = 0.85
+
+[[material]]
+id = "brick"
+base_color = [0.40, 0.17, 0.12]
+roughness = 0.90
+metallic = 0.0
+
+[[material]]
+id = "timber"
+base_color = [0.33, 0.23, 0.13]
+roughness = 0.80
+metallic = 0.0
+
+[[material]]
+id = "ground"
+base_color = [0.10, 0.09, 0.08]
+roughness = 0.95
+metallic = 0.0
+
+# --- parts ---------------------------------------------------------------
+
+[[part]]
+id = "ground"
+gen = "plane"
+material = "ground"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+size = 60.0
+
+# The hero. 12 frames x 3 levels = 36 cells. Cast iron, 37 ft 6 in x 22 ft 3 in.
+[[part]]
+id = "shield"
+gen = "shield"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+[part.params]
+frames = 12
+levels = 3
+width = 11.43
+height = 6.78
+depth = 0.75
+plate = 0.06
+hood = 0.90
+
+# The brick lining, built behind the shield as the miners advance.
+[[part]]
+id = "lining"
+gen = "brick_wall"
+material = "brick"
+loc = [0.0, 1.40, 0.75]
+[part.params]
+length = 6.0
+height = 1.5
+brick_l = 0.215
+brick_h = 0.065
+brick_d = 0.1025
+mortar = 0.010
+
+# 1.70 m reference figures. The scale witness.
+[[part]]
+id = "crew_a"
+gen = "crew"
+material = "timber"
+loc = [-3.20, -1.60, 0.0]
+
+[[part]]
+id = "crew_b"
+gen = "crew"
+material = "timber"
+loc = [3.20, -1.60, 0.0]
+
+# --- cameras -------------------------------------------------------------
+
+[[camera]]
+id = "cam_wide"
+lens_mm = 40.0
+loc = [0.0, -14.0, 4.5]
+look_at = [0.0, 0.0, 3.4]
+
+[[camera]]
+id = "cam_close"
+lens_mm = 50.0
+loc = [1.90, -4.50, 4.2]
+look_at = [1.90, 0.0, 4.2]
+
+# --- lights --------------------------------------------------------------
+
+[[light]]
+id = "key"
+type = "SUN"
+energy = 4.0
+rot = [55.0, 0.0, 35.0]
+
+[[light]]
+id = "fill"
+type = "SUN"
+energy = 1.2
+color = [0.65, 0.78, 1.0]
+rot = [70.0, 0.0, -140.0]
+
+# --- shot list -----------------------------------------------------------
+
+[[shot]]
+id = "s01"
+name = "The Board - wide"
+camera = "cam_wide"
+seconds = 1.5
+notes = "Establishes the shield whole. Accepts vertical headroom."
+
+[[shot]]
+id = "s02"
+name = "Push in on the shield face"
+camera = "cam_wide"
+seconds = 1.5
+move_from = [4.0, -19.0, 5.5]
+move_to = [0.5, -12.5, 3.8]
+
+[[shot]]
+id = "s03"
+name = "The cells, close"
+camera = "cam_close"
+seconds = 1.0
+notes = "Crops to about three frames across. Cells must be countable."

@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "_why": "This is load-bearing, not bookkeeping. A monetised Reel is both an adaptation and a collection, so a single non-commercial asset anywhere in it can taint the whole video. Per-asset provenance with a DATED SCREENSHOT of the licence page is the only defence, because platform terms can change retroactively.",
+  "episode": "ep01",
+  "release_target": "Instagram Reels (monetised channel)",
+  "policy": {
+    "allowed": ["public-domain", "cc0", "cc-by"],
+    "review_required": ["cc-by-sa", "own-work", "commissioned"],
+    "prohibited": ["cc-by-nc", "cc-by-nd", "cc-by-nc-nd", "rights-managed", "unknown"]
+  },
+  "assets": [
+    {
+      "id": "lic_placeholder_commons",
+      "description": "PLACEHOLDER - contemporary engravings and drawings of the Thames Tunnel and shield",
+      "source": "Wikimedia Commons, category: Thames Tunnel",
+      "licence": "public-domain",
+      "licence_url": "https://commons.wikimedia.org/wiki/Category:Thames_Tunnel",
+      "retrieved": null,
+      "modifications": "none yet",
+      "screenshot": null,
+      "status": "UNVERIFIED - confirm each file's individual licence before import",
+      "note": "Category-level PD assumption is not good enough. Each file page states its own terms."
+    },
+    {
+      "id": "lic_placeholder_iln",
+      "description": "Illustrated London News shield description and any accompanying engraving",
+      "source": "Original 1840s press",
+      "licence": "public-domain",
+      "licence_url": null,
+      "retrieved": null,
+      "modifications": "none yet",
+      "screenshot": null,
+      "status": "UNVERIFIED - original issue not yet located"
+    },
+    {
+      "id": "lic_placeholder_brunel_museum",
+      "description": "Brunel Museum, Rotherhithe - shaft and collection",
+      "source": "Brunel Museum",
+      "licence": "unknown",
+      "licence_url": "https://www.brunel-museum.org.uk/",
+      "retrieved": null,
+      "modifications": "none yet",
+      "screenshot": null,
+      "status": "UNVERIFIED - any 3D scan or photograph requires explicit written permission for commercial use"
+    }
+  ],
+  "prohibited_hosts": [
+    "sciencemuseumgroup.org.uk",
+    "myminifactory.com",
+    "britainfromabove.org.uk",
+    "historicengland.org.uk"
+  ],
+  "notes": [
+    "The prohibited-hosts list above is INHERITED FROM THE RESEARCH PASS AND IS NOT YET VERIFIED. Check each before relying on it.",
+    "Rule of thumb for this channel: Episode 1 should be entirely public domain or self-generated geometry. If a licence is unclear, rebuild the asset procedurally instead."
+  ]
+}

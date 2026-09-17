@@ -1,0 +1,14 @@
+[project]
+name = "brunel"
+version = "0.1.0"
+description = "A harness for engineering-history animation. Spec in, frames out."
+requires-python = ">=3.13,<3.14"
+dependencies = ["bpy>=5.2,<5.3"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Git cannot merge these. Stop it trying.
+*.blend binary -diff -merge
+*.blend1 binary -diff -merge
+*.exr binary
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.mov binary

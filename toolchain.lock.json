@@ -1,0 +1,13 @@
+{
+  "python": "3.13",
+  "bpy": "5.2",
+  "blender": "5.2",
+  "ffmpeg": "8.0.1",
+  "locked": "2026-09-17",
+  "notes": [
+    "bpy wheels are built against exactly one CPython minor version. Python must be 3.13 for bpy 5.2.x.",
+    "Blender 5.2 LTS released 2026-07-14, supported to July 2028. Pin the LTS series for the whole arc; do not chase 5.3 mid-arc.",
+    "The render node runs the native Blender 5.2 install, not the wheel, because the CLI contract (--threads, --log, -E, -F) is what the farm path is built on.",
+    "Re-verify on BOTH machines before every job submit: python -m harness doctor"
+  ]
+}

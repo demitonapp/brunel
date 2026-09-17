@@ -1,0 +1,269 @@
+# Episode 1 — Marc Brunel's tunnelling shield, Thames Tunnel (1825-1843)
+#
+# 8 shots, 72 s, 1080x1920, 30 fps, L0 quality. Deliberately flat.
+# Render this on the Windows node. Use spec/mvp/mvp.toml on the Mac.
+#
+# Facts behind every number here are in spec/ep01/facts/ep01.facts.json.
+# The fact ledger is written BEFORE the script and gates the render.
+
+[meta]
+id = "ep01"
+title = "The Shield - Brunel and the Thames Tunnel"
+fps = 30
+width = 1080
+height = 1920
+samples = 32
+engine = "CYCLES"
+device = "OPTIX"
+units = "metric"
+
+# --- materials (flat, procedural, no external textures - this is L0) ------
+
+[[material]]
+id = "iron"
+base_color = [0.09, 0.10, 0.12]
+roughness = 0.55
+metallic = 0.85
+
+[[material]]
+id = "brick"
+base_color = [0.40, 0.17, 0.12]
+roughness = 0.90
+metallic = 0.0
+
+[[material]]
+id = "timber"
+base_color = [0.33, 0.23, 0.13]
+roughness = 0.80
+metallic = 0.0
+
+[[material]]
+id = "water"
+base_color = [0.05, 0.09, 0.11]
+roughness = 0.15
+metallic = 0.0
+
+[[material]]
+id = "ground"
+base_color = [0.10, 0.09, 0.08]
+roughness = 0.95
+metallic = 0.0
+
+[[material]]
+id = "clay"
+base_color = [0.28, 0.24, 0.19]
+roughness = 0.92
+metallic = 0.0
+
+# --- parts ---------------------------------------------------------------
+
+[[part]]
+id = "ground"
+gen = "plane"
+material = "ground"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+size = 120.0
+
+[[part]]
+id = "river"
+gen = "plane"
+material = "water"
+loc = [0.0, 0.0, 0.15]
+[part.params]
+size = 120.0
+
+# Shot 2: the shipworm boring submerged timber. The origin story.
+[[part]]
+id = "timber_block"
+gen = "box"
+material = "timber"
+loc = [0.0, 0.0, 0.6]
+[part.params]
+dims = [2.4, 1.2, 1.2]
+
+[[part]]
+id = "shipworm"
+gen = "cylinder"
+material = "clay"
+loc = [0.0, 0.0, 0.6]
+[part.params]
+radius = 0.045
+depth = 1.6
+
+# Shot 3: the Rotherhithe shaft. A 50 ft iron ring sinking under its own
+# weight, with 50,000 bricks piled on when it jammed.
+[[part]]
+id = "shaft_ring"
+gen = "cylinder"
+material = "iron"
+loc = [0.0, 0.0, 7.5]
+[part.params]
+radius = 7.62
+depth = 15.0
+
+# The hero. 12 frames x 3 levels = 36 cells.
+[[part]]
+id = "shield"
+gen = "shield"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+[part.params]
+frames = 12
+levels = 3
+width = 11.43
+height = 6.78
+depth = 0.75
+plate = 0.06
+hood = 0.90
+
+[[part]]
+id = "lining"
+gen = "brick_wall"
+material = "brick"
+loc = [0.0, 1.40, 1.00]
+[part.params]
+length = 8.0
+height = 2.0
+brick_l = 0.215
+brick_h = 0.065
+brick_d = 0.1025
+mortar = 0.010
+
+[[part]]
+id = "crew_a"
+gen = "crew"
+material = "timber"
+loc = [-3.20, -1.60, 0.0]
+
+[[part]]
+id = "crew_b"
+gen = "crew"
+material = "timber"
+loc = [3.20, -1.60, 0.0]
+
+[[part]]
+id = "crew_c"
+gen = "crew"
+material = "timber"
+loc = [0.00, -2.40, 0.0]
+
+# --- cameras -------------------------------------------------------------
+# Full-frame horizontal reference (36 mm sensor). 50 mm is the boring default;
+# a real episode mixes focal lengths on purpose.
+
+[[camera]]
+id = "cam_river"
+lens_mm = 28.0
+loc = [0.0, -30.0, 6.0]
+look_at = [0.0, 0.0, 2.0]
+
+[[camera]]
+id = "cam_macro"
+lens_mm = 90.0
+loc = [0.6, -2.2, 1.1]
+look_at = [0.0, 0.0, 0.6]
+
+[[camera]]
+id = "cam_shaft"
+lens_mm = 35.0
+loc = [0.0, -34.0, 9.0]
+look_at = [0.0, 0.0, 7.0]
+
+[[camera]]
+id = "cam_board"
+lens_mm = 40.0
+loc = [0.0, -14.0, 4.5]
+look_at = [0.0, 0.0, 3.4]
+
+[[camera]]
+id = "cam_cell"
+lens_mm = 50.0
+loc = [1.90, -4.50, 4.2]
+look_at = [1.90, 0.0, 4.2]
+
+[[camera]]
+id = "cam_flood"
+lens_mm = 24.0
+loc = [0.0, -9.0, 1.6]
+look_at = [0.0, 0.0, 3.0]
+
+[[camera]]
+id = "cam_legacy"
+lens_mm = 35.0
+loc = [0.0, -20.0, 4.0]
+look_at = [0.0, 0.0, 3.0]
+
+# --- lights --------------------------------------------------------------
+# One key, one fill. No light linking at L0.
+
+[[light]]
+id = "key"
+type = "SUN"
+energy = 4.0
+rot = [55.0, 0.0, 35.0]
+
+[[light]]
+id = "fill"
+type = "SUN"
+energy = 1.2
+color = [0.65, 0.78, 1.0]
+rot = [70.0, 0.0, -140.0]
+
+# --- shot list (8 shots, ~72 s) -----------------------------------------
+
+[[shot]]
+id = "s01"
+name = "The Ferry Problem"
+camera = "cam_river"
+seconds = 9.0
+notes = "Mode A. Wapping and Rotherhithe, 1825. Docks, river, the crossing."
+
+[[shot]]
+id = "s02"
+name = "The Shipworm"
+camera = "cam_macro"
+seconds = 9.0
+notes = "Mode B macro. The inspiration Brunel took from Teredo navalis."
+
+[[shot]]
+id = "s03"
+name = "The Shaft Sinks"
+camera = "cam_shaft"
+seconds = 9.0
+notes = "Mode A. The 50 ft iron ring sinking under its own weight; bricks added."
+
+[[shot]]
+id = "s04"
+name = "The Board"
+camera = "cam_board"
+seconds = 9.0
+notes = "Mode B. HERO SHOT. The shield in section, 12 frames x 3 levels = 36 cells. This is the quarterly benchmark shot."
+
+[[shot]]
+id = "s05"
+name = "One Cell's Cycle"
+camera = "cam_cell"
+seconds = 9.0
+notes = "Mode B. Board out, dig, board in, prop, two screws advance against the brickwork."
+
+[[shot]]
+id = "s06"
+name = "Miners Forward, Bricklayers Behind"
+camera = "cam_board"
+seconds = 9.0
+notes = "Mode B. Both trades working the same shield at once."
+
+[[shot]]
+id = "s07"
+name = "The Flood, 12 January 1828"
+camera = "cam_flood"
+seconds = 9.0
+notes = "Mode A. Six men died. Isambard pulled out unconscious. NOT a coupled sim - separate animated water, volume and debris layers."
+
+[[shot]]
+id = "s08"
+name = "The Legacy"
+camera = "cam_legacy"
+seconds = 9.0
+notes = "Mode C + A. 1843 pedestrian arcade, 1869 railway, TfL train today."

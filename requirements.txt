@@ -1,0 +1,4 @@
+# The harness has exactly one runtime dependency.
+# bpy ships its own bundled Python modules, so we deliberately do not add PyYAML,
+# pydantic or anything else - specs are TOML, parsed with stdlib tomllib.
+bpy>=5.2,<5.3
