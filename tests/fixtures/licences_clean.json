@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "policy": {
+    "allowed": ["public-domain", "cc0", "cc-by"],
+    "review_required": ["cc-by-sa"],
+    "prohibited": ["cc-by-nc", "cc-by-nd", "rights-managed", "unknown"]
+  },
+  "assets": [
+    {
+      "id": "clean_pd_engraving",
+      "source": "Internet Archive",
+      "licence": "public-domain",
+      "licence_url": "https://archive.org/",
+      "retrieved": "2026-09-17",
+      "screenshot": "legal/screenshots/clean_pd_engraving.png",
+      "status": "verified"
+    }
+  ]
+}

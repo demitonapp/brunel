@@ -1,0 +1,41 @@
+# NEGATIVE TEST. The camera sits at the centre of `crate`, so `harness build`
+# MUST fail. This is the shape of the bug that rendered s07 completely black.
+[meta]
+id = "selftest_inside"
+title = "Negative test - camera inside geometry"
+fps = 12
+width = 320
+height = 568
+samples = 4
+engine = "CYCLES"
+device = "CPU"
+units = "metric"
+
+[[material]]
+id = "iron"
+base_color = [0.2, 0.2, 0.2]
+
+[[part]]
+id = "crate"
+gen = "box"
+material = "iron"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+dims = [4.0, 4.0, 4.0]
+
+[[camera]]
+id = "cam_inside"
+lens_mm = 50.0
+loc = [0.0, 0.0, 0.0]
+look_at = [0.0, -5.0, 0.0]
+
+[[light]]
+id = "key"
+type = "SUN"
+energy = 2.0
+
+[[shot]]
+id = "s01"
+name = "camera is inside the crate"
+camera = "cam_inside"
+seconds = 1.0

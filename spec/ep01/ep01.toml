@@ -1,10 +1,16 @@
-# Episode 1 — Marc Brunel's tunnelling shield, Thames Tunnel (1825-1843)
+# Episode 1 - Marc Brunel's tunnelling shield, Thames Tunnel (1825-1843)
 #
-# 8 shots, 72 s, 1080x1920, 30 fps, L0 quality. Deliberately flat.
-# Render this on the Windows node. Use spec/mvp/mvp.toml on the Mac.
+# 8 shots, 72 s, L0 quality. Deliberately flat.
 #
-# Facts behind every number here are in spec/ep01/facts/ep01.facts.json.
-# The fact ledger is written BEFORE the script and gates the render.
+#   Final target : 1080x1920 @ 30 fps on the Windows / RTX 3080 node
+#   Mac preview  : --fast caps this to 480x854 @ 12 fps, which is ~65-90 min
+#
+# Track frames are NORMALISED to 0.0-1.0 of each shot, so the animation does
+# not have to be re-timed when the preview profile changes.
+#
+# Every number that appears on screen is sourced in
+# spec/ep01/facts/ep01.facts.json. The ledger is written BEFORE the script and
+# `factgate --publish` gates the render.
 
 [meta]
 id = "ep01"
@@ -39,8 +45,8 @@ metallic = 0.0
 
 [[material]]
 id = "water"
-base_color = [0.05, 0.09, 0.11]
-roughness = 0.15
+base_color = [0.04, 0.07, 0.09]
+roughness = 0.18
 metallic = 0.0
 
 [[material]]
@@ -51,11 +57,17 @@ metallic = 0.0
 
 [[material]]
 id = "clay"
-base_color = [0.28, 0.24, 0.19]
+base_color = [0.24, 0.20, 0.16]
 roughness = 0.92
 metallic = 0.0
 
-# --- parts ---------------------------------------------------------------
+[[material]]
+id = "stone"
+base_color = [0.16, 0.15, 0.14]
+roughness = 0.85
+metallic = 0.0
+
+# --- parts: always present ----------------------------------------------
 
 [[part]]
 id = "ground"
@@ -63,51 +75,120 @@ gen = "plane"
 material = "ground"
 loc = [0.0, 0.0, 0.0]
 [part.params]
-size = 120.0
+size = 240.0
+
+# --- shot 1: the ferry problem ------------------------------------------
 
 [[part]]
 id = "river"
 gen = "plane"
 material = "water"
-loc = [0.0, 0.0, 0.15]
+loc = [0.0, 0.0, 0.22]
+shots = ["s01"]
 [part.params]
-size = 120.0
+size = 240.0
 
-# Shot 2: the shipworm boring submerged timber. The origin story.
+[[part]]
+id = "dock_west"
+gen = "dock"
+material = "stone"
+loc = [-32.0, 10.0, 2.0]
+rot = [0.0, 0.0, 90.0]
+shots = ["s01"]
+[part.params]
+length = 46.0
+height = 2.4
+depth = 7.0
+blocks = 4
+
+[[part]]
+id = "dock_east"
+gen = "dock"
+material = "stone"
+loc = [32.0, 10.0, 2.0]
+rot = [0.0, 0.0, -90.0]
+shots = ["s01"]
+[part.params]
+length = 46.0
+height = 2.4
+depth = 7.0
+blocks = 3
+
+[[part]]
+id = "ferry"
+gen = "boat"
+material = "timber"
+loc = [-22.0, 5.0, 1.0]
+shots = ["s01"]
+[part.params]
+length = 13.0
+beam = 3.6
+depth = 1.2
+
+# --- shot 2: the shipworm ------------------------------------------------
+
 [[part]]
 id = "timber_block"
-gen = "box"
+gen = "timber"
 material = "timber"
-loc = [0.0, 0.0, 0.6]
+loc = [0.0, 0.0, 0.62]
+shots = ["s02"]
 [part.params]
-dims = [2.4, 1.2, 1.2]
+dims = [2.6, 1.3, 1.25]
 
 [[part]]
 id = "shipworm"
 gen = "cylinder"
 material = "clay"
-loc = [0.0, 0.0, 0.6]
+loc = [0.05, -1.05, 0.62]
+rot = [90.0, 0.0, 0.0]
+shots = ["s02"]
 [part.params]
-radius = 0.045
-depth = 1.6
+radius = 0.090
+depth = 1.7
 
-# Shot 3: the Rotherhithe shaft. A 50 ft iron ring sinking under its own
-# weight, with 50,000 bricks piled on when it jammed.
+# --- shot 3: the shaft sinks --------------------------------------------
+
 [[part]]
-id = "shaft_ring"
+id = "shaft_core"
 gen = "cylinder"
-material = "iron"
+material = "clay"
 loc = [0.0, 0.0, 7.5]
+shots = ["s03"]
 [part.params]
-radius = 7.62
+radius = 7.3
 depth = 15.0
 
-# The hero. 12 frames x 3 levels = 36 cells.
+[[part]]
+id = "shaft_ring"
+gen = "ring"
+material = "iron"
+loc = [0.0, 0.0, 7.5]
+shots = ["s03"]
+[part.params]
+radius = 7.62
+thickness = 0.34
+height = 15.0
+segments = 32
+
+[[part]]
+id = "brick_load"
+gen = "box"
+material = "brick"
+loc = [0.0, 0.0, 15.6]
+shots = ["s03"]
+[part.params]
+dims = [12.0, 12.0, 1.4]
+
+# --- shots 4, 6, 7: the shield itself -----------------------------------
+
+# The hero. 12 frames x 3 levels = 36 cells. Cast iron, 37 ft 6 in x 22 ft 3 in.
 [[part]]
 id = "shield"
 gen = "shield"
 material = "iron"
 loc = [0.0, 0.0, 3.39]
+shots = ["s04", "s06", "s07"]
 [part.params]
 frames = 12
 levels = 3
@@ -122,9 +203,10 @@ id = "lining"
 gen = "brick_wall"
 material = "brick"
 loc = [0.0, 1.40, 1.00]
+shots = ["s04", "s06", "s07"]
 [part.params]
-length = 8.0
-height = 2.0
+length = 9.0
+height = 2.2
 brick_l = 0.215
 brick_h = 0.065
 brick_d = 0.1025
@@ -134,41 +216,153 @@ mortar = 0.010
 id = "crew_a"
 gen = "crew"
 material = "timber"
-loc = [-3.20, -1.60, 0.0]
+loc = [-3.40, -1.70, 0.0]
+shots = ["s04", "s06"]
 
 [[part]]
 id = "crew_b"
 gen = "crew"
 material = "timber"
-loc = [3.20, -1.60, 0.0]
+loc = [3.40, -1.70, 0.0]
+shots = ["s04", "s06"]
 
 [[part]]
 id = "crew_c"
 gen = "crew"
 material = "timber"
-loc = [0.00, -2.40, 0.0]
+loc = [-0.60, -2.60, 0.0]
+shots = ["s06"]
+
+[[part]]
+id = "crew_d"
+gen = "crew"
+material = "timber"
+loc = [2.20, -0.40, 0.0]
+shots = ["s07"]
+
+# --- shot 5: one cell's cycle -------------------------------------------
+# A single cell, shown isolated. `shield` with frames=1, levels=1 gives the
+# frame; the board and the two screws are separate parts so they can be keyed.
+
+[[part]]
+id = "cell_frame"
+gen = "shield"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+shots = ["s05"]
+[part.params]
+frames = 1
+levels = 1
+width = 0.9525
+height = 2.26
+depth = 0.75
+plate = 0.07
+hood = 0.30
+
+[[part]]
+id = "cell_board"
+gen = "box"
+material = "timber"
+loc = [0.0, -0.42, 3.39]
+shots = ["s05"]
+[part.params]
+dims = [0.82, 0.09, 2.05]
+
+[[part]]
+id = "screw_head"
+gen = "cylinder"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+rot = [90.0, 0.0, 0.0]
+shots = ["s05"]
+[part.params]
+radius = 0.090
+depth = 1.15
+
+[[part]]
+id = "screw_foot"
+gen = "cylinder"
+material = "iron"
+loc = [0.0, 0.0, 2.50]
+rot = [90.0, 0.0, 0.0]
+shots = ["s05"]
+[part.params]
+radius = 0.055
+depth = 1.15
+
+[[part]]
+id = "cell_lining"
+gen = "brick_wall"
+material = "brick"
+loc = [0.0, 0.95, 3.39]
+shots = ["s05"]
+[part.params]
+length = 2.2
+height = 1.6
+brick_l = 0.215
+brick_h = 0.065
+brick_d = 0.1025
+mortar = 0.010
+
+# --- shot 7: the flood ---------------------------------------------------
+
+[[part]]
+id = "flood_water"
+gen = "box"
+material = "water"
+loc = [0.0, 9.0, 0.5]
+shots = ["s07"]
+[part.params]
+dims = [26.0, 22.0, 0.9]
+
+# --- shot 8: the legacy --------------------------------------------------
+
+[[part]]
+id = "legacy_bore"
+gen = "ring"
+material = "brick"
+loc = [0.0, 0.0, 3.05]
+rot = [90.0, 0.0, 0.0]
+shots = ["s08"]
+[part.params]
+radius = 3.05
+thickness = 0.30
+height = 26.0
+segments = 28
+
+[[part]]
+id = "train"
+gen = "train"
+material = "iron"
+loc = [0.0, 34.0, 0.55]
+rot = [0.0, 0.0, 90.0]
+shots = ["s08"]
+[part.params]
+length = 17.0
+width = 2.6
+height = 2.9
 
 # --- cameras -------------------------------------------------------------
-# Full-frame horizontal reference (36 mm sensor). 50 mm is the boring default;
-# a real episode mixes focal lengths on purpose.
+# Full-frame 36 mm horizontal reference. A real episode mixes focal lengths on
+# purpose; all-50 mm everywhere is an L1 failure.
 
 [[camera]]
 id = "cam_river"
-lens_mm = 28.0
-loc = [0.0, -30.0, 6.0]
-look_at = [0.0, 0.0, 2.0]
+lens_mm = 30.0
+loc = [0.0, -50.0, 14.0]
+look_at = [0.0, 15.0, 2.0]
 
 [[camera]]
 id = "cam_macro"
-lens_mm = 90.0
-loc = [0.6, -2.2, 1.1]
-look_at = [0.0, 0.0, 0.6]
+lens_mm = 35.0
+loc = [1.80, -5.00, 1.50]
+look_at = [0.0, 0.20, 0.60]
 
 [[camera]]
 id = "cam_shaft"
 lens_mm = 35.0
-loc = [0.0, -34.0, 9.0]
-look_at = [0.0, 0.0, 7.0]
+loc = [0.0, -30.0, 7.0]
+look_at = [0.0, 0.0, 6.5]
 
 [[camera]]
 id = "cam_board"
@@ -178,92 +372,205 @@ look_at = [0.0, 0.0, 3.4]
 
 [[camera]]
 id = "cam_cell"
-lens_mm = 50.0
-loc = [1.90, -4.50, 4.2]
-look_at = [1.90, 0.0, 4.2]
+lens_mm = 45.0
+loc = [2.20, -4.60, 3.60]
+look_at = [0.0, -0.30, 3.39]
+
+[[camera]]
+id = "cam_face"
+lens_mm = 45.0
+loc = [0.0, -11.0, 4.0]
+look_at = [0.0, 0.0, 3.4]
 
 [[camera]]
 id = "cam_flood"
-lens_mm = 24.0
-loc = [0.0, -9.0, 1.6]
-look_at = [0.0, 0.0, 3.0]
+lens_mm = 28.0
+loc = [0.0, -11.5, 3.6]
+look_at = [0.0, 0.0, 2.8]
 
 [[camera]]
 id = "cam_legacy"
 lens_mm = 35.0
-loc = [0.0, -20.0, 4.0]
+loc = [0.0, -16.0, 3.0]
 look_at = [0.0, 0.0, 3.0]
 
 # --- lights --------------------------------------------------------------
-# One key, one fill. No light linking at L0.
+# Scoped per shot: daylight above ground, near-darkness inside the tunnel.
+# At L0 that is the whole lighting design.
 
 [[light]]
-id = "key"
+id = "key_day"
 type = "SUN"
-energy = 4.0
-rot = [55.0, 0.0, 35.0]
+energy = 2.6
+rot = [52.0, 0.0, 34.0]
+shots = ["s01", "s03", "s08"]
 
 [[light]]
-id = "fill"
+id = "fill_day"
 type = "SUN"
-energy = 1.2
-color = [0.65, 0.78, 1.0]
-rot = [70.0, 0.0, -140.0]
+energy = 0.8
+color = [0.62, 0.76, 1.0]
+rot = [68.0, 0.0, -142.0]
+shots = ["s01", "s03", "s08"]
 
-# --- shot list (8 shots, ~72 s) -----------------------------------------
+[[light]]
+id = "key_tunnel"
+type = "SUN"
+energy = 1.55
+color = [1.0, 0.86, 0.66]
+rot = [62.0, 0.0, 28.0]
+shots = ["s02", "s04", "s05", "s06", "s07"]
+
+[[light]]
+id = "fill_tunnel"
+type = "SUN"
+energy = 0.45
+color = [0.70, 0.78, 1.0]
+rot = [72.0, 0.0, -150.0]
+shots = ["s02", "s04", "s05", "s06", "s07"]
+
+# --- shot list (8 x 9 s = 72 s) -----------------------------------------
 
 [[shot]]
 id = "s01"
 name = "The Ferry Problem"
 camera = "cam_river"
 seconds = 9.0
-notes = "Mode A. Wapping and Rotherhithe, 1825. Docks, river, the crossing."
+narration = "By 1825 London's docks at Wapping and Rotherhithe faced each other across the river. The only road between them was the water, and it was crowded."
 
 [[shot]]
 id = "s02"
 name = "The Shipworm"
 camera = "cam_macro"
 seconds = 9.0
-notes = "Mode B macro. The inspiration Brunel took from Teredo navalis."
+narration = "Marc Brunel had spent years on the problem. He is said to have taken his answer from the shipworm, a mollusc that bores through submerged timber."
 
 [[shot]]
 id = "s03"
 name = "The Shaft Sinks"
 camera = "cam_shaft"
 seconds = 9.0
-notes = "Mode A. The 50 ft iron ring sinking under its own weight; bricks added."
+narration = "First, a shaft. A fifty-foot iron ring with a brick wall above it and a steam engine on top. It sank under its own weight. When it jammed, they piled on fifty thousand bricks."
 
 [[shot]]
 id = "s04"
 name = "The Board"
 camera = "cam_board"
 seconds = 9.0
-notes = "Mode B. HERO SHOT. The shield in section, 12 frames x 3 levels = 36 cells. This is the quarterly benchmark shot."
+narration = "The shield itself. Twelve frames, three levels, thirty-six cells. Cast iron, thirty-seven feet across, with one man to a cell."
 
 [[shot]]
 id = "s05"
 name = "One Cell's Cycle"
 camera = "cam_cell"
 seconds = 9.0
-notes = "Mode B. Board out, dig, board in, prop, two screws advance against the brickwork."
+narration = "A miner drew back his board and cut into the clay behind it. Then two screws, one at his head and one at his feet, pushed the cell forward against the finished brickwork."
 
 [[shot]]
 id = "s06"
 name = "Miners Forward, Bricklayers Behind"
-camera = "cam_board"
+camera = "cam_face"
 seconds = 9.0
-notes = "Mode B. Both trades working the same shield at once."
+narration = "Behind him the bricklayers were already building the permanent lining. The tunnel was assembled in place, ring by ring, at one to eight feet a week."
 
 [[shot]]
 id = "s07"
 name = "The Flood, 12 January 1828"
 camera = "cam_flood"
 seconds = 9.0
-notes = "Mode A. Six men died. Isambard pulled out unconscious. NOT a coupled sim - separate animated water, volume and debris layers."
+narration = "It flooded twice. In January 1828 six men died. Isambard Kingdom Brunel, not yet twenty-one, was carried out unconscious."
 
 [[shot]]
 id = "s08"
 name = "The Legacy"
 camera = "cam_legacy"
 seconds = 9.0
-notes = "Mode C + A. 1843 pedestrian arcade, 1869 railway, TfL train today."
+narration = "It opened in 1843. Since 1869 it has carried trains. Brunel's shield became every tunnel boring machine that came after it."
+
+# --- animation -----------------------------------------------------------
+# frames are 0.0-1.0 of the shot. Location in metres, rotation in degrees.
+
+# s01: the ferry crosses the river.
+[[track]]
+part = "ferry"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[-22.0, 5.0, 1.0], [22.0, 5.0, 1.0]]
+
+# s02: the worm bores into the timber.
+[[track]]
+part = "shipworm"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[0.05, -1.05, 0.62], [0.05, -0.30, 0.62]]
+
+# s03: the shaft sinks, and the brick load rides down with it.
+[[track]]
+part = "shaft_ring"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[0.0, 0.0, 8.5], [0.0, 0.0, 1.8]]
+
+[[track]]
+part = "shaft_core"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[0.0, 0.0, 8.5], [0.0, 0.0, 1.8]]
+
+[[track]]
+part = "brick_load"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[0.0, 0.0, 16.6], [0.0, 0.0, 9.9]]
+
+# s05: board withdrawn, clay cut, board pushed forward, frame advances.
+[[track]]
+part = "cell_board"
+channel = "location"
+frames = [0.0, 0.22, 0.68, 1.0]
+values = [[0.0, -0.42, 3.39], [0.0, -0.16, 3.39], [0.0, -0.98, 3.39], [0.0, -0.98, 3.39]]
+
+[[track]]
+part = "cell_frame"
+channel = "location"
+frames = [0.0, 0.68, 1.0]
+values = [[0.0, 0.0, 3.39], [0.0, 0.0, 3.39], [0.0, -0.30, 3.39]]
+
+[[track]]
+part = "screw_head"
+channel = "location"
+frames = [0.0, 0.68, 1.0]
+values = [[0.0, 0.0, 3.39], [0.0, 0.0, 3.39], [0.0, -0.30, 3.39]]
+
+[[track]]
+part = "screw_foot"
+channel = "location"
+frames = [0.0, 0.68, 1.0]
+values = [[0.0, 0.0, 2.50], [0.0, 0.0, 2.50], [0.0, -0.30, 2.50]]
+
+# The screws turn as the cell advances.
+[[track]]
+part = "screw_head"
+channel = "rotation"
+frames = [0.0, 1.0]
+values = [[90.0, 0.0, 0.0], [90.0, 0.0, 2160.0]]
+
+[[track]]
+part = "screw_foot"
+channel = "rotation"
+frames = [0.0, 1.0]
+values = [[90.0, 0.0, 0.0], [90.0, 0.0, 2160.0]]
+
+# s07: the river comes in.
+[[track]]
+part = "flood_water"
+channel = "location"
+frames = [0.0, 0.85, 1.0]
+values = [[0.0, 10.0, 0.5], [0.0, -5.0, 2.4], [0.0, -5.0, 2.4]]
+
+# s08: the train runs through.
+[[track]]
+part = "train"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[0.0, 40.0, 0.55], [0.0, -40.0, 0.55]]

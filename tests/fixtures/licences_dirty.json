@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "_why": "NEGATIVE TEST. A non-commercial asset must block a monetised release.",
+  "policy": {
+    "allowed": ["public-domain", "cc0", "cc-by"],
+    "review_required": ["cc-by-sa"],
+    "prohibited": ["cc-by-nc", "cc-by-nd", "rights-managed", "unknown"]
+  },
+  "assets": [
+    {
+      "id": "dirty_nc_model",
+      "source": "Sketchfab",
+      "licence": "cc-by-nc",
+      "licence_url": "https://sketchfab.com/",
+      "retrieved": "2026-09-17",
+      "screenshot": null,
+      "status": "verified"
+    }
+  ]
+}

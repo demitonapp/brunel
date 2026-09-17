@@ -1,0 +1,29 @@
+# NEGATIVE TEST. `depht` is a typo for `depth`, and the compiler must REFUSE
+# rather than silently ignore it and build the wrong geometry.
+[meta]
+id = "selftest_unknown"
+title = "Negative test - unknown key"
+fps = 12
+width = 320
+height = 568
+samples = 4
+units = "metric"
+
+[[part]]
+id = "crate"
+gen = "box"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+dims = [1.0, 1.0, 1.0]
+depht = 3.0
+
+[[camera]]
+id = "cam"
+lens_mm = 50.0
+loc = [0.0, -5.0, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[shot]]
+id = "s01"
+camera = "cam"
+seconds = 1.0

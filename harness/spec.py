@@ -17,23 +17,54 @@ from pathlib import Path
 from typing import Any
 
 # --- closed vocabularies -------------------------------------------------
-# Anything not listed here is a hard error, not a warning.
+# Anything not listed here is a hard error, not a warning. The canonical
+# generator list lives here (not in generators.py) so that `validate` works on
+# a machine with no Blender at all. build.py asserts the two agree.
 
-TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot"}
+TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
 META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device", "units"}
-PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params"}
+PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots"}
 CAMERA_KEYS = {"id", "lens_mm", "loc", "look_at"}
-LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "color", "angle"}
+LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "color", "angle", "shots"}
 MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic"}
-SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes"}
+SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes", "narration"}
+TRACK_KEYS = {"part", "channel", "frames", "values", "shots"}
 
-GENERATORS = {"box", "cylinder", "sphere", "plane", "brick_wall", "shield", "crew"}
+GENERATORS = {
+    "box", "cylinder", "sphere", "plane",
+    "shield", "brick_wall", "crew", "ring",
+    "boat", "dock", "train", "arch", "timber",
+}
+# Allowed generator parameters. This lives here, not in generators.py, so that
+# `validate` works on a machine with no Blender; build.py asserts the two agree.
+# Without this, a typo inside a [part.params] table is silently ignored and the
+# harness builds the wrong geometry without complaining - the exact failure
+# class this compiler exists to prevent.
+GENERATOR_PARAMS = {
+    "box": {"dims"},
+    "cylinder": {"radius", "depth"},
+    "sphere": {"radius"},
+    "plane": {"size"},
+    "shield": {"frames", "levels", "width", "height", "depth", "plate", "hood"},
+    "brick_wall": {"length", "height", "brick_l", "brick_h", "brick_d", "mortar",
+                   "max_bricks"},
+    "crew": {"height"},
+    "ring": {"radius", "thickness", "height", "segments"},
+    "boat": {"length", "beam", "depth"},
+    "dock": {"length", "height", "depth", "blocks"},
+    "train": {"length", "width", "height"},
+    "arch": {"span", "height", "count"},
+    "timber": {"dims"},
+}
+# Every part may carry this regardless of generator.
+UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}
+
 LIGHT_TYPES = {"SUN", "POINT", "AREA", "SPOT"}
 ENGINES = {"CYCLES", "BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"}
 DEVICES = {"CPU", "GPU", "METAL", "OPTIX", "CUDA"}
-
-# 1 Blender unit = 1 metre. Enforced at build time.
+CHANNELS = {"location", "rotation", "scale"}
 METRE = 1.0
+MAX_CHANNEL_DIM = 3
 
 
 class SpecError(Exception):
@@ -50,17 +81,12 @@ class Episode:
     lights: list[dict[str, Any]] = field(default_factory=list)
     materials: list[dict[str, Any]] = field(default_factory=list)
     shots: list[dict[str, Any]] = field(default_factory=list)
+    tracks: list[dict[str, Any]] = field(default_factory=list)
     source: Path | None = None
 
     @property
     def id(self) -> str:
         return self.meta["id"]
-
-    def part(self, part_id: str) -> dict[str, Any]:
-        for p in self.parts:
-            if p["id"] == part_id:
-                return p
-        raise SpecError(f"no part with id {part_id!r}")
 
     def shot(self, shot_id: str) -> dict[str, Any]:
         for s in self.shots:
@@ -69,21 +95,27 @@ class Episode:
         raise SpecError(f"no shot with id {shot_id!r}")
 
     def frame_count(self, shot: dict[str, Any], fps: int) -> int:
-        """Frames for one shot. At least one."""
         return max(1, round(float(shot["seconds"]) * fps))
+
+    def parts_for_shot(self, shot_id: str) -> list[dict[str, Any]]:
+        """Parts visible in a shot. An empty ``shots`` list means every shot."""
+        return [p for p in self.parts if not p["shots"] or shot_id in p["shots"]]
+
+    def tracks_for_shot(self, shot_id: str) -> list[dict[str, Any]]:
+        visible = {p["id"] for p in self.parts_for_shot(shot_id)}
+        return [
+            t for t in self.tracks
+            if t["part"] in visible and (not t["shots"] or shot_id in t["shots"])
+        ]
 
     def with_overrides(self, *, fast: bool = False, shots: list[str] | None = None) -> "Episode":
         """Return a copy with preview overrides applied.
 
-        ``fast`` drops to a low-fidelity preview profile. This is the Mac's job:
-        prove staging, camera and timing cheaply, then hand the 3080 the same
-        spec at full settings.
+        ``fast`` CAPS quality, it does not force it: a spec already smaller than
+        the preview profile must not be scaled UP by asking for a fast render.
         """
         meta = dict(self.meta)
         if fast:
-            # --fast CAPS quality, it does not force it. A spec already smaller
-            # than the preview profile must not be scaled UP by asking for a
-            # fast render.
             meta.update(
                 width=min(int(meta.get("width", 1080)), 480),
                 height=min(int(meta.get("height", 1920)), 854),
@@ -106,6 +138,7 @@ class Episode:
             lights=list(self.lights),
             materials=list(self.materials),
             shots=list(selected),
+            tracks=list(self.tracks),
             source=self.source,
         )
 
@@ -128,7 +161,7 @@ def _require(where: str, given: dict[str, Any], key: str) -> Any:
 
 def _vec(where: str, given: dict[str, Any], key: str, *, default: list[float]) -> list[float]:
     val = given.get(key, default)
-    if not isinstance(val, (list, tuple)) or len(val) != 3:
+    if not isinstance(val, (list, tuple)) or len(val) != MAX_CHANNEL_DIM:
         raise SpecError(f"{where}.{key}: expected 3 numbers, got {val!r}")
     try:
         return [float(v) for v in val]
@@ -198,6 +231,15 @@ def load(path: str | Path) -> Episode:
         p.setdefault("params", {})
         if not isinstance(p["params"], dict):
             raise SpecError(f"{where}.params: expected a table")
+        allowed = GENERATOR_PARAMS.get(gen, set()) | UNIVERSAL_PART_PARAMS
+        extra = set(p["params"]) - allowed
+        if extra:
+            raise SpecError(
+                f"{where}.params: unknown key(s) {sorted(extra)} for gen {gen!r}. "
+                f"Allowed: {sorted(allowed)}. "
+                "The compiler does not guess - fix the name or add it to the schema."
+            )
+        p["shots"] = list(p.get("shots", []))
         parts.append(p)
 
     part_ids = {p["id"] for p in parts}
@@ -236,6 +278,7 @@ def load(path: str | Path) -> Episode:
         li["rot"] = _vec(where, li, "rot", default=[0.0, 0.0, 0.0])
         li.setdefault("color", [1.0, 1.0, 1.0])
         li.setdefault("angle", 0.526)  # sun angular diameter, radians
+        li["shots"] = list(li.get("shots", []))
         lights.append(li)
 
     shots: list[dict[str, Any]] = []
@@ -250,6 +293,7 @@ def load(path: str | Path) -> Episode:
             raise SpecError(f"{where}.camera: {cam!r} is not a declared camera")
         s.setdefault("name", sid)
         s.setdefault("seconds", 2.0)
+        s.setdefault("narration", "")
         if float(s["seconds"]) <= 0:
             raise SpecError(f"{where}.seconds must be positive")
         if s.get("move_from"):
@@ -265,17 +309,63 @@ def load(path: str | Path) -> Episode:
     if not cameras:
         raise SpecError("spec declares no cameras")
 
+    shot_ids = {s["id"] for s in shots}
+    for p in parts:
+        for sid in p["shots"]:
+            if sid not in shot_ids:
+                raise SpecError(f"part[{p['id']}].shots: {sid!r} is not a declared shot")
+    for li in lights:
+        for sid in li["shots"]:
+            if sid not in shot_ids:
+                raise SpecError(f"light[{li['id']}].shots: {sid!r} is not a declared shot")
+
+    tracks: list[dict[str, Any]] = []
+    for i, t in enumerate(raw.get("track", [])):
+        where = f"track[{i}]"
+        t = dict(t)
+        _unknown(where, t, TRACK_KEYS)
+        pid = _require(where, t, "part")
+        where = f"track[{pid}]"
+        if pid not in part_ids:
+            raise SpecError(f"{where}: no such part")
+        chan = _require(where, t, "channel")
+        if chan not in CHANNELS:
+            raise SpecError(f"{where}.channel: {chan!r} not in {sorted(CHANNELS)}")
+        frames = list(_require(where, t, "frames"))
+        values = list(_require(where, t, "values"))
+        if len(frames) != len(values):
+            raise SpecError(f"{where}: frames has {len(frames)} entries, values has {len(values)}")
+        if len(frames) < 2:
+            raise SpecError(f"{where}: a track needs at least two keyframes")
+        # Track time is NORMALISED to 0.0-1.0 of the shot. That way the same
+        # spec renders at a 12 fps preview and a 30 fps final without the
+        # animation having to be re-timed.
+        clean_frames = [float(f) for f in frames]
+        if any(f < 0.0 or f > 1.0 for f in clean_frames):
+            raise SpecError(
+                f"{where}.frames must be normalised 0.0-1.0 of the shot, got {frames!r}"
+            )
+        if clean_frames != sorted(clean_frames):
+            raise SpecError(f"{where}.frames must be in ascending order")
+        clean_values = []
+        for v in values:
+            if not isinstance(v, (list, tuple)) or len(v) != MAX_CHANNEL_DIM:
+                raise SpecError(f"{where}.values: every value must be 3 numbers, got {v!r}")
+            clean_values.append([float(x) for x in v])
+        t["frames"] = clean_frames
+        t["values"] = clean_values
+        t["shots"] = list(t.get("shots", []))
+        for sid in t["shots"]:
+            if sid not in shot_ids:
+                raise SpecError(f"{where}.shots: {sid!r} is not a declared shot")
+        tracks.append(t)
+
     return Episode(
-        meta=meta,
-        parts=parts,
-        cameras=cameras,
-        lights=lights,
-        materials=materials,
-        shots=shots,
-        source=path,
+        meta=meta, parts=parts, cameras=cameras, lights=lights,
+        materials=materials, shots=shots, tracks=tracks, source=path,
     )
 
 
 def validate_only(path: str | Path) -> Episode:
-    """Load and validate without touching Blender. Used by CI and by factgate."""
+    """Load and validate without touching Blender."""
     return load(path)

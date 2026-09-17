@@ -2,9 +2,23 @@
   "measured_at": "2026-09-17",
   "machine": "Mac M1 - 8-core CPU, 7-core GPU, 16 GB, macOS 26.6.2",
   "engine": "CYCLES",
-  "scene": "spec/mvp/mvp.toml - 547 objects, 3641 polys, 2 suns, no volumetrics",
+  "methodology_warning": "The mvp rows were measured over 48-frame runs, so scene construction (~60-90 s, a fixed cost independent of frame count) was swallowed into the per-frame figure and those numbers are badly pessimistic. The ep01 row is a steady-state measurement over 864 frames and is the one to use. Do not compare rows directly.",
   "measurements": [
     {
+      "scene": "spec/ep01/ep01.toml",
+      "device": "CPU",
+      "resolution": [
+        384,
+        682
+      ],
+      "spp": 8,
+      "frames": 864,
+      "sec_per_frame": 1.97,
+      "kind": "steady_state",
+      "note": "1442 objects, 8 shots, 13 animation tracks, 180-degree motion blur"
+    },
+    {
+      "scene": "spec/mvp/mvp.toml",
       "device": "CPU",
       "resolution": [
         384,
@@ -12,10 +26,11 @@
       ],
       "spp": 8,
       "frames": 48,
-      "wall_seconds": 144.0,
-      "sec_per_frame": 3.0
+      "sec_per_frame": 3.0,
+      "kind": "includes_build"
     },
     {
+      "scene": "spec/mvp/mvp.toml",
       "device": "CPU",
       "resolution": [
         480,
@@ -23,10 +38,11 @@
       ],
       "spp": 8,
       "frames": 48,
-      "wall_seconds": 215.0,
-      "sec_per_frame": 4.48
+      "sec_per_frame": 4.48,
+      "kind": "includes_build"
     },
     {
+      "scene": "spec/mvp/mvp.toml",
       "device": "METAL",
       "resolution": [
         384,
@@ -34,32 +50,34 @@
       ],
       "spp": 8,
       "frames": 18,
-      "wall_seconds": 70.36,
-      "sec_per_frame": 3.91
+      "sec_per_frame": 3.91,
+      "kind": "includes_build"
     }
   ],
   "findings": [
-    "Metal was SLOWER than CPU on this scene: 3.91 vs 3.00 s/frame. The M1's 7-core GPU is weak and per-frame overhead dominates on a simple scene. Do not assume the Mac's GPU is the fast path - measure it.",
-    "Scaling with pixel count is close to linear: 1.565x the pixels gave 1.49x the time. That makes the extrapolation below defensible for THIS scene.",
-    "This is a deliberately simple scene. Volumetrics, displacement and high-poly instancing will change the picture completely."
+    "Metal was SLOWER than CPU on the M1. The 7-core GPU is weak and per-frame overhead dominates a simple scene. Do not assume the Mac's GPU is the fast path - measure it.",
+    "Scene construction is a fixed cost, so short benchmark runs overstate per-frame time badly. The 48-frame mvp figure was roughly half build time.",
+    "ep01 renders at 1.97 s/frame steady state - about half what the mvp benchmark implied, despite 2.6x the objects."
   ],
   "extrapolation": {
-    "method": "linear in pixels and samples from the 384x682 @ 8 spp CPU row. This is an OPTIMISTIC lower bound: it ignores VRAM pressure and out-of-core fallback.",
-    "target": "1080x1920 @ 32 spp (spec/ep01/ep01.toml)",
-    "pixel_ratio": 7.92,
-    "sample_ratio": 4.0,
-    "sec_per_frame_on_M1_CPU": 95.0,
+    "warning": "Rebuilt on the steady-state ep01 figure, NOT the mvp figure.",
+    "target": "1080x1920 @ 32 spp (the final episode spec)",
+    "pixel_ratio_from_384x682": 7.92,
+    "sample_ratio_from_8spp": 4.0,
+    "assumed_scaling": "linear in pixels and samples - optimistic, ignores VRAM pressure and the out-of-core fallback on a 10-12 GB card",
+    "sec_per_frame_on_M1_CPU": 62.4,
     "ep01_total_frames": 2160,
-    "ep01_hours_on_M1_CPU": 57.0
+    "ep01_hours_on_M1_CPU": 37.4
   },
   "not_measured": [
     "RTX 3080 / OptiX throughput - the number that actually governs the schedule. UNKNOWN.",
     "VRAM behaviour and the out-of-core fallback on a 10-12 GB card",
-    "Cost of volumetrics, displacement, instancing and the denoiser",
-    "EEVEE, as a preview engine"
+    "Cost of volumetrics, displacement and instancing",
+    "EEVEE as a preview engine",
+    "Whether Cycles actually scales linearly between 8 and 32 spp on this hardware"
   ],
   "next_actions": [
-    "Run this same scene on the Windows node with --device OPTIX and fill in the 3080 row. Until that exists, every schedule claim in ROADMAP.md is an estimate.",
+    "Run the ep01 scene on the Windows node with --device OPTIX and fill in the 3080 row. Until that exists, every schedule claim in ROADMAP.md is an estimate.",
     "Re-run at the start of each quarter and after any Blender or driver bump."
   ]
 }

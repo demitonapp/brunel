@@ -16,7 +16,9 @@ SHOTS/    parameterised shot templates, not models
 
 1. **Every asset carries a provenance sidecar** (`<asset>.json`) with generator, calibrated
    dimensions, `measured: true|false`, and a source list with a licence per entry.
-   `licencegate` fails the build on a missing sidecar.
+   `python -m harness.licencegate legal/licences.json` fails the check on a missing sidecar, on a
+   non-commercial or no-derivatives licence, or on a prohibited source host. Use `--publish` to
+   additionally require a retrieved date and a dated screenshot of the licence page.
 2. **`shield_frame` is parameterised by `frames x cells_per_frame`.** Episode 1 uses 12 x 3. The
    same shape serves Greathead's 1869 Tower Subway shield and the 1884 City & South London
    shields. Never fork it for a new episode — add a parameter.
