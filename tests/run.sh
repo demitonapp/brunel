@@ -36,6 +36,32 @@ check "camera inside geometry is rejected"        fail tests/fixtures/camera_ins
 check "camera clear of geometry is accepted"      pass tests/fixtures/camera_clear.toml  "is INSIDE part"
 check "an unknown spec key is refused"            fail tests/fixtures/unknown_key.toml   "unknown key"
 
+echo "fact gate"
+if $PY -m harness.factgate spec/ep01/facts/ep01.facts.json >/dev/null 2>&1; then
+    echo "  FAIL  the real ep01 ledger should currently FAIL (12 facts unreviewed)"; fail=1
+else
+    echo "  pass  the real ep01 ledger fails, as it should"
+fi
+if $PY -m harness.factgate tests/fixtures/ledger_bad_schema.json >/dev/null 2>&1; then
+    echo "  FAIL  a ledger violating the schema was accepted"; fail=1
+else
+    echo "  pass  a schema-violating ledger is rejected (exit 2)"
+fi
+# Capture first, grep second. factgate exits 1 by design here, and with
+# `set -o pipefail` a pipeline returns the rightmost NON-ZERO status - so
+# `factgate ... | grep -q match` fails even when grep matched.
+FG_OUT="$($PY -m harness.factgate spec/ep01/facts/ep01.facts.json 2>/dev/null || true)"
+if printf '%s' "$FG_OUT" | grep -q "PASS. script_hash_matches_ledger"; then
+    echo "  pass  the ledger is bound to the narration hash"
+else
+    echo "  FAIL  the narration-hash binding broke"; fail=1
+fi
+if printf '%s' "$FG_OUT" | grep -q "FAIL. every_tier_1_to_3_source_has_a_verbatim_quote"; then
+    echo "  pass  a PLACEHOLDER quote does not count as a quote"
+else
+    echo "  FAIL  placeholder quotes are being accepted"; fail=1
+fi
+
 echo "licence gate"
 if $PY -m harness.licencegate tests/fixtures/licences_dirty.json >/dev/null 2>&1; then
     echo "  FAIL  a non-commercial asset was NOT blocked"; fail=1

@@ -440,10 +440,10 @@ narration = "By 1825 London's docks at Wapping and Rotherhithe faced each other 
 
 [[shot]]
 id = "s02"
-name = "The Shipworm"
+name = "The Shipworm Story"
 camera = "cam_macro"
 seconds = 9.0
-narration = "Marc Brunel had spent years on the problem. He is said to have taken his answer from the shipworm, a mollusc that bores through submerged timber."
+narration = "The story goes that a shipworm gave him the idea. It first appears in a nature book written half a century later."
 
 [[shot]]
 id = "s03"

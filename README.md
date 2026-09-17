@@ -104,10 +104,15 @@ renders/          gitignored output
 3. **Score renders, not code.** "The script ran" is not "the shot works".
 4. **Storyboard before you render.** Eight stills are cheaper than an hour of wrong frames.
 5. **1 Blender unit = 1 metre.** Always. Hero dimensions within +/-10% of a cited source.
-6. **Facts before script; script before render.** `factgate` blocks the render.
+6. **Facts before script; script before render.** The fact ledger is bound to the
+   narration by hash, and `factgate` evaluates 11 rules against it. See
+   `docs/research/` for the source research and `spec/fact-ledger.schema.json` for
+   the contract.
 
 ## Requirements
 
 - Python **3.13** exactly (bpy 5.2.2 requires it)
 - `ffmpeg` (present: 8.0.1)
+- `jsonschema` - a HARD dependency of the fact gate. A gate that silently skips
+  schema validation when a library is missing is not a gate.
 - Optional: a Windows box with an NVIDIA GPU for final frames

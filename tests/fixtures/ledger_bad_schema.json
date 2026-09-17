@@ -1,0 +1,4 @@
+{
+  "_why": "NEGATIVE TEST. Missing episode/sources/facts/gate, so schema validation must reject it with exit 2 - never a silent pass.",
+  "schema_version": "1.0.0"
+}

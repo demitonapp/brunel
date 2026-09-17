@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/eng-history/fact-ledger.schema.json",
+  "title": "Episode Fact Ledger",
+  "description": "Machine-readable per-episode ledger of every externally-checkable claim in a video, its evidence, its on-screen treatment, and its review state. One ledger file per episode. The render gate reads this file; no render ships with an unresolved 'unverified' or 'gate' state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "episode", "sources", "facts", "gate"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "episode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "slug", "title", "subject", "period", "runtime_s", "ledger_revision"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^EP[0-9]{3}$" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "period": { "type": "string", "description": "Human-readable period, e.g. '1825-1843'." },
+        "runtime_s": { "type": "integer", "minimum": 1 },
+        "ledger_revision": { "type": "integer", "minimum": 1 },
+        "spec_script_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Hash of the narration script this ledger was reconciled against. Changing the script invalidates the gate."
+        },
+        "narration_source": { "type": "string", "description": "Path or URI of the approved script." }
+      }
+    },
+
+    "sources": {
+      "type": "array",
+      "description": "Source registry. Facts reference these by id. Keeping sources in one place prevents the same document being cited at two different tiers.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "tier", "citation"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^S[0-9]{3}$" },
+          "tier": {
+            "type": "string",
+            "description": "Evidence tier, highest first. TIER-1 primary document or patent. TIER-2 contemporary account or institutional archive record. TIER-3 museum catalogue or peer-reviewed secondary. TIER-4 popular secondary book or trade press. TIER-5 encyclopaedic or unsourced web. TIER-6 model-generated: never citeable.",
+            "enum": ["TIER-1", "TIER-2", "TIER-3", "TIER-4", "TIER-5", "TIER-6"]
+          },
+          "citation": { "type": "string", "description": "Full citation, Chicago-ish. Author, Title (Place: Publisher, Year), page." },
+          "url": { "type": "string", "format": "uri" },
+          "archive_url": { "type": "string", "format": "uri", "description": "Wayback/archive.today snapshot. Required for any web-only source: links rot and a rotted citation is indistinguishable from a fabricated one." },
+          "archive_date": { "type": "string", "format": "date" },
+          "locator": { "type": "string", "description": "Where in the source the fact sits: page, folio, patent claim, catalogue item number, column." },
+          "quote": { "type": "string", "description": "Verbatim excerpt supporting the fact. Required for TIER-1..TIER-3." },
+          "accessed": { "type": "string", "format": "date" },
+          "retrieved_by": { "type": "string", "description": "Agent id or 'human'." }
+        }
+      }
+    },
+
+    "facts": {
+      "type": "array",
+      "description": "One entry per externally-checkable claim. A claim stated twice in the script is still one fact, with two narration_spans.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "claim", "claim_kind", "status", "confidence", "evidence", "on_screen"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^F[0-9]{3}$" },
+          "claim": { "type": "string", "description": "The claim in one sentence, as plainly as it can be stated. Written to be falsifiable." },
+          "claim_kind": {
+            "type": "string",
+            "enum": [
+              "measurement",
+              "date",
+              "attribution",
+              "sequence",
+              "causation",
+              "quantity",
+              "identity",
+              "quote",
+              "interpretation",
+              "counterfactual",
+              "visual_depiction"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "verified: supported by TIER-1..3. contested: competent sources disagree. unknown: no source establishes it. unsupported: asserted in popular retellings, no evidence found. false: evidence contradicts it. dramatic: a deliberate simplification or composite, declared as such on screen.",
+            "enum": ["verified", "contested", "unknown", "unsupported", "false", "dramatic"]
+          },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["source_id", "stance"],
+              "properties": {
+                "source_id": { "type": "string", "pattern": "^S[0-9]{3}$" },
+                "stance": { "type": "string", "enum": ["supports", "contradicts", "qualifies", "is_silent"] },
+                "note": { "type": "string" }
+              }
+            }
+          },
+          "counter_evidence": {
+            "type": "string",
+            "description": "Required when status is contested, unsupported or false: what the competing version is and who holds it."
+          },
+          "what_would_settle_it": {
+            "type": "string",
+            "description": "Required when confidence is low or status is unknown. The specific document, measurement or experiment that would resolve it."
+          },
+          "narration_spans": {
+            "type": "array",
+            "description": "Character or timestamp ranges in the approved script where this claim is voiced. Used to detect a script edit that outruns the ledger.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["start_s", "end_s"],
+              "properties": {
+                "start_s": { "type": "number", "minimum": 0 },
+                "end_s": { "type": "number", "minimum": 0 }
+              }
+            }
+          },
+          "on_screen": {
+            "type": "object",
+            "description": "How the fact is represented to the viewer. This is where uncertainty becomes a design decision rather than a rhetorical risk.",
+            "additionalProperties": false,
+            "required": ["treatment", "citation_shown"],
+            "properties": {
+              "treatment": {
+                "type": "string",
+                "description": "assert: stated plainly. hedge: stated with an explicit qualifier. range: given as a range, not a point. two_readings: both interpretations shown. show_the_gap: uncertainty named on screen. omit: not stated in narration.",
+                "enum": ["assert", "hedge", "range", "two_readings", "show_the_gap", "omit"]
+              },
+              "hedge_text": {
+                "type": "string",
+                "description": "Exact words used when treatment is hedge, range, two_readings or show_the_gap. Burned in or spoken."
+              },
+              "citation_shown": { "type": "boolean" },
+              "citation_format": {
+                "type": "string",
+                "enum": ["none", "slug_on_screen", "slug_in_caption", "slug_in_description", "slug_all_three"],
+                "description": "On-screen sourcing is a slug (e.g. 'ICE Archives, 1828'), never a full bibliography; the full citation lives in the description and the ledger."
+              },
+              "depiction_risk": {
+                "type": "string",
+                "enum": ["none", "reconstruction", "speculative", "physically_simulated", "measured"],
+                "description": "How the accompanying visual was made. 'physically_simulated' must not be presented as 'measured' - see sim_backing."
+              },
+              "sim_backing": {
+                "type": "object",
+                "description": "Present only when the shot rests on a solver. Records whether the solver is evidence or illustration.",
+                "additionalProperties": false,
+                "required": ["tool", "role"],
+                "properties": {
+                  "tool": { "type": "string" },
+                  "role": {
+                    "type": "string",
+                    "enum": ["illustration", "corroboration", "prediction"],
+                    "description": "illustration: looks right, proves nothing, may not be described as engineering evidence. corroboration: reproduces a documented outcome using sourced parameters. prediction: makes a claim no source makes - requires a stated uncertainty band and is never asserted as fact."
+                  },
+                  "validator_disclaimer": {
+                    "type": "string",
+                    "description": "The solver vendor's own statement that the tool is not for engineering accuracy, quoted. Required when role is illustration and the shot could be mistaken for analysis."
+                  },
+                  "parameters_source": {
+                    "type": "array",
+                    "items": { "type": "string", "pattern": "^S[0-9]{3}$" },
+                    "description": "Source ids for every material property fed to the solver. Unsourced parameters make a simulation fiction with numbers on it."
+                  },
+                  "assumptions": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state"],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": ["unreviewed", "agent_checked", "human_approved", "flagged", "blocked"],
+                "description": "Only agent_checked and human_approved satisfy the gate. 'blocked' means the script asserts something the ledger will not support."
+              },
+              "checked_by": { "type": "string" },
+              "checked_at": { "type": "string", "format": "date-time" },
+              "notes": { "type": "string" }
+            }
+          },
+          "supersedes": { "type": "string", "description": "Fact id this replaces after a correction. Never delete a corrected fact; retract it forward so the episode's error history stays auditable." },
+          "retraction": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reason", "published_at"],
+            "properties": {
+              "reason": { "type": "string" },
+              "published_at": { "type": "string", "format": "date" },
+              "correction_url": { "type": "string", "format": "uri" },
+              "video_corrected": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+
+    "gate": {
+      "type": "object",
+      "description": "The accuracy review gate. A render job may not start unless this block evaluates clean against the ledger contents.",
+      "additionalProperties": false,
+      "required": ["ruleset_version", "evaluated_at", "result", "checks"],
+      "properties": {
+        "ruleset_version": { "type": "string" },
+        "evaluated_at": { "type": "string", "format": "date-time" },
+        "result": { "type": "string", "enum": ["pass", "fail", "waived"] },
+        "waiver_reason": { "type": "string" },
+        "waived_by": { "type": "string" },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "result"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": [
+                  "every_fact_has_a_tier_1_to_3_source_or_declared_status",
+                  "no_fact_with_status_unsupported_or_false_is_treated_as_assert",
+                  "every_low_confidence_fact_names_what_would_settle_it",
+                  "every_web_source_has_an_archive_url",
+                  "every_tier_1_to_3_source_has_a_verbatim_quote",
+                  "every_contested_fact_has_counter_evidence",
+                  "no_claim_kind_causation_is_status_verified_without_a_tier_1_or_2_source",
+                  "every_simulation_shot_has_a_role_and_disclaimer",
+                  "every_simulation_parameter_is_sourced",
+                  "all_facts_reviewed_by_a_human_or_flagged",
+                  "script_hash_matches_ledger"
+                ]
+              },
+              "result": { "type": "string", "enum": ["pass", "fail", "warn"] },
+              "detail": { "type": "string" },
+              "offending_fact_ids": { "type": "array", "items": { "type": "string", "pattern": "^F[0-9]{3}$" } }
+            }
+          }
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "Maps this ledger onto W3C PROV-O so the research trail is queryable and so 'who asserted this and when' survives a handover to another agent.",
+      "additionalProperties": false,
+      "properties": {
+        "generated_by": { "type": "string" },
+        "activity": { "type": "string", "description": "prov:Activity, e.g. 'episode-research-run'." },
+        "was_derived_from": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^S[0-9]{3}$" }
+        },
+        "was_attributed_to": { "type": "string", "description": "prov:Agent." },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

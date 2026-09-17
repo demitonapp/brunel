@@ -134,3 +134,20 @@ Format:
 - **Check:** Benchmark over hundreds of frames, or subtract the build explicitly, and record which
   of the two a number is.
 - **Where:** `render-bench.json` (`kind: steady_state` vs `includes_build`).
+## 2026-09-17 - The pipeline trap, again, in the test harness
+
+- **Context:** A lesson about `set -e` and pipelines was written earlier the same day. Hours
+  later the identical mistake appeared in `tests/run.sh`, which runs under `set -uo pipefail`.
+  `factgate ... | grep -q PASS` fails when factgate exits 1 - because grep matched, but pipefail
+  returns the rightmost non-zero status. The check reported FAIL for a rule that had passed.
+- **Check:** Capture the output into a variable, then grep the variable. Never pipe a
+  deliberately-failing command into a matcher.
+- **Where:** `tests/run.sh`, fact-gate section.
+
+## 2026-09-17 - A rule can be present, correct, and still not fire
+
+- **Context:** The inherited gate checked `not source.get("quote")` to force verbatim retrieval.
+  Every strong source in the ledger had `"quote": "PLACEHOLDER - retrieve and paste verbatim"`,
+  which is truthy, so the rule passed while enforcing nothing.
+- **Check:** A quote containing "placeholder" does not count as a quote.
+- **Where:** `harness/factgate.py` (`_has_quote`), fixture-backed in `tests/run.sh`.
