@@ -12,3 +12,8 @@ blender_tx/
 *.exr
 
 .DS_Store
+
+# Research payload: third-party primary sources and downloaded text.
+# ~119 MB of public-domain scans and downloaded runs. Kept locally for the
+# fact ledger, deliberately not published.
+/research/
