@@ -14,15 +14,20 @@ day (PR #1). They are no longer listed here. The findings and the reasoning behi
 preserved in `git log` and, in enforceable form, in `LESSONS.md`; the audit itself is
 `docs/strategy/spec.md` Part II.
 
+> **H27–H31 were filed as H26–H30 and moved.** `H26` was taken the same day, by concurrent work that
+> could not see this table, for "the licence register is global while the fact ledger is per-video"
+> — which is open and listed in Part VI. Commit `9116507` says "Record H26" and means that one, so
+> these are the entries that move. Same rule, and the same cause, as H25's own renumbering note.
+
 | | |
 |---|---|
 | **H23** | For a Markdown script the ledger hash covered the stage directions too — fixed; `tests/run.sh` asserts that rewording an editorial note does not move the hash and changing a spoken word does |
 | **H24** | The spec could not express an orthographic camera, which S1's area comparison needs — fixed; `tests/h24_projection.py` measures the projection rather than asserting an attribute |
-| **H26** | `PassProfile.frame_count` refused an over-long shot and silently **padded** a short one, so a 2 s shot on `wan` played 35% slow and the paid clip was then unshippable — fixed; refuses at both ends |
-| **H27** | `assemble` cut the edit in filename order from whatever frame directories were on disk, so a renamed shot re-entered the video and a non-sorting shot id reordered it — fixed; the spec's shot list is the edit order, orphans are refused |
-| **H28** | Narration longer than `MAX_TEMPO` allowed was hard-cut mid-sentence by `-t slot` while printing a `fitted:` line that read as success — fixed; refuses and names the shot, the overrun and the shot length that would fit |
-| **H29** | Every check in the harness was a threshold check, so nothing could see drift — fixed; `goldens/`, `check.ssim`, `check.check_goldens`, `verify --bless`, calibrated on two real double-renders |
-| **H30** | The spin composition — the repo's most expensive bug — had no numeric test, only a WARNING whose thresholds overlap correct behaviour — fixed; `tests/spin_axis.py` |
+| **H27** | `PassProfile.frame_count` refused an over-long shot and silently **padded** a short one, so a 2 s shot on `wan` played 35% slow and the paid clip was then unshippable — fixed; refuses at both ends |
+| **H28** | `assemble` cut the edit in filename order from whatever frame directories were on disk, so a renamed shot re-entered the video and a non-sorting shot id reordered it — fixed; the spec's shot list is the edit order, orphans are refused |
+| **H29** | Narration longer than `MAX_TEMPO` allowed was hard-cut mid-sentence by `-t slot` while printing a `fitted:` line that read as success — fixed; refuses and names the shot, the overrun and the shot length that would fit |
+| **H30** | Every check in the harness was a threshold check, so nothing could see drift — fixed; `goldens/`, `check.ssim`, `check.check_goldens`, `verify --bless`, calibrated on two real double-renders |
+| **H31** | The spin composition — the repo's most expensive bug — had no numeric test, only a WARNING whose thresholds overlap correct behaviour — fixed; `tests/spin_axis.py` |
 
 ---
 
