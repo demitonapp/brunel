@@ -17,7 +17,7 @@ different things:
 |---|---|
 | **[docs/strategy/](docs/strategy/)** | what we are making and why — the [product spec](docs/strategy/spec.md), the [slate](docs/strategy/slate.md), the [reach audit](docs/strategy/reach-audit-2026-09-18.md) |
 | **[docs/videos/](docs/videos/)** | one directory per video: the brief and the script |
-| **[docs/harness/](docs/harness/)** | the [backlog](docs/harness/backlog.md) (H1–H20, C1–C6) and the [decisions](docs/harness/decisions.md) (D1–D4) |
+| **[docs/harness/](docs/harness/)** | the [backlog](docs/harness/backlog.md) — what is open (H19–H31, C1–C6) — and the [decisions](docs/harness/decisions.md) (D1–D6) |
 | **[docs/research/](docs/research/)** | the evidence base — every vendor claim with its source and confidence |
 | **[docs/archive/](docs/archive/)** | superseded, but still cited from `LESSONS.md` - a document nothing points into gets deleted, not archived |
 
@@ -147,6 +147,17 @@ python -m harness generate spec/ad01/ad01.toml --backend local # hand it to a mo
 
 ## The generative interface
 
+> **Read [D1](docs/harness/decisions.md) first: `local` is the shipping path, and generative is
+> deliberately off the critical path.** This section documents a capability the repo keeps as a
+> portability hedge; it is not a recommendation to go and spend. The one paid run this repo has made
+> rendered iron cobalt blue, deleted the clay the narration promises, and returned a black payoff
+> shot — and the Phase 0 subjects are the *worst* case for depth-only conditioning, because a
+> hydraulic cylinder's depth pass is a featureless gradient. D1 also notes the economics: iterating a
+> hook 30 times at \$0.08/s is roughly \$1,000, none of it reproducible.
+>
+> Keep reading if you are evaluating the backend interface. Skip to
+> [the checks](#the-harness-looks-at-the-result) if you are making a video.
+
 A backend is anything that turns control passes into finished frames. It declares three things:
 
 ```
@@ -166,7 +177,7 @@ not split — an earlier version chunked a long shot by re-applying its whole an
 chunk, which played the shot's full arc once per chunk instead of splitting it once. Shorten the
 shot, or split it into two shots in the spec, if it needs to run longer than a backend's window.
 
-### Start with `wan`, not `cosmos`
+### If you do run it, start with `wan`, not `cosmos`
 
 Cosmos is the better long-term destination and the worse first step. A hosted Cosmos API **does not
 exist** — the only path is a self-hosted NIM on **65.4 GB** of VRAM, with an NGC key, a Docker
