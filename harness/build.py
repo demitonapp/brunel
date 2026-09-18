@@ -17,6 +17,7 @@ from mathutils import Matrix, Vector
 
 from . import generators as gen_mod
 from . import spec as spec_mod
+from .generators import BuildError
 
 # The canonical generator list lives in spec.py so that `validate` works on a
 # machine with no Blender. Assert the two agree, loudly, at import time - a
@@ -36,10 +37,6 @@ if _no_params:
 FACE_WIDTH_M = gen_mod.THAMES_TUNNEL["shield_width_m"]
 FACE_HEIGHT_M = gen_mod.THAMES_TUNNEL["shield_height_m"]
 DIM_TOLERANCE = gen_mod.DIM_TOLERANCE
-
-
-class BuildError(Exception):
-    """Raised when the scene cannot be built as specified."""
 
 
 # --- scene setup ---------------------------------------------------------
@@ -215,7 +212,26 @@ def build_lights(ep: spec_mod.Episode, collection: Any) -> dict[str, Any]:
         obj = bpy.data.objects.new(li["id"], data)
         collection.objects.link(obj)
         obj.location = tuple(li["loc"])
-        obj.rotation_euler = tuple(math.radians(v) for v in li["rot"])
+        # `look_at` wins when given. A light aimed by hand can be pointed at the
+        # floor by accident and nothing would say so; aiming at a point is what
+        # the spec author actually meant.
+        if li.get("look_at"):
+            aim(obj, li["look_at"])
+        else:
+            obj.rotation_euler = tuple(math.radians(v) for v in li["rot"])
+        # A light must not appear IN the picture. Blender renders light sources
+        # to camera by default, so a large AREA lamp shows up as a glowing
+        # rectangle floating in frame - which is exactly what a turning tommy
+        # bar seemed to be causing, and was not. Two renders were spent chasing
+        # a specular highlight that was a lamp.
+        for attr in ("visible_camera", "visible_glossy", "visible_transmission"):
+            if hasattr(obj, attr):
+                try:
+                    setattr(obj, attr, False if attr == "visible_camera" else getattr(obj, attr))
+                except (AttributeError, TypeError):
+                    pass
+        if hasattr(obj, "visible_camera"):
+            obj.visible_camera = False
         out[li["id"]] = obj
     return out
 
@@ -277,7 +293,8 @@ def assert_scene(ep: spec_mod.Episode, built: dict[str, dict[str, Any]]) -> list
             warnings.append(f"mesh {obj.name!r} is unparented - it belongs to no part")
 
     # Every tracked part must exist, or the animation silently does nothing.
-    tracked = {t["part"] for t in ep.tracks}
+    tracked = {p for t in ep.tracks for p in (
+        t["part"] if isinstance(t["part"], list) else [t["part"]])}
     unknown = tracked - set(built)
     if unknown:
         problems.append(f"tracks reference unknown parts: {sorted(unknown)}")

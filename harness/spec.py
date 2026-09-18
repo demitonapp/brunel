@@ -25,15 +25,17 @@ TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
 META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device", "units"}
 PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots"}
 CAMERA_KEYS = {"id", "lens_mm", "loc", "look_at"}
-LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "color", "angle", "shots"}
+LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "look_at", "color", "angle", "shots"}
 MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic"}
-SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes", "narration"}
-TRACK_KEYS = {"part", "channel", "frames", "values", "shots"}
+SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes",
+             "narration", "depth_range", "mechanism"}
+MECHANISM_KEYS = {"turns", "pitch", "advance", "tolerance"}
+TRACK_KEYS = {"part", "channel", "frames", "values", "shots", "mode"}
 
 GENERATORS = {
     "box", "cylinder", "sphere", "plane",
     "shield", "brick_wall", "crew", "ring",
-    "boat", "dock", "train", "arch", "timber",
+    "boat", "dock", "train", "arch", "timber", "screw", "lining",
 }
 # Allowed generator parameters. This lives here, not in generators.py, so that
 # `validate` works on a machine with no Blender; build.py asserts the two agree.
@@ -48,13 +50,15 @@ GENERATOR_PARAMS = {
     "shield": {"frames", "levels", "width", "height", "depth", "plate", "hood"},
     "brick_wall": {"length", "height", "brick_l", "brick_h", "brick_d", "mortar",
                    "max_bricks"},
-    "crew": {"height"},
+    "crew": {"height", "pose", "facing"},
     "ring": {"radius", "thickness", "height", "segments"},
     "boat": {"length", "beam", "depth"},
     "dock": {"length", "height", "depth", "blocks"},
     "train": {"length", "width", "height"},
     "arch": {"span", "height", "count"},
     "timber": {"dims"},
+    "screw": {"radius", "depth", "pitch", "turns", "foot", "bar"},
+    "lining": {"radius", "thickness", "length", "segments"},
 }
 # Every part may carry this regardless of generator.
 UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}
@@ -62,7 +66,7 @@ UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}
 LIGHT_TYPES = {"SUN", "POINT", "AREA", "SPOT"}
 ENGINES = {"CYCLES", "BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"}
 DEVICES = {"CPU", "GPU", "METAL", "OPTIX", "CUDA"}
-CHANNELS = {"location", "rotation", "scale"}
+CHANNELS = {"location", "rotation", "scale", "spin"}
 METRE = 1.0
 MAX_CHANNEL_DIM = 3
 
@@ -103,10 +107,16 @@ class Episode:
 
     def tracks_for_shot(self, shot_id: str) -> list[dict[str, Any]]:
         visible = {p["id"] for p in self.parts_for_shot(shot_id)}
-        return [
-            t for t in self.tracks
-            if t["part"] in visible and (not t["shots"] or shot_id in t["shots"])
-        ]
+        out: list[dict[str, Any]] = []
+        for t in self.tracks:
+            if t["shots"] and shot_id not in t["shots"]:
+                continue
+            # A track may name an assembly; it applies if ANY of its parts is
+            # visible in this shot.
+            names = t["part"] if isinstance(t["part"], list) else [t["part"]]
+            if any(n in visible for n in names):
+                out.append(t)
+        return out
 
     def with_overrides(self, *, fast: bool = False, shots: list[str] | None = None) -> "Episode":
         """Return a copy with preview overrides applied.
@@ -275,7 +285,16 @@ def load(path: str | Path) -> Episode:
             raise SpecError(f"{where}.type: {li['type']!r} not in {sorted(LIGHT_TYPES)}")
         li.setdefault("energy", 3.0)
         li["loc"] = _vec(where, li, "loc", default=[0.0, 0.0, 10.0])
-        li["rot"] = _vec(where, li, "rot", default=[0.0, 0.0, 0.0])
+        # A light may be aimed at a point instead of given an Euler rotation.
+        # This exists because Blender's AREA lights default to pointing straight
+        # down: a "work light" placed at head height and left unrotated lights
+        # the floor and leaves the subject black. Aiming is what a human means,
+        # and `build.aim` already does it for cameras.
+        if "look_at" in li:
+            li["look_at"] = _vec(where, li, "look_at", default=[0.0, 0.0, 0.0])
+            li["rot"] = [0.0, 0.0, 0.0]
+        else:
+            li["rot"] = _vec(where, li, "rot", default=[0.0, 0.0, 0.0])
         li.setdefault("color", [1.0, 1.0, 1.0])
         li.setdefault("angle", 0.526)  # sun angular diameter, radians
         li["shots"] = list(li.get("shots", []))
@@ -302,6 +321,23 @@ def load(path: str | Path) -> Episode:
             s["move_to"] = _vec(where, s, "move_to", default=s["move_to"])
         if bool(s.get("move_from")) != bool(s.get("move_to")):
             raise SpecError(f"{where}: move_from and move_to must be given together")
+
+        # A declared mechanism: schema-checked here, reconciled against the
+        # actual tracks in `_check_mechanisms` once all shots and tracks are
+        # known (turns and pitch alone say nothing about what the animation
+        # actually does - see that function).
+        mech = s.get("mechanism")
+        if mech:
+            unknown = set(mech) - MECHANISM_KEYS
+            if unknown:
+                raise SpecError(f"{where}.mechanism: unknown key(s) {sorted(unknown)}; "
+                                f"allowed {sorted(MECHANISM_KEYS)}")
+            need = {"turns", "pitch", "advance"}
+            missing = need - set(mech)
+            if missing:
+                raise SpecError(f"{where}.mechanism: needs {sorted(need)}, "
+                                f"missing {sorted(missing)}")
+            s["mechanism"] = {k: float(v) for k, v in mech.items()}
         shots.append(s)
 
     if not shots:
@@ -325,12 +361,25 @@ def load(path: str | Path) -> Episode:
         t = dict(t)
         _unknown(where, t, TRACK_KEYS)
         pid = _require(where, t, "part")
-        where = f"track[{pid}]"
-        if pid not in part_ids:
-            raise SpecError(f"{where}: no such part")
+        # A track may name one part or an assembly. Normalise to a list here so
+        # nothing downstream has to care which the author wrote.
+        names = pid if isinstance(pid, list) else [pid]
+        if not names:
+            raise SpecError(f"{where}.part: empty")
+        for n in names:
+            if not isinstance(n, str):
+                raise SpecError(f"{where}.part: expected part ids, got {n!r}")
+            if n not in part_ids:
+                raise SpecError(f"track[{n}]: no such part")
+        where = f"track[{names[0]}]"
+        t["part"] = names if isinstance(pid, list) else names[0]
         chan = _require(where, t, "channel")
         if chan not in CHANNELS:
             raise SpecError(f"{where}.channel: {chan!r} not in {sorted(CHANNELS)}")
+        mode = t.get("mode", "absolute")
+        if mode not in ("absolute", "offset"):
+            raise SpecError(f"{where}.mode: {mode!r} - use absolute | offset")
+        t["mode"] = mode
         frames = list(_require(where, t, "frames"))
         values = list(_require(where, t, "values"))
         if len(frames) != len(values):
@@ -360,10 +409,112 @@ def load(path: str | Path) -> Episode:
                 raise SpecError(f"{where}.shots: {sid!r} is not a declared shot")
         tracks.append(t)
 
-    return Episode(
+    # Two tracks driving the same (part, channel) in the same shot collide at
+    # every overlapping frame - keyframe_insert overwrites, so whichever track
+    # is applied last wins per frame, silently mixing both curves. This was
+    # not hypothetical: two UNSCOPED spin tracks on the same screws (1440 deg
+    # and 2160 deg) both applied to every shot in `ad02`, and two unscoped
+    # offset tracks did the same to the whole cell assembly. An unscoped track
+    # (`shots = []`) applies wherever any of its parts is visible, so absence
+    # of `shots` is not absence of scope.
+    owner: dict[tuple[str, str, str], int] = {}
+    for i, t in enumerate(tracks):
+        names = t["part"] if isinstance(t["part"], list) else [t["part"]]
+        applies_to = t["shots"] or sorted(shot_ids)
+        for sid in applies_to:
+            for n in names:
+                key = (sid, n, t["channel"])
+                prior = owner.get(key)
+                if prior is not None:
+                    raise SpecError(
+                        f"track[{prior}] and track[{i}] both drive part {n!r} "
+                        f"channel {t['channel']!r} in shot {sid!r}. Scope one "
+                        f"with `shots = [...]` - an unscoped track applies to "
+                        f"every shot its part is visible in, not just the one "
+                        f"it was written for."
+                    )
+                owner[key] = i
+
+    ep = Episode(
         meta=meta, parts=parts, cameras=cameras, lights=lights,
         materials=materials, shots=shots, tracks=tracks, source=path,
     )
+    _check_mechanisms(ep)
+    return ep
+
+
+def _mechanism_actuals(ep: "Episode", shot: dict[str, Any]) -> tuple[float | None, float | None]:
+    """What the tracks that actually apply to this shot command.
+
+    `turns` is the net rotation of every `spin` track over the shot, in whole
+    turns. `advance` is the net displacement of every offset-mode `location`
+    track. Both are None when no such track applies - which is itself the
+    finding: a mechanism block describing motion nothing keys.
+    """
+    turns: float | None = None
+    advance: float | None = None
+    for t in ep.tracks_for_shot(shot["id"]):
+        if t["channel"] == "spin":
+            delta = abs(t["values"][-1][2] - t["values"][0][2]) / 360.0
+            turns = delta if turns is None else turns + delta
+        elif t["channel"] == "location" and t.get("mode") == "offset":
+            a, b = t["values"][0], t["values"][-1]
+            delta = sum((x - y) ** 2 for x, y in zip(b, a)) ** 0.5
+            advance = delta if advance is None else advance + delta
+    return turns, advance
+
+
+def _check_mechanisms(ep: "Episode") -> None:
+    """`turns x pitch == advance`, checked against what the TRACKS do.
+
+    The original version of this check compared three numbers hand-written in
+    the same `[shot.mechanism]` block, so it validated that the block was
+    internally consistent and nothing else - change the spin track's degrees
+    and forget to update the block, and it still passed. `ad02`'s c05 advanced
+    the cell 0.26 m with no spin track and no mechanism block at all, one shot
+    after the block that WAS checked, and nothing noticed. This derives
+    `turns` and `advance` from the tracks that actually apply to the shot and
+    checks the declared numbers against those, not against each other.
+    """
+    for shot in ep.shots:
+        mech = shot.get("mechanism")
+        if not mech:
+            continue
+        where = f"shot[{shot['id']}].mechanism"
+        tol = float(mech.get("tolerance", 0.02))
+        actual_turns, actual_advance = _mechanism_actuals(ep, shot)
+        if actual_turns is None:
+            raise SpecError(
+                f"{where}: declares turns={mech['turns']}, but no `spin` track "
+                f"applies to shot {shot['id']!r}. The block describes a "
+                f"rotation nothing keys."
+            )
+        if abs(actual_turns - mech["turns"]) > tol:
+            raise SpecError(
+                f"{where}: declares turns={mech['turns']}, but the spin "
+                f"track(s) applying to shot {shot['id']!r} command "
+                f"{actual_turns:.4f} turns (tolerance {tol})."
+            )
+        if actual_advance is None:
+            raise SpecError(
+                f"{where}: declares advance={mech['advance']}, but no offset-"
+                f"mode `location` track applies to shot {shot['id']!r}. The "
+                f"block describes a displacement nothing keys."
+            )
+        if abs(actual_advance - mech["advance"]) > tol:
+            raise SpecError(
+                f"{where}: declares advance={mech['advance']}, but the "
+                f"offset-mode track(s) applying to shot {shot['id']!r} move "
+                f"{actual_advance:.4f} m (tolerance {tol})."
+            )
+        implied = float(mech["turns"]) * float(mech["pitch"])
+        declared = float(mech["advance"])
+        if abs(implied - declared) > tol:
+            raise SpecError(
+                f"{where}: {mech['turns']} turns x {mech['pitch']} m pitch = "
+                f"{implied:.4f} m, but advance is declared as {declared:.4f} m "
+                f"(tolerance {tol}). A jack cannot turn and not move."
+            )
 
 
 def validate_only(path: str | Path) -> Episode:

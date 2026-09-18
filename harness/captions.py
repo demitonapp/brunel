@@ -40,8 +40,31 @@ def _run(cmd: list[str], cwd: Path | None = None) -> None:
         raise CaptionError(f"command failed: {' '.join(cmd)}\n{proc.stderr[-1500:]}")
 
 
+#: Words a caption should not end on. Splitting after these strands the reader
+#: mid-phrase: the first cut of ad02 rendered "Turning them drives the cell
+#: forward an" / "inch at a time.", which breaks a measurement across two cards
+#: and reads as a mistake.
+_DONT_END_ON = {
+    "a", "an", "the", "and", "or", "but", "of", "to", "in", "on", "at", "by",
+    "for", "with", "from", "into", "onto", "over", "under", "as", "is", "are",
+    "was", "were", "be", "its", "it", "his", "her", "their", "this", "that",
+}
+
+
 def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
-    """Split narration into caption-sized chunks on word boundaries."""
+    """Split narration into caption-sized chunks, preferring clause boundaries.
+
+    Word-boundary splitting alone is not enough: it produces chunks that are the
+    right *length* and the wrong *shape*. Two rules make a caption read as a
+    phrase rather than a truncation:
+
+    * **Prefer to break at punctuation** - a comma, semicolon or dash is where a
+      reader expects a pause anyway.
+    * **Never end a chunk on a function word.** "forward an" is not a phrase; if
+      the packer would land there, it gives back the word that caused it.
+    """
+    import re
+
     words = text.split()
     chunks: list[str] = []
     cur = ""
@@ -51,11 +74,27 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
         elif len(cur) + 1 + len(w) <= max_chars:
             cur += " " + w
         else:
+            # Give back a trailing function word, unless doing so would empty
+            # the chunk or shove the same problem onto the next one.
+            parts = cur.split()
+            while len(parts) > 1 and parts[-1].strip(",;:-").lower() in _DONT_END_ON:
+                w = parts.pop() + " " + w
+            cur = " ".join(parts)
             chunks.append(cur)
             cur = w
     if cur:
         chunks.append(cur)
-    return chunks
+
+    # A chunk ending in punctuation is already a clean break; short trailing
+    # fragments are then merged back rather than left dangling.
+    out: list[str] = []
+    for c in chunks:
+        if out and len(c) < max_chars * 0.45 and not out[-1].rstrip().endswith((".", ",", ";", ":")):
+            if len(out[-1]) + 1 + len(c) <= max_chars:
+                out[-1] = out[-1] + " " + c
+                continue
+        out.append(c)
+    return out
 
 
 def build_cues(
@@ -63,16 +102,23 @@ def build_cues(
     vo_durations: dict[str, float] | None = None,
     lead: float = 0.35,
     tail: float = 0.45,
+    shot_durations: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
     """One cue per chunk, laid out along the episode timeline.
 
     When a real voiceover exists its measured duration drives the spread, so
     the words on screen track the words being spoken.
+
+    `shot_durations` overrides `shot["seconds"]` per shot id when given. A
+    generated backend does not deliver exactly the length it was asked for -
+    Wan returned 5.06s of picture for a 4.00s request - so captions built for
+    the delivered file must be timed on what the file actually contains, not
+    on the spec's request.
     """
     cues: list[dict[str, Any]] = []
     t = 0.0
     for shot in ep.shots:
-        dur = float(shot["seconds"])
+        dur = float((shot_durations or {}).get(shot["id"], shot["seconds"]))
         text = (shot.get("narration") or "").strip()
         if text:
             chunks = chunk_text(text)

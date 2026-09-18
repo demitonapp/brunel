@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "episode": {
+    "id": "EP000",
+    "slug": "fixture",
+    "title": "Fixture Episode",
+    "subject": "test fixture",
+    "period": "2026",
+    "runtime_s": 60,
+    "ledger_revision": 1
+  },
+  "sources": [
+    {
+      "id": "S001",
+      "tier": "TIER-1",
+      "citation": "Fixture Primary Document (Testville: Fixture Press, 2026), p. 1.",
+      "quote": "The fixture measures exactly one metre."
+    }
+  ],
+  "facts": [
+    {
+      "id": "F001",
+      "claim": "The fixture measures one metre.",
+      "claim_kind": "measurement",
+      "status": "verified",
+      "confidence": "high",
+      "evidence": [
+        {"source_id": "S001", "stance": "supports"}
+      ],
+      "on_screen": {
+        "treatment": "assert",
+        "citation_shown": true,
+        "citation_format": "slug_on_screen"
+      },
+      "review": {
+        "state": "human_approved"
+      }
+    }
+  ],
+  "gate": {
+    "ruleset_version": "1.0.0",
+    "evaluated_at": "2026-01-01T00:00:00+00:00",
+    "result": "pass",
+    "checks": []
+  }
+}
