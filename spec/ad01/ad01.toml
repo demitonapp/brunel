@@ -7,7 +7,7 @@
 # know what a tunnelling shield is.
 #
 # It exists because the first storyboard pass on ep01's equivalent shots failed
-# its own test (see docs/mvp-shield-ad-plan.md section 1a):
+# its own test (see docs/archive/mvp-shield-ad-plan.md section 1a):
 #
 #   1. the shield read as a flat fence - dead-on symmetrical framing, no depth
 #   2. s05 hid the screws behind the board - the mechanism was invisible

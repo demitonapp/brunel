@@ -7,6 +7,7 @@ that has no Blender at all.
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import json
 import shutil
 import subprocess
@@ -112,10 +113,7 @@ def cmd_render(args: argparse.Namespace) -> int:
     from .build import BuildError
     from .render import render
 
-    ep = load(args.spec).with_overrides(fast=args.fast, shots=_parse_shots(args.shots))
-    if getattr(args, "res", None):
-        w, h = args.res.lower().split("x")
-        ep.meta["width"], ep.meta["height"] = int(w), int(h)
+    ep = _loaded(args)
     try:
         result = render(ep, out_root=Path(args.out), device=args.device,
                         stills_only=args.stills, force=args.force)
@@ -847,6 +845,96 @@ def cmd_backends(_: argparse.Namespace) -> int:
     return 0
 
 
+
+MIN_BENCH_FRAMES = 8
+"""A benchmark measured over fewer frames than this is not reported.
+
+render-bench.json's own methodology warning exists because a 48-frame mvp run
+was half scene-construction and overstated per-frame cost by about double. The
+per-shot timer now starts AFTER build_scene, so build is already excluded - but
+the first frame still pays for BVH construction and sampler warm-up, so a
+three-frame "benchmark" is still a lie. Eight is the floor at which the warm-up
+is amortised enough to quote the number.
+"""
+
+
+def _loaded(args: argparse.Namespace) -> Any:
+    """Load a spec and apply the CLI overrides every render path shares."""
+    ep = load(args.spec).with_overrides(
+        fast=getattr(args, "fast", False), shots=_parse_shots(getattr(args, "shots", None))
+    )
+    if getattr(args, "res", None):
+        w, h = args.res.lower().split("x")
+        ep.meta["width"], ep.meta["height"] = int(w), int(h)
+    if getattr(args, "samples", None):
+        ep.meta["samples"] = int(args.samples)
+    return ep
+
+
+def cmd_bench(args: argparse.Namespace) -> int:
+    """Measure seconds/frame at a real delivery resolution and record it.
+
+    Every schedule number in ROADMAP.md and docs/ is currently an extrapolation
+    from a 384x682 render scaled by pixel count and sample count. This replaces
+    it with a measurement. The whole point is to render FEW frames at the REAL
+    resolution rather than many frames at a fake one.
+    """
+    from .build import BuildError
+    from .render import render
+
+    ep = _loaded(args)
+    ep.meta.setdefault("device", "CPU")
+    try:
+        result = render(ep, out_root=Path(args.out), device=args.device,
+                        force=True, max_frames=args.frames)
+    except BuildError as exc:
+        print(f"build FAILED\n{exc}", file=sys.stderr)
+        return 2
+
+    # Read the profile back off the render, never off the spec - see render().
+    device = result["device"]
+    w, h = result["resolution"]
+    spp = result["samples"]
+
+    timed = [s for s in result["shots"] if s.get("sec_per_frame") is not None]
+    frames = sum(s["frames_rendered"] for s in timed)
+    if frames < MIN_BENCH_FRAMES:
+        print(f"bench REFUSED: {frames} frame(s) rendered, need at least "
+              f"{MIN_BENCH_FRAMES}. A number this short is warm-up, not throughput.",
+              file=sys.stderr)
+        return 3
+
+    seconds = sum(s["render_seconds"] for s in timed)
+    spf = seconds / frames
+    row = {
+        "scene": args.spec,
+        "device": device,
+        "resolution": [w, h],
+        "spp": spp,
+        "frames": frames,
+        "sec_per_frame": round(spf, 2),
+        "kind": "steady_state",
+        "note": args.note or (f"harness bench, {len(timed)} shot(s), build time excluded"),
+    }
+
+    path = Path(args.bench_file)
+    doc = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"measurements": []}
+    doc.setdefault("measurements", []).append(row)
+    doc["measured_at"] = _dt.date.today().isoformat()
+    path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+
+    print(f"\n  {frames} frames at {w}x{h}, {spp} spp, {device}: {spf:.2f} s/frame")
+    print(f"  recorded in {path}\n")
+    # The two numbers the slate actually turns on. A schedule you have to work
+    # out by hand is a schedule nobody works out.
+    fps = int(ep.meta["fps"])
+    for label, secs in (("30 s Short", 30), ("7 min long-form", 420)):
+        n = secs * fps
+        hours = n * spf / 3600
+        print(f"  {label:<16} {n:>6} frames  {hours:>7.1f} h")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="harness", description=__doc__)
     p.add_argument("--version", action="version", version=f"brunel {__version__}")
@@ -864,7 +952,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--fast", action="store_true",
                         help="low-fidelity preview profile: caps to 480x854, 8 spp, 12 fps")
         sp.add_argument("--shots", help="comma-separated shot ids, e.g. s04,s05")
-        sp.add_argument("--res", help="override preview resolution, e.g. 384x682")
+        sp.add_argument("--res", help="override resolution, e.g. 1080x1920")
+        sp.add_argument("--samples", type=int, help="override Cycles samples per pixel")
         sp.add_argument("--force", action="store_true",
                         help="discard cached frames and re-render from scratch")
 
@@ -961,6 +1050,15 @@ def build_parser() -> argparse.ArgumentParser:
     lb.add_argument("--search", help="search names and descriptions")
     lb.add_argument("--category", choices=["GEN", "CHR", "DET", "MAT", "SHOTS"])
     lb.set_defaults(func=cmd_library)
+
+    bn = sub.add_parser("bench", help="measure s/frame at a real delivery resolution")
+    add_common(bn)
+    bn.add_argument("--device", choices=["CPU", "GPU", "METAL", "OPTIX", "CUDA"])
+    bn.add_argument("--frames", type=int, default=24,
+                    help="frames per shot to time (default: 24)")
+    bn.add_argument("--note", help="what this row is measuring")
+    bn.add_argument("--bench-file", default="render-bench.json")
+    bn.set_defaults(func=cmd_bench)
 
     vf = sub.add_parser("verify", help="check rendered frames, depth passes and clips for a picture")
     vf.add_argument("spec")

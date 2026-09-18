@@ -7,8 +7,20 @@
 > When a harness defect blocks a video, it is a product defect and it is ranked by the video it
 > blocks — not by how interesting the bug is.
 
-**Supersedes:** `docs/channel-spec.md`, `docs/harness-remediation-spec-2026-09-18.md`,
-`docs/mvp-shield-ad-plan.md`. Evidence base stays in `docs/research/`.
+**Supersedes:** everything in `docs/archive/`. Evidence base stays in `docs/research/`.
+
+**Partly superseded itself, 2026-09-18.** After the reach audit
+([`reach-audit-2026-09-18.md`](reach-audit-2026-09-18.md)) three parts of this document were
+overtaken. They are left in place, struck through, because the reasoning is still worth reading
+and because silently rewriting a locked decision is how a repo forgets it ever made one.
+
+| Section | Superseded by |
+|---|---|
+| §1, the Australia-only clause | [`../harness/decisions.md`](../harness/decisions.md) **D3** |
+| §3, the 12-month slate | [`slate.md`](slate.md) |
+| §4, "Shorts are the growth engine" | [`slate.md`](slate.md) §1 — a Short is a shot built early, not a trailer cut late |
+| §5, the C1–C6 capability table | [`../harness/backlog.md`](../harness/backlog.md) Part V |
+| Parts III–IV | [`../harness/backlog.md`](../harness/backlog.md) |
 
 **Status:** channel strategy (Part I) locked 2026-09-18. Harness remediation (Part III, H1–H18)
 **implemented and merged 2026-09-18** — see [PR #1](https://github.com/demitonapp/brunel/pull/1) and
@@ -33,8 +45,12 @@ found and why each fix was made; they are not a live to-do list. What is still o
 > **"How Australia was built — the machines and mega-projects that did the impossible, explained
 > with nothing guessed and the receipts shown."**
 
-**Decision locked (2026-09-18):** Australia only, for at least 12 months. Every subject Australian.
-International subjects wait until the format and the audience are proven.
+> **REVERSED 2026-09-18 — see [decisions.md](../harness/decisions.md) D3.** The measured penalty is
+> 31% of median on an Australian subject, by the same creator in the same format. The clause below
+> is kept as the record of what was decided and why it did not survive contact with the numbers.
+
+~~**Decision locked (2026-09-18):** Australia only, for at least 12 months. Every subject
+Australian. International subjects wait until the format and the audience are proven.~~
 
 ### Why it is winnable for one founder
 
@@ -137,6 +153,11 @@ channels flooding the platform. **The fact ledger becomes a linked page per vide
 
 ## 3. The 12-month slate
 
+> **SUPERSEDED 2026-09-18 by [`slate.md`](slate.md).** Seven of the twelve episodes below had
+> effectively no global search demand, and one of the two globally recognised subjects was
+> already made by a 4.4M-subscriber channel three years ago. The mechanism episodes (5, 9, 11)
+> were right and were ranked last; they are now first. The Australian subjects return in Phase 3.
+
 One series: **"Built Australia."** One system per video. History and present alternating, so the
 channel is never "old stuff" and never "news that expires."
 
@@ -227,6 +248,10 @@ The peg-doll "scale witness" is the worst of both worlds. **Year one: people-fre
 people-free style can win. Revisit characters only when a story requires them (Episode 10).
 
 ### What the harness must gain, in slate order
+
+> **RE-RANKED 2026-09-18 — see [`../harness/backlog.md`](../harness/backlog.md) Part V.** The table
+> below is ranked against a Snowy flagship opening the channel. C4 is now first and C2/C3 have left
+> the critical path entirely.
 
 The content roadmap drives the engineering roadmap. Not the reverse.
 
@@ -420,264 +445,13 @@ and nothing asks for any.
 
 ---
 
-# Part III — The harness, ranked by what it blocks
-
-**All of H1–H18 below are implemented and merged (2026-09-18, PR #1).** Kept as written — as
-findings, not a checklist with boxes ticked — because the evidence and reasoning behind each fix
-is the part worth keeping; the fix itself is in the code and in `git log`. `LESSONS.md` carries the
-per-entry `ENFORCED BY:` line for what's actually wired in today.
-
-Every defect below is ranked by **which video it stops**, not by engineering severity. `H` numbers
-are stable; reorder the work, not the labels.
-
-## 9. Blocking every video
-
-### H1 — `check_clip` does not run on the path in use
-
-See §7. **Blocks:** everything. A black payoff shot shipped and the check that catches it was never
-called.
-**Fix.** Call `check.check_clip` in the `collect()` loop; promote crushed-to-black to a hard failure.
-**Check.** `tests/run.sh` asserts a synthesised black mp4 is rejected by the generate path, not
-merely by the function.
-
-### H2 — Delivered duration is never compared to declared duration
-
-Covers §8.1, §8.2, §8.3 — one defect wearing three hats. **Blocks:** every video, because it puts the
-narration on the wrong picture, and narration is the product.
-**Fix.** After `collect()`, ffprobe the returned clip and compare to `shot["seconds"]`; a mismatch
-beyond ~0.2 s fails with the delta named. Write **measured** seconds into `generate.json` and compute
-cost from that. Build caption cues from measured clip durations whenever generated clips exist.
-`cmd_deliver` already does exactly this on the Blender path and aborts at 0.75 s — the pattern is in
-the repo and was not carried across.
-**Check.** A fixture clip whose duration disagrees with its spec shot fails the run.
-
-### H3 — `frame_count()` clamps silently instead of refusing
-
-```
-4.0s -> 64 frames = 4.00s output
-6.0s -> 81 frames = 5.06s output   <- ad01, all three shots
-9.0s -> 81 frames = 5.06s output   <- ep01 would lose 44%
-```
-
-`ad01`'s three 6-second shots were rendered as 81 frames; `_apply_tracks` maps the whole normalised
-track onto them, so the shot is not truncated — **it plays 18% fast.** `renders/ad01/passes.json`
-holds `"seconds": 6.0` and `"frames_total": 81` on the same object. **Blocks:** any video with a shot
-longer than a backend window, which at 10–18 min is all of them.
-**Fix.** Refuse. A shot past the window is an authoring decision, not something to resolve silently.
-**Check.** `frame_count(9.0)` on the wan profile raises.
-
-### H4 — The pipeline stops one step before the deliverable
-
-Nothing assembles `generated-*/*.mp4`. `assemble()` globs `*/frame_*.png`, which does not match the
-`*/plate/c00/frame_*.png` that `passes` writes. The ad02 cut, its `concat.txt` and its burned captions
-were made **by hand** and left in the output directory — and `cmd_sheet` now carries a hardcoded
-skip-list for those files. The tool is working around artefacts it does not manage.
-**Blocks:** the 2–3 week cadence. A manual last mile does not survive 26 videos a year.
-**Fix.** `deliver --backend <name>`: concatenate generated clips, time captions off their measured
-durations (H2), write `deliver.json`.
-
-## 10. Blocking the moat
-
-### H5 — `factgate` and `licencegate` are wired to nothing
-
-Neither is called by `render`, `generate` or `deliver`; only `tests/run.sh` invokes them. Worse:
-**`ad01` and `ad02` have no fact ledger at all** — the cuts making factual claims and costing money.
-The gate guards `ep01`, which is not shipping.
-
-§2.5 stakes the channel's differentiation on a **public** ledger per video. That makes this not a
-hygiene issue but the moat:
-
-**Blocks:** the fact-as-trust device, i.e. the wedge in §1.
-**Fix.** Call `factgate` from `deliver`, blocking on `--publish`. Write a ledger for every shipped
-cut. Add the per-video public ledger page as a deliverable artifact.
-**Check.** `deliver --publish` on a spec with no ledger fails.
-
-### H6 — The two gate tests are inverted
-
-`tests/run.sh` asserts the real ep01 ledger **fails** and the real licence register **blocks**. Both
-pass today and both go red the day someone finishes the work they guard. A test that breaks on
-success trains you to ignore the suite.
-**Fix.** Assert against fixtures; report real-ledger status without failing the run.
-
-### H7 — `[shot.mechanism]` is a tautology
-
-It checks `turns × pitch ≈ advance` against three numbers hand-written in the same block. Nothing
-compares them to the tracks. `ad02` c04 declares `turns = 6.0` while separately writing `2160.0`
-degrees in a spin track and `-0.20` in an unlinked offset track; change the spin and forget the block
-and it still passes. `ad02` **c05 advances the cell −0.26 m with no spin track and no mechanism block
-at all** — the exact fault the feature exists to catch, one shot later, unflagged.
-**Blocks:** "nothing guessed." A mechanism that cannot exist is the worst thing this channel can ship.
-**Fix.** Derive `turns` from the spin track's total degrees and `advance` from the offset delta, then
-assert against `pitch`.
-**Check.** c05 as written fails validation.
-
-### H8 — Nothing records which backend a spec decision reaches
-
-§8.6. Material work aimed at a path that cannot see it, recorded as a fix.
-**Fix.** `LESSONS.md` entries name the backend they were verified on. Spec comments that justify a
-value against model behaviour name the backend. `backends` output states plainly what each path
-ignores.
-
-## 11. Blocking the slate's capabilities
-
-### H9 — Chunking is wrong wherever it is reachable
-
-`offset` is incremented and never read; every chunk calls `_apply_tracks(..., count)` with its own
-frame count, so **each chunk renders the entire shot's animation**, compressed — two chunks
-concatenated give the shot twice. `edge`/`vis` derive only from `c00`, so a multi-chunk Cosmos shot
-fails `bundle.require()` regardless. On `wan`, `max_frames == chunk_frames == 81`, so the path is
-unreachable.
-**Blocks:** long-form. A 10–18 minute video is nothing but long shots.
-**Fix.** Delete `chunk_frames`, `offset`, the chunk tag machinery and the c00-only derive. Re-add
-when a backend forces it, at which point the track re-timing must be written properly anyway.
-**Check.** Deleting it must not change `renders/ad02/passes.json`.
-
-### H10 — The `_control` mux cache has no invalidation
-
-`build_bundles` does `if not dst.exists(): _mux(...)`. Nothing clears `_control` and `--force` does
-not touch it. Fix a `depth_range`, re-run `passes`, run `generate --force`, and you **pay to generate
-from the previous control video.**
-**Fix.** Name the cached mp4 by a hash of its source frames, or drop a shot's `_control` when
-`passes` rewrites it.
-
-### H11 — Tracks are under-scoped and nothing detects collisions
-
-`ad02` has 9 tracks; 2 carry `shots`. An unscoped track applies in **every** shot where any of its
-parts is visible, so two unscoped `spin` tracks on the same screws (1440° and 2160°) both key the
-same objects at overlapping times and the last `keyframe_insert` wins per frame.
-**Fix.** Assert at validation: no two tracks may drive the same (part, channel) in the same shot.
-
-### H12 — `library.py` duplicates the spec vocabulary and has drifted
-
-280 lines mirroring `spec.GENERATOR_PARAMS` with no assertion they agree — while `build.py` performs
-exactly that assertion for spec↔generators at import. Measured today: **`screw.bar` exists in the
-spec and is missing from the catalogue.** One day old.
-**Fix.** Generate the catalogue from `GENERATOR_PARAMS`, or add the same import-time assert.
-
-### H13 — Two `BuildError` classes
-
-`generators.BuildError` and `build.BuildError` are distinct. A bad `crew` pose raises the former;
-`cmd_build` catches the latter, so the user gets a traceback instead of "build FAILED." The hygiene
-test catches shadowing within a file, not across files.
-**Fix.** One `BuildError`. Extend the hygiene test to flag a class defined in more than one
-`harness/*.py`.
-
-### H14 — Smaller, verified
-
-| | |
-|---|---|
-| `__main__.py:362` | `_cost()` returns `0.0`, never called |
-| `__main__.py:351` | `secs = round(b.videos and 0 or 0, 2)` — assigned, never used |
-| `__main__.py:556,560` | `"...mod(n\,{n})..."` raises `SyntaxWarning` every test run; use a raw string |
-| `__main__.py:534` | `cmd_sheet` hardcodes `startswith("shield") or endswith("nocaps")` to skip hand-made files in its own output dir — see H4 |
-| `passes.py:594` | `_swap_material` appends a slot to meshes that had none; `_restore_material` zips over `[]` and never removes it |
-| `passes.py:493` | `_depth_range(ep, shot, built)` takes `built`, never uses it |
-| `passes.py` docstring | states "**Passes render with Workbench, not Cycles**" as rule 2; depth renders with Cycles at line 904. Only `seg` uses Workbench |
-
-## 12. Structural
-
-### H15 — The generative interface is unversioned
-
-1,543 uncommitted insertions across 13 modified files, plus five untracked modules: `backend.py`,
-`check.py`, `library.py`, `passes.py`, `doctor.py`. The project whose central claim is "measurably
-better every time" cannot bisect, roll back, or golden-diff any of it.
-**Fix.** Commit before the next change.
-
-### H16 — Declared structure that does not exist
-
-`README.md`'s Layout presents as real: `goldens/` (empty — "canary renders for regression"), `mvp/`
-(empty), `eval/` (a README only), `qa/` (one rubric of six levels). A canary that does not exist
-cannot die. `eval/audience.md` (§6) does not exist either and is needed before the first upload.
-**Fix.** Populate or delete.
-
-### H17 — The prose-to-mechanism ratio is inverted
-
-**11,310 lines of markdown against 3,610 lines of code.** `LESSONS.md` holds 40 entries written in
-two days, several restating one another. The prose is good, which is the trap: it reads like the work
-is done.
-
-**Four of the defects audited above are already in `LESSONS.md` as principles and shipped anyway** —
-H1 (a check that did not fire), H7 (arithmetic where nothing can check it), §8.6 (a fix verified on
-the wrong path), §8.7 (the mid-shot glowing slab, recorded as fixed).
-
-The metric is not lessons written. It is **lessons that became an assertion.**
-**Fix.** Every `LESSONS.md` entry gains one line: the check that enforces it, or
-`ENFORCED BY: nothing — prose only`. Count the second kind and drive it down.
-
-### H18 — The test suite mostly tests argparse
-
-Of ~25 assertions, 12 are `--help` exit codes. Nothing exercises `PassProfile.chunks`,
-`_depth_range`, `check_motion`, `check_depth_pass`, `get_backend` or `build_bundles` — all pure, all
-runnable without Blender, all exactly where the defects above live. `verify`, `sheet` and `library`
-are uncovered.
-**Fix.** Drop `--help` to one smoke test; add unit assertions for the pure functions, starting with
-H3, H9, H10.
-
-## 13. What `check.py` cannot currently see
-
-Named so they are not mistaken for gaps nobody noticed. Candidates, not demands.
-
-| Fault | Evidence | Status |
-|---|---|---|
-| Delivered ≠ declared duration | §8.1 | H2 |
-| Billed ≠ estimated seconds | §8.2 | H2 |
-| Caption timeline ≠ picture timeline | §8.3 | H2 |
-| A whole shot below `BLACK_MEAN` | §8.4 | check exists, unwired (H1) |
-| Shot-to-shot luminance discontinuity | §8.4 | **no check** |
-| Generated motion ≪ control motion | §8.5 | **no check** |
-| A control pass that is valid but uninformative | §8.7 | **no check, and the hard one** |
-| Palette continuity across a cut | §8.7 | **no check** |
-
-The last two matter most and must not be faked. A large constant-depth region is measurable — WARN
-when one connected near-constant-depth region exceeds a fraction of frame, pointing at a contact
-sheet. Palette continuity is measurable as mean hue/luminance distance between adjacent shots.
-Neither becomes a hard gate on a first pass; the repo's own rule about checks that cry wolf applies.
-
----
-
-# Part IV — Order of work
-
-**Done, 2026-09-18 (H1–H18; kept as the record of the order actually followed).** What's left is
-the capability roadmap (C1–C6, below) and the content work named in the Status line at the top of
-this document — neither is "next up" in this list, both are separate, larger efforts.
-
-**Ranked by what unblocks the slate, not by engineering interest.**
-
-### Now — stop shipping broken video (days)
-
-1. **H1** — wire `check_clip` into `collect()`. One call site. A black shot shipped.
-2. **H3** — refuse instead of clamp. One `if`. The live money defect.
-3. **H2** — measure delivered duration; fix cost accounting and caption timing from it.
-4. **H15** — commit.
-
-### Next — make the cadence possible (weeks)
-
-5. **H4** — `deliver --backend`, so the last mile stops being manual. Without this there is no
-   two-week cadence.
-6. **C4** — dual aspect from the spec. The Shorts funnel is the growth engine and must not be a
-   second production.
-7. **H9, H10** — delete the chunking, invalidate the control cache.
-
-### Then — protect the moat (weeks)
-
-8. **H5** — wire the gates; write ledgers for anything shipped; stand up the public ledger page.
-9. **H7, H11** — make the mechanism check real; detect track collisions.
-10. **H6, H8** — de-invert the gate tests; record which backend a decision reaches.
-
-### Then — build what Episode 1 is made of (months)
-
-11. **C1** Mode C, **C2** terrain input, **C3** diagrammatic water flow. This is the largest build in
-    the plan and the Snowy flagship cannot exist without it.
-12. **C5** thumbnail render, **C6** "as of" facts.
-13. **H12, H13, H14** — the small true things.
-14. **H16, H17, H18** — `eval/audience.md` before the first upload; `ENFORCED BY:` lines; unit tests
-    for the pure functions.
-
-### Not in scope, deliberately
-
-`seg` and `edge` are rendered and unused because VACE takes neither. §8.7 is a real ceiling, and the
-answer is a backend that accepts more than one control pass — **not** more passes rendered into a
-drawer. Until such a backend exists, `local` ships and generative supplies atmosphere only.
+# Part III — The harness
+
+> **Moved 2026-09-18 to [`../harness/backlog.md`](../harness/backlog.md).**
+>
+> H1–H18 and the order of work were extracted verbatim; H19–H20 and the re-ranked
+> capability table were added there. This spec says what the channel is; the backlog says
+> what stops it shipping, and the two were drifting inside one 698-line file.
 
 ---
 
@@ -688,10 +462,16 @@ drawer. Until such a backend exists, `local` ships and generative supplies atmos
    see the status note at the top of this document.
 3. ~~Ship H4, then re-cut `ad02` through the fixed path.~~ **H4 shipped.** The re-cut is still
    blocked on the underlying Wan duration mismatch (§8.1), not on the pipeline.
-4. **Write the Snowy flagship script against the five-beat engine** (§2), not against a shot list.
-   Story first, spec second. Not started.
-5. **Start C1 + C2.** Everything else in Phase 1 waits on them. Not started.
+4. ~~Write the Snowy flagship script~~ — **replaced 2026-09-18.** The Snowy flagship is Phase 3.
+   Write **S1** instead: [`../videos/s01-hydraulic-cylinder/`](../videos/s01-hydraulic-cylinder/).
+   Brief and script are written; the fact ledger is not, and it blocks `--publish`.
+5. ~~Start C1 + C2.~~ **Re-ranked.** C4 (dual aspect) is first and C2 has left the critical path —
+   [`../harness/backlog.md`](../harness/backlog.md) Part V.
 6. **Stand up `eval/audience.md`** before the first upload. Not started.
+7. **Source the S1 cylinder dimensions.** The arithmetic is done; the inputs are not cited, and
+   "nothing guessed" is the whole product. See the brief's SOURCE NEEDED block.
+8. **Ship S1 on the M1.** Measured 26.86 s/frame at 1080×1920 @ 8 spp — 6.7 h for a 30 s Short,
+   one overnight. Do not build the render node until Phase 1 (D2).
 
 ---
 
@@ -719,8 +499,15 @@ started.
 
 ## 16. The one-line version
 
-> One channel — **"Built Australia"** — one story engine (Problem → Bet → Breakdown → Breakthrough →
-> Legacy), one system per video, sourced to the primary record, launched on the Snowy Scheme and
-> measured on audience numbers the same way the harness measures renders. The harness's only job is
-> to make that engine cheap enough for one founder to run every two weeks — and right now it cannot,
-> for four reasons, all listed under §9.
+> ~~One channel — **"Built Australia"** … launched on the Snowy Scheme.~~
+>
+> **Revised 2026-09-18.** One channel — mechanism-first, sourced to the primary record, one system
+> per video — launched on the machines that build things, because that is the only subject class
+> that is both globally searched and squarely inside the sponsor's domain. Eight Shorts, then three
+> long-forms, then the Australian flagships as the payoff of a proven format rather than the
+> opening bet. The harness's only job is to make that cheap enough for one founder to run — and
+> since 2026-09-18 it can, for the first time.
+>
+> The order is [`slate.md`](slate.md). The reasoning is
+> [`reach-audit-2026-09-18.md`](reach-audit-2026-09-18.md). The decisions are
+> [`../harness/decisions.md`](../harness/decisions.md).

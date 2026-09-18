@@ -9,10 +9,17 @@ generative backend renders it photoreal.**
 
 > The deliverable of the first cut is not a video. It is a **ratchet**.
 
-See **[ROADMAP.md](ROADMAP.md)** for the thesis, the maturity ladder and the plan, and
-**[docs/spec.md](docs/spec.md)** for the current product spec — the channel strategy, the slate, and
-the harness audit and fixes behind it. `docs/mvp-shield-ad-plan.md`, `docs/channel-spec.md` and
-`docs/harness-remediation-spec-2026-09-18.md` are superseded by it and kept only for history.
+See **[ROADMAP.md](ROADMAP.md)** for the thesis, the maturity ladder and the render plan, and
+**[docs/](docs/README.md)** for everything else — it is indexed, and the four directories mean
+different things:
+
+| | |
+|---|---|
+| **[docs/strategy/](docs/strategy/)** | what we are making and why — the [product spec](docs/strategy/spec.md), the [slate](docs/strategy/slate.md), the [reach audit](docs/strategy/reach-audit-2026-09-18.md) |
+| **[docs/videos/](docs/videos/)** | one directory per video: the brief and the script |
+| **[docs/harness/](docs/harness/)** | the [backlog](docs/harness/backlog.md) (H1–H20, C1–C6) and the [decisions](docs/harness/decisions.md) (D1–D4) |
+| **[docs/research/](docs/research/)** | the evidence base — every vendor claim with its source and confidence |
+| **[docs/archive/](docs/archive/)** | superseded, kept for the audit trail, never cited as current |
 
 ---
 
@@ -74,8 +81,8 @@ Honest, as of 2026-09-18.
 | **`spec/ad02`** — the 5-beat, 20 s marketing cut | validates and renders; the current, fuller replacement for `ad01` |
 | **`harness passes`** — the control-pass exporter | **works**: all five passes verified, depth confirmed linear and greyscale |
 | **`harness backends`** — the pluggable interface | **works**: local / cosmos / wan registered |
-| **Cosmos hosted API** | **does not exist** — see the evidence in [docs/spec.md](docs/spec.md) §8.6/8.7 and [docs/research](docs/research/video-api-geometric-control-comparison-2026-09-18.md). Self-host only. |
-| **Wan** | **called for real** on `ad02`; the delivered clip does not reliably match the requested length or duration (measured 81 frames returned for a 64-frame request) — `generate` and `deliver --backend` now measure and refuse on this rather than trust the request. See [docs/spec.md](docs/spec.md) Part II. |
+| **Cosmos hosted API** | **does not exist** — see the evidence in [docs/strategy/spec.md](docs/strategy/spec.md) §8.6/8.7 and [docs/research](docs/research/video-api-geometric-control-comparison-2026-09-18.md). Self-host only. |
+| **Wan** | **called for real** on `ad02`; the delivered clip does not reliably match the requested length or duration (measured 81 frames returned for a 64-frame request) — `generate` and `deliver --backend` now measure and refuse on this rather than trust the request. See [docs/strategy/spec.md](docs/strategy/spec.md) Part II. |
 
 ### What the storyboard taught us
 
@@ -236,7 +243,7 @@ seen to fail is not a check.
 the wrong branch of `generate` — the one taken only when a single shot is generated, not the
 concurrent submit-then-collect branch every real multi-shot run takes. The payoff shot of `ad02`
 went out crushed to black through the gap. Both `generate` and `deliver --backend` now run it
-unconditionally, and `docs/spec.md` records the audit that found it.
+unconditionally, and `docs/strategy/spec.md` records the audit that found it.
 
 **The depth check pays for itself.** On `ad02` it blocked a paid generation because three of four
 depth passes were saturated, and the fix was to let a shot declare its own range:
@@ -322,7 +329,11 @@ harness/          the compiler - the only thing that writes bpy
   factgate.py     accuracy gate (--publish blocks)
   assemble.py     frames -> mp4
 spec/             episode specs (TOML), shot lists, fact ledgers
+docs/strategy/    what we are making and why - spec, slate, reach audit
+docs/videos/      one dir per video - brief + script. Facts, script, spec, render, in that order
+docs/harness/     backlog (what is broken) and decisions (what is settled, and what reopens it)
 docs/research/    the evidence base - every vendor claim, with sources and confidence
+docs/archive/     superseded documents, kept for the trail
 library/          the compounding asset kit (GEN / MAT / SHOTS)
 goldens/          canary renders for regression - EMPTY as of 2026-09-18, no canary yet
 qa/               rubrics, one per maturity level - only L0's is written

@@ -62,7 +62,8 @@ def _frame_ok(path: Path) -> bool:
 
 
 def _fingerprint(
-    ep: spec_mod.Episode, shot: dict[str, Any], frames: int, stills_only: bool
+    ep: spec_mod.Episode, shot: dict[str, Any], frames: int, stills_only: bool,
+    max_frames: int | None = None,
 ) -> str:
     """Everything that can change the pixels, hashed.
 
@@ -80,6 +81,7 @@ def _fingerprint(
             "shot": shot,
             "frames": frames,
             "stills_only": stills_only,
+            "max_frames": max_frames,
             "width": ep.meta["width"],
             "height": ep.meta["height"],
             "samples": ep.meta["samples"],
@@ -211,11 +213,17 @@ def render(
     quiet: bool = False,
     stills_only: bool = False,
     force: bool = False,
+    max_frames: int | None = None,
 ) -> dict[str, Any]:
     """Build the scene and render every shot to ``out_root/<episode>/<shot>/``.
 
     ``stills_only`` renders just the middle frame of each shot - the cheap
     storyboard pass you run BEFORE committing an hour to the full render.
+
+    ``max_frames`` caps how many frames of each shot are rendered. It exists for
+    `harness bench`: measuring s/frame at delivery resolution must not mean
+    rendering the whole cut. It is part of the cache fingerprint, so a capped
+    run can never be mistaken for a complete one.
     """
     if device:
         ep = ep.with_overrides()
@@ -255,12 +263,14 @@ def render(
         # Stills pass renders the MIDDLE frame of each shot - the moment the
         # staging is most representative.
         frame_list = [max(1, frames // 2)] if stills_only else list(range(1, frames + 1))
+        if max_frames is not None:
+            frame_list = frame_list[:max_frames]
 
         # Per-shot resume. A run that dies at frame 800 must not re-render the
         # 799 in front of it, and a spec change must invalidate the cache
         # rather than silently mix frames from two different scenes.
         stamp_path = shot_dir / ".render.json"
-        fingerprint = _fingerprint(ep, shot, frames, stills_only)
+        fingerprint = _fingerprint(ep, shot, frames, stills_only, max_frames)
         prior: dict[str, Any] = {}
         if stamp_path.exists():
             try:
@@ -303,6 +313,8 @@ def render(
                 print(f"        {n:>4}/{len(pending)}  {rate:.2f}s/frame  "
                       f"elapsed {elapsed:.0f}s  eta {rate * (len(pending) - n):.0f}s")
 
+        render_seconds = round(time.time() - started, 2)
+
         stamp_path.write_text(
             json.dumps(
                 {
@@ -326,6 +338,12 @@ def render(
                 "frames_rendered": len(pending),
                 "frames_cached": cached,
                 "seconds": round(frames / fps, 3),
+                # Measured, and measured AFTER build_scene - so this is a
+                # steady-state per-frame cost, not a short run with the
+                # scene-construction cost smeared through it. render-bench.json
+                # was wrong about mvp for exactly that reason.
+                "render_seconds": render_seconds,
+                "sec_per_frame": round(render_seconds / len(pending), 3) if pending else None,
                 "dir": str(shot_dir),
                 "parts_visible": n_parts,
                 "tracks": n_tracks,
@@ -340,5 +358,11 @@ def render(
         print(f"  rendered {done}/{total} frames across {len(results)} shot(s)"
               + (f", {kept} reused from cache" if kept else "")
               + f" -> {ep_dir}")
+    # Report the device that was USED, not the one the spec asked for. render()
+    # applies --device to its own copy of the episode, so a caller reading
+    # ep.meta["device"] afterwards gets the spec's value and records a
+    # measurement against hardware that never ran it.
     return {"episode": ep.id, "fps": fps, "shots": results, "frames_total": total,
-            "frames_rendered": done, "duration_s": round(total / fps, 2)}
+            "frames_rendered": done, "duration_s": round(total / fps, 2),
+            "device": ep.meta["device"], "resolution": [ep.meta["width"], ep.meta["height"]],
+            "samples": ep.meta["samples"]}

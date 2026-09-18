@@ -259,12 +259,12 @@ one or the other.
   over six turns is a **50 mm pitch**. A future assertion should read the advance and the rotation at
   the frame where motion starts and assert they agree within tolerance.
 - **Where:** `spec/ad01/ad01.toml` (`cell_frame` and `screw_*` tracks); the ep01 version is still
-  wrong and is annotated as such in `docs/mvp-shield-ad-plan.md` §2.
+  wrong and is annotated as such in `docs/archive/mvp-shield-ad-plan.md` §2.
 - **Status update (2026-09-18):** The "future assertion" above was written as `[shot.mechanism]` in
   `spec.py`, and it checked `turns x pitch == advance` against three numbers hand-written in the same
   block — internally consistent, and never compared to what the `spin`/offset tracks actually did.
   `ad02` shipped with that gap twice over: c04's block matched its own arithmetic while the tracks
-  driving it were unscoped and colliding with every other shot's tracks (see `docs/spec.md` H11), and
+  driving it were unscoped and colliding with every other shot's tracks (see `docs/strategy/spec.md` H11, `docs/harness/backlog.md`), and
   c05 advanced the cell 0.26 m with no mechanism block and no spin track at all, one shot after the
   block that *was* checked. Fixed the same day: `_check_mechanisms` in `harness/spec.py` now derives
   `turns` and `advance` from the tracks actually applying to the shot and checks the declared numbers
@@ -290,10 +290,10 @@ one or the other.
   self-hosted NIM's health paths 404 on both NVIDIA hosts. The only path is a self-hosted NIM on
   **65.4 GB** of VRAM. Several turns were spent probing for an endpoint that was never there.
 - **Check:** The access path is recorded as resolved-and-negative in
-  `docs/mvp-shield-ad-plan.md` §4, with the probe results, so nobody re-runs the search. A backend
+  `docs/archive/mvp-shield-ad-plan.md` §4, with the probe results, so nobody re-runs the search. A backend
   that needs a host says so via `missing_credentials` and its `note` field, and `harness backends`
   prints it.
-- **Where:** `docs/mvp-shield-ad-plan.md` §4, `harness/backend.py` (`CosmosNimBackend.note`).
+- **Where:** `docs/archive/mvp-shield-ad-plan.md` §4, `harness/backend.py` (`CosmosNimBackend.note`).
 - **ENFORCED BY:** `harness/backend.py` (`CosmosNimBackend.note`, printed by `harness backends`) - a documentation guard, not a code assertion; nothing stops someone re-pointing `COSMOS_NIM_URL` at a hosted endpoint that still does not exist.
 
 ## 2026-09-18 - A key pasted into a transcript is disclosed
@@ -446,7 +446,7 @@ one or the other.
   frozen shot (nothing changes) is a hard failure; a busy one is a warning to go and look. Wired
   into `check_depth_pass`.
 - **Where:** `harness/check.py` (`check_motion`, `frame_diff`).
-- **ENFORCED BY:** `harness/check.py` (`check_motion`, called from `check_depth_pass`) - runs on every real depth-pass check; not covered by a synthetic fixture in `tests/run.sh` (see H18, `docs/spec.md`).
+- **ENFORCED BY:** `harness/check.py` (`check_motion`, called from `check_depth_pass`) - runs on every real depth-pass check; not covered by a synthetic fixture in `tests/run.sh` (see H18, `docs/harness/backlog.md`).
 
 ## 2026-09-18 - A threshold calibrated on the bug cannot separate the bug from the fix
 
@@ -484,14 +484,14 @@ one or the other.
   same audit — the mechanism check above, a fix aimed at a colour channel `wan` does not consume, and
   a "fixed" mid-shot artefact still visible in the delivered clip — were each already written down
   somewhere in this file as a lesson learned, and shipped anyway. The full audit is
-  `docs/spec.md` Part II-III.
+  `docs/strategy/spec.md` Part II-III.
 - **Check:** `deliver --backend` now refuses a crushed-to-black or mistimed generated clip before it
   ships (`harness/__main__.py`, `_deliver_from_backend`), `cmd_generate`'s `_accept` refuses one
-  before counting it as delivered, and `docs/spec.md` §16 states the acceptance criteria the fix is
+  before counting it as delivered, and `docs/strategy/spec.md` §16 states the acceptance criteria the fix is
   measured against. Going forward: a lesson recorded here without a line naming what enforces it is a
   lesson that can ship again.
 - **Where:** `harness/__main__.py` (`cmd_generate`'s `_accept`, `cmd_deliver`'s
-  `_deliver_from_backend`), `tests/run.sh` ("deliver --backend" section), `docs/spec.md`.
+  `_deliver_from_backend`), `tests/run.sh` ("deliver --backend" section), `docs/strategy/spec.md`.
 - **ENFORCED BY:** `harness/__main__.py` (`_accept`, `_deliver_from_backend`), `tests/run.sh`
   ("deliver --backend" section - a synthetic black clip and a synthetic mistimed clip are both
   proven refused). Every other entry in this file was given this same line the day this one was

@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-09-17",
+  "measured_at": "2026-09-18",
   "machine": "Mac M1 - 8-core CPU, 7-core GPU, 16 GB, macOS 26.6.2",
   "engine": "CYCLES",
   "methodology_warning": "The mvp rows were measured over 48-frame runs, so scene construction (~60-90 s, a fixed cost independent of frame count) was swallowed into the per-frame figure and those numbers are badly pessimistic. The ep01 row is a steady-state measurement over 864 frames and is the one to use. Do not compare rows directly.",
@@ -52,12 +52,26 @@
       "frames": 18,
       "sec_per_frame": 3.91,
       "kind": "includes_build"
+    },
+    {
+      "scene": "spec/ad01/ad01.toml",
+      "device": "CPU",
+      "resolution": [
+        1080,
+        1920
+      ],
+      "spp": 8,
+      "frames": 24,
+      "sec_per_frame": 26.86,
+      "kind": "steady_state",
+      "note": "Phase-0 Short profile: 1080x1920 @ 8 spp on M1 CPU Cycles - the number the slate schedule turns on"
     }
   ],
   "findings": [
     "Metal was SLOWER than CPU on the M1. The 7-core GPU is weak and per-frame overhead dominates a simple scene. Do not assume the Mac's GPU is the fast path - measure it.",
     "Scene construction is a fixed cost, so short benchmark runs overstate per-frame time badly. The 48-frame mvp figure was roughly half build time.",
-    "ep01 renders at 1.97 s/frame steady state - about half what the mvp benchmark implied, despite 2.6x the objects."
+    "ep01 renders at 1.97 s/frame steady state - about half what the mvp benchmark implied, despite 2.6x the objects.",
+    "Run-to-run spread is real: the same 24-frame ad01/a01 bench measured 31.98 s/frame with other work on the same 8 cores and 26.86 s/frame on an idle machine - 19% apart. Run `harness bench` on an otherwise idle machine, and treat one row as a measurement with an error bar."
   ],
   "extrapolation": {
     "warning": "Rebuilt on the steady-state ep01 figure, NOT the mvp figure.",
@@ -74,16 +88,71 @@
     "machine": "Mac M1 - 8-core CPU, 7-core GPU, 16 GB, macOS 26.6.2",
     "why_it_matters": "The generative interface renders control passes instead of a beauty plate, or alongside one. If the passes cost as much as the plate the loop is unaffordable and the architecture is pointless. They do not: depth is ~52x cheaper than the plate, and depth is the pass that carries the geometry.",
     "measurements": [
-      {"pass": "plate", "scene": "spec/ad01 a02", "resolution": [1280, 720], "engine": "CYCLES", "spp": 32, "frames": 2, "sec_per_frame": 120.0,
-       "note": "the beauty render - the expensive half, and the half a backend replaces"},
-      {"pass": "depth", "scene": "spec/ad01 a02", "resolution": [1280, 720], "engine": "CYCLES", "spp": 1, "frames": 2, "sec_per_frame": 2.3,
-       "note": "unlit emission driven by Camera Data > View Z Depth. No light transport, so 1 sample is exact rather than noisy."},
-      {"pass": "seg", "scene": "spec/ep01 s05", "resolution": [320, 180], "engine": "BLENDER_WORKBENCH", "spp": null, "frames": 2, "sec_per_frame": 1.5,
-       "note": "flat object-colour shading; resolution-dependent, so expect more at 1280x720"},
-      {"pass": "edge", "scene": "spec/ep01 s05", "resolution": [320, 180], "engine": "ffmpeg edgedetect", "spp": null, "frames": 2, "sec_per_frame": 0.25,
-       "note": "derived from the plate, not rendered"},
-      {"pass": "vis", "scene": "spec/ep01 s05", "resolution": [320, 180], "engine": "ffmpeg gblur", "spp": null, "frames": 2, "sec_per_frame": 0.25,
-       "note": "derived from the plate, not rendered"}
+      {
+        "pass": "plate",
+        "scene": "spec/ad01 a02",
+        "resolution": [
+          1280,
+          720
+        ],
+        "engine": "CYCLES",
+        "spp": 32,
+        "frames": 2,
+        "sec_per_frame": 120.0,
+        "note": "the beauty render - the expensive half, and the half a backend replaces"
+      },
+      {
+        "pass": "depth",
+        "scene": "spec/ad01 a02",
+        "resolution": [
+          1280,
+          720
+        ],
+        "engine": "CYCLES",
+        "spp": 1,
+        "frames": 2,
+        "sec_per_frame": 2.3,
+        "note": "unlit emission driven by Camera Data > View Z Depth. No light transport, so 1 sample is exact rather than noisy."
+      },
+      {
+        "pass": "seg",
+        "scene": "spec/ep01 s05",
+        "resolution": [
+          320,
+          180
+        ],
+        "engine": "BLENDER_WORKBENCH",
+        "spp": null,
+        "frames": 2,
+        "sec_per_frame": 1.5,
+        "note": "flat object-colour shading; resolution-dependent, so expect more at 1280x720"
+      },
+      {
+        "pass": "edge",
+        "scene": "spec/ep01 s05",
+        "resolution": [
+          320,
+          180
+        ],
+        "engine": "ffmpeg edgedetect",
+        "spp": null,
+        "frames": 2,
+        "sec_per_frame": 0.25,
+        "note": "derived from the plate, not rendered"
+      },
+      {
+        "pass": "vis",
+        "scene": "spec/ep01 s05",
+        "resolution": [
+          320,
+          180
+        ],
+        "engine": "ffmpeg gblur",
+        "spp": null,
+        "frames": 2,
+        "sec_per_frame": 0.25,
+        "note": "derived from the plate, not rendered"
+      }
     ],
     "findings": [
       "Depth costs about 2% of the beauty plate at the same resolution. The geometry-carrying pass is essentially free next to the pixels it replaces.",
@@ -101,7 +170,8 @@
     "Any backend round-trip: no Cosmos or Wan generation has been run from this repo"
   ],
   "next_actions": [
-    "Run the ep01 scene on the Windows node with --device OPTIX and fill in the 3080 row. Until that exists, every schedule claim in ROADMAP.md is an estimate.",
-    "Re-run at the start of each quarter and after any Blender or driver bump."
+    "Re-run at the start of each quarter and after any Blender or driver bump.",
+    "Run the ep01 scene on the Windows node with --device OPTIX and fill in the 3080 row. Not needed until Phase 1 of docs/strategy/slate.md - the M1 covers all eight Phase 0 Shorts at 6.7 h each.",
+    "Re-run `harness bench` after any Blender bump, and on the S1 spec once it exists - ad01 is a stand-in for a Phase 0 Short, not one."
   ]
 }

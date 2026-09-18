@@ -252,7 +252,7 @@ fi
 
 echo "deliver --backend"
 # `ad02`'s real generated clips shipped a crushed-to-black payoff shot and a
-# duration mismatch (see docs/spec.md Part II). This fixture proves
+# duration mismatch (see docs/strategy/spec.md Part II). This fixture proves
 # `deliver --backend` refuses BOTH faults on synthetic clips it controls,
 # then confirms a clean, correctly-timed set is accepted.
 DTMP="$TMP/ad02_deliver"
@@ -336,6 +336,22 @@ then
     echo "  pass  a black frame is reported, a real frame is not"
 else
     echo "  FAIL  the storyboard check is wrong in one direction or the other"; fail=1
+fi
+
+echo "bench"
+# The number every schedule claim rests on must not be quotable from a warm-up
+# run. render-bench.json already carries one bad row measured that way.
+out="$($PY -m harness bench spec/ad01/ad01.toml --shots a01 --res 64x64 --samples 1 \
+        --frames 1 --device CPU --out "$TMP" --bench-file "$TMP/bench.json" 2>&1)"
+if printf '%s' "$out" | grep -q "bench REFUSED"; then
+    echo "  pass  a one-frame benchmark is refused, not recorded"
+else
+    echo "  FAIL  a one-frame benchmark was accepted as throughput"; fail=1
+fi
+if [ -f "$TMP/bench.json" ]; then
+    echo "  FAIL  a refused benchmark still wrote a row"; fail=1
+else
+    echo "  pass  a refused benchmark writes nothing"
 fi
 
 echo
