@@ -8,7 +8,8 @@ docs/
   videos/       one directory per video: the brief and the script. The editorial record.
   harness/      what is broken, what is next, and what has been decided. The engineering record.
   research/     the evidence base. Vendor claims, prices, licences, with sources and confidence.
-  archive/      superseded. Kept for the audit trail. Never edited, never cited as current.
+    evidence/   the long-form receipts a summary compressed. Read the summary; keep these.
+  archive/      superseded AND still cited. Kept only while something points into it.
 ```
 
 ## strategy/
@@ -28,14 +29,21 @@ script, then spec, then render, in that order, every time.
 
 | File | What it is |
 |---|---|
-| [`backlog.md`](harness/backlog.md) | H1–H24 and C1–C6, ranked by which video they block. |
+| [`backlog.md`](harness/backlog.md) | **What is open** — H19–H25 and C1–C6, ranked by which video they block. Closed items are in `git log` and `LESSONS.md`, not here. |
 | [`decisions.md`](harness/decisions.md) | D1–D6. Dated, with the evidence and the reopening condition. |
 
 ## research/
 
-Unchanged and untouched by the restructure. Every vendor claim, price and licence finding with its
-source and a stated confidence. Cite it; do not summarise it into strategy documents and then let
-the two drift.
+Every vendor claim, price and licence finding with its source and a stated confidence. Cite it; do
+not summarise it into strategy documents and then let the two drift.
+
+**Licensing has one entry point.**
+[`3d-asset-licensing-master-2026-09-17.md`](research/3d-asset-licensing-master-2026-09-17.md) — its
+§1 is the table you act on. The four long-form source documents it was compressed from are in
+[`research/evidence/`](research/evidence/README.md), which exists because a summary cannot carry
+what could *not* be verified. Nothing in the repo currently links to any of it, while
+`legal/licences.json` still holds a placeholder that blocks `licencegate`; that gap is the open
+action, not more research.
 
 The newest entry is the first one bound to a shipping deliverable rather than to a tooling decision:
 [`hydraulic-cylinder-datasheets-2026-09-18.md`](research/hydraulic-cylinder-datasheets-2026-09-18.md)

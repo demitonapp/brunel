@@ -6,9 +6,15 @@
 
 **Confidence convention.** `HIGH` = verbatim text fetched from the primary source this session. `MEDIUM` = fetched from an authoritative secondary source, or fetched but with an unresolved ambiguity. `LOW` = inferred or single weak source. `INFERENCE:` = my reasoning, not a citation. `UNVERIFIED` = could not confirm; asserted nowhere.
 
-**Companion files in this workspace:**
-- `docs/research/3d-asset-licensing-report-2026-09-17.md` — full Smithsonian / Scan the World / Sketchfab report (55 pages).
-- `docs/legal/cc-attribution-monetised-reels-advice.md` — full legal analysis (≈9,000 words, every authority cited).
+**This file is the entry point.** §1 is the table to act on; §3 and §4 are the merged form of the
+four long-form source documents, which now live in
+[`evidence/`](evidence/) — see [`evidence/README.md`](evidence/README.md) for what each one carries
+that this summary cannot (chiefly: what could *not* be verified, and why).
+
+- [`evidence/3d-asset-licensing-report-2026-09-17.md`](evidence/3d-asset-licensing-report-2026-09-17.md) — full Smithsonian / Scan the World / Sketchfab report.
+- [`evidence/licensing-research-monetised-reels-2026-09-17.md`](evidence/licensing-research-monetised-reels-2026-09-17.md) — Internet Archive, Library of Congress, HABS/HAER.
+- [`evidence/licensing-research-smg-europeana.md`](evidence/licensing-research-smg-europeana.md) — Science Museum Group, Europeana.
+- [`evidence/cc-attribution-monetised-reels-advice.md`](evidence/cc-attribution-monetised-reels-advice.md) — full legal analysis (≈9,000 words, every authority cited).
 
 *This is legal research, not legal advice.*
 
@@ -755,7 +761,7 @@ Plus a link to `https://www.nationalarchives.gov.uk/doc/open-government-licence/
 
 ## 4. LEGAL ANALYSIS
 
-*Full authorities, quotations and pin cites are in `docs/legal/cc-attribution-monetised-reels-advice.md`. This section is the operative summary.*
+*Full authorities, quotations and pin cites are in [`evidence/cc-attribution-monetised-reels-advice.md`](evidence/cc-attribution-monetised-reels-advice.md). This section is the operative summary.*
 
 ### 4.1 The licence spectrum
 

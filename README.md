@@ -19,7 +19,7 @@ different things:
 | **[docs/videos/](docs/videos/)** | one directory per video: the brief and the script |
 | **[docs/harness/](docs/harness/)** | the [backlog](docs/harness/backlog.md) (H1–H20, C1–C6) and the [decisions](docs/harness/decisions.md) (D1–D4) |
 | **[docs/research/](docs/research/)** | the evidence base — every vendor claim with its source and confidence |
-| **[docs/archive/](docs/archive/)** | superseded, kept for the audit trail, never cited as current |
+| **[docs/archive/](docs/archive/)** | superseded, but still cited from `LESSONS.md` - a document nothing points into gets deleted, not archived |
 
 ---
 
@@ -140,7 +140,7 @@ python -m harness generate spec/ad01/ad01.toml --backend local # hand it to a mo
 | **`backends`** | **list backends and the control-pass profile each one needs** |
 | **`sheet`** | **contact sheets — a shot's motion in one image** |
 | **`library`** | **browse the reusable engineering components** |
-| **`verify`** | **run every output check over what exists** |
+| **`verify`** | **run every output check over what exists, and score each shot against its canary; `--bless` seeds the canary** |
 | **`bench`** | **measure s/frame at a real delivery resolution and record it** |
 
 ---
@@ -236,6 +236,35 @@ So the harness checks the pixels, at the points where checking is cheap:
 | **storyboard** | `render --stills` | frames that are black, flat, or 92% dark — i.e. a camera in the wrong place, which is this project's most common failure |
 | **depth pass** | `passes` | a depth map that is not neutral, is saturated to one end of its range, or whose mean drifts across the shot (the per-frame normalisation the stock preprocessors do) |
 | **clip** | `generate`, `deliver --backend` | a generated clip crushed to black, or delivered at a length that does not match the spec |
+| **canary** | `verify` | **drift** — this render against the last blessed one, by SSIM |
+
+The first three are **threshold** checks: they ask a question about one artefact in isolation. They
+catch catastrophes and are structurally blind to gradual change, which is the only thing "measurably
+better every time" is a claim about. The canary is the one **comparison** check, and it was the last
+thing in this list to exist — `goldens/` sat empty and declared for the whole project.
+
+```bash
+python -m harness render spec/ad02/ad02.toml --fast --stills
+python -m harness verify spec/ad02/ad02.toml --bless   # look at the frames FIRST
+python -m harness verify spec/ad02/ad02.toml           # every run after: exit 3 on drift
+```
+
+Blessing is deliberate and never automatic: a canary that seeded itself on first sight would lock in
+whatever happened to be on disk, including the regression it exists to catch. A shot with no golden
+**warns** rather than failing, so the first run of a new spec is not red for having no history.
+
+**The floor is measured, not chosen.** On `ad02` at 480×854 / 8 spp, two separate runs of the same
+spec scored **1.000000** across all five shots, while a 2.5% lens change scored 0.860 and a 5 cm
+camera move scored 0.827. `GOLDEN_SSIM_MIN = 0.995` sits below today's noise floor on purpose, to
+leave headroom for a GPU render node without being anywhere near a real regression. Re-measure it
+when that node lands rather than relaxing it.
+
+**Why SSIM and not a hash** — measured, because the obvious cheap answer is wrong in a subtle way.
+Two clean runs produce **pixel-identical** frames on this machine (the decoded RGB of all five shots
+hashes the same), but the **PNG files do not**: every frame's container bytes differ run to run. So
+hashing the file is a mirage, hashing the decoded pixels would work *today*, and neither survives
+the render node, where the pixels themselves will drift. SSIM is the one metric that is correct in
+all three cases.
 
 `python -m harness verify <spec>` runs all of them over whatever exists. `tests/run.sh` proves the
 storyboard check fires on a black frame *and* stays quiet on a real one — a check that has never been
@@ -366,13 +395,15 @@ docs/strategy/    what we are making and why - spec, slate, reach audit
 docs/videos/      one dir per video - brief + script. Facts, script, spec, render, in that order
 docs/harness/     backlog (what is broken) and decisions (what is settled, and what reopens it)
 docs/research/    the evidence base - every vendor claim, with sources and confidence
-docs/archive/     superseded documents, kept for the trail
+  evidence/       the long-form receipts a summary compressed. Read the summary first
+docs/archive/     superseded AND still cited - kept only while something points into it
 library/          the compounding asset kit (GEN / MAT / SHOTS)
-goldens/          canary renders for regression - EMPTY as of 2026-09-18, no canary yet
+goldens/          canary frames - `verify` scores every render against these.
+                  ad02 blessed (5 shots, 480x854); ep01 NOT blessed, so ep01 has no canary
 qa/               rubrics, one per maturity level - only L0's is written
-legal/            per-asset licence register
-eval/             the eval ledger - the only accepted retrospective evidence -
-                  README only as of 2026-09-18, no ledger entries yet
+legal/            per-asset licence register - currently BLOCKS: one placeholder asset
+eval/             the eval ledger - the only accepted retrospective evidence.
+                  headline.json + one row (ep01). Most fields are null, and say why
 renders/          gitignored output
 ```
 

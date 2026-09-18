@@ -64,10 +64,17 @@ one or the other.
 
 - **Context:** "The script ran" and "the shot works" are different claims, and only the second one
   is the product.
-- **Check:** The canary reel is compared with SSIM >= 0.98 and LPIPS <= 0.05 per shot. Hash
-  equality is not used, because Cycles is not bit-reproducible across driver or OptiX versions.
-- **Where:** `goldens/canary/` (not yet populated).
-- **ENFORCED BY:** nothing - prose only. `goldens/` is empty as of 2026-09-18 (no canary render, no SSIM/LPIPS comparison exists anywhere in `harness/`). This is the exact pattern the entry two below warns about: a check described here and not built.
+- **Check:** Each shot's storyboard still is compared against a blessed canary frame by SSIM, with a
+  floor of `GOLDEN_SSIM_MIN`. Hash equality is not used - see the 2026-09-18 entry for what was
+  actually measured about reproducibility, which is more specific than the reason first given here.
+- **Where:** `goldens/<episode>/<shot>.png`, `harness/check.py`, `harness/__main__.py` (`verify`).
+- **ENFORCED BY:** `harness/check.py` (`check_goldens`) via `harness verify`, and `tests/run.sh`
+  ("the canary scores 1.0 on an unchanged frame and fires on a changed one"). **Built 2026-09-18**,
+  having sat here as `nothing - prose only` since the first commit while `goldens/` stayed empty -
+  which is exactly the pattern the entry two below warns about. The numbers in the original
+  `Check:` line were aspirational and are now replaced by measured ones: the floor is **0.995**, not
+  0.98, and **LPIPS is not implemented** - it needs a dependency this repo does not have. Claiming
+  it here for a year did not make it exist. `goldens/ad02` is blessed; `goldens/ep01` is not.
 
 ## 2026-09-17 — Archived evidence only
 
@@ -602,3 +609,153 @@ one or the other.
 - **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`) and `tests/run.sh` ("camera inside
   geometry is rejected" / "camera clear of geometry is accepted") - both re-read this session rather
   than assumed, which is how the original claim in this entry was found to be false.
+
+---
+
+## 2026-09-18 — A threshold check cannot see drift. Only a comparison can.
+
+- **Context:** Every automated check in the harness asked a question about **one artefact in
+  isolation** — is this frame black, is it flat, is this depth map in range, is this clip crushed.
+  Not one asked whether the render matched the last known good one. Threshold checks catch
+  catastrophes and are structurally blind to gradual change, and "video that gets measurably better
+  every time" is a claim about change. `goldens/` had been declared in the README as "canary renders
+  for regression" since the first commit and was **empty**; `LESSONS.md` itself already recorded
+  that, with `ENFORCED BY: nothing - prose only`, and the response had been to write more prose.
+- **The calibration, because a threshold nobody can trace is a taste.** Measured on `spec/ad02` at
+  480x854 / 8 spp / CPU Cycles, 2026-09-18:
+
+  | Comparison | SSIM |
+  |---|---|
+  | same spec, same code, two separate runs, all five shots | **1.000000** |
+  | `lens_mm` 40.0 -> 41.0 (a 2.5% focal change) | 0.859949 |
+  | camera moved 0.05 m of a 4 m throw | 0.826597 |
+
+  The smallest change a human would call a change costs about 0.14 of SSIM, so the gap is wide and
+  the exact floor is not load-bearing. `GOLDEN_SSIM_MIN = 0.995` sits *below* today's noise floor to
+  leave headroom for the render node — GPU Cycles will not match CPU — without being anywhere near
+  a real regression. **Re-measure when the render node lands; do not just relax it.**
+- **Why SSIM and not a hash, and a correction I had to make to my own claim.** `ROADMAP.md` said
+  "Cycles is not bit-reproducible, so hash testing is a mirage". I first wrote the opposite, on the
+  strength of five SSIM scores of 1.000000. Both statements were too coarse, and checking properly
+  split them apart: two clean runs are **pixel-identical** — the decoded RGB of all five shots
+  hashes the same — while the **PNG files differ every single run** in their container bytes. So
+  hashing the file is a mirage (the ROADMAP's conclusion was right), hashing decoded pixels would
+  work today (its stated reason was not), and neither survives a GPU render node, where the pixels
+  themselves will drift. SSIM is correct in all three cases.
+- **The near-miss worth recording.** The first comparison I ran said c01's pixels differed, and I
+  was one step from writing that into the docs as a measured fact. They differed because an earlier
+  step in the same session had copied a deliberately-perturbed frame over that directory to prove
+  the canary fires. A measurement taken from a directory something else has written to is not a
+  measurement — the re-render into a clean directory is what made it one.
+- **Two design decisions worth keeping.** A shot with no golden **warns, it does not fail** — the
+  first run of a new spec must not be red for having no history. And blessing is **never
+  automatic**: a canary that seeded itself on first sight would lock in whatever happened to be on
+  disk, including the regression it exists to catch.
+- **Check:** `harness verify` scores each shot's storyboard still against `goldens/<ep>/<shot>.png`
+  and fails below the floor. `tests/run.sh` proves the metric reads 1.0 on an unchanged frame and
+  fires on a changed one, and that an unblessed shot only warns.
+- **Where:** `harness/check.py` (`ssim`, `check_goldens`, `GOLDEN_SSIM_MIN`),
+  `harness/__main__.py` (`_canary`, `_canary_stills`, `verify --bless`), `goldens/ad02/`.
+- **ENFORCED BY:** `tests/run.sh` ("the canary scores 1.0 on an unchanged frame and fires on a
+  changed one", "a shot with no canary warns, it does not fail") — and, on real renders,
+  `harness verify`, which was confirmed this session to exit 3 on a genuine 5 cm camera move and 0
+  on a clean re-render. `goldens/ad02` is blessed; **`goldens/ep01` is not**, so ep01 has no canary.
+
+## 2026-09-18 — A fix that names the end it fixed is naming the end it did not
+
+- **Context:** H3 made `PassProfile.frame_count` **refuse** a shot past a backend's `max_frames`,
+  because the old silent clamp rendered a 6 s shot as 81 frames and played it 18% fast. The
+  docstring that recorded the fix said *"Refuses rather than clamps **at the top end**."* The line
+  immediately above it, `n = max(self.min_frames, n)`, went on silently clamping the bottom end for
+  another day. On `wan`'s real profile (`min_frames=49`) a 2.0 s shot rendered as 49 frames — 3.06 s
+  of picture — and `_apply_tracks` stretched the whole normalised animation across it, so the shot
+  played **35% slow**.
+- **It is worse than the fault it mirrors.** An over-long shot plays fast and ships. A short one
+  plays slow, and then `deliver --backend` correctly refuses the clip for a duration that disagrees
+  with the spec: the generation is paid for **and** unusable. The two guards were four lines apart.
+- **The general form:** a docstring that scopes itself ("at the top end", "on the Blender path",
+  "for a TOML spec") is documenting a boundary the author was standing on. Read it as a map of where
+  the fix stops. The same shape produced H23 — `factgate.narration_text` hashed the whole file "for
+  any other suffix" than `.toml` — and H1, where `check_clip` ran on the single-shot branch only.
+- **Check:** `frame_count` raises on either side of a backend's window, naming the seconds that
+  would fit.
+- **Where:** `harness/passes.py` (`PassProfile.frame_count`).
+- **ENFORCED BY:** `tests/run.sh` ("a shot below a backend's min_frames is refused, not silently
+  padded") — asserted against `WanVaceBackend.profile` itself, not a hand-made profile, so it
+  tracks the real backend if its window changes.
+
+## 2026-09-18 — The most expensive bug had the cheapest available test, and did not have it
+
+- **Context:** The windmilling screws — `spin` written into the `.z` slot of a part's Euler, so a
+  shaft laid along Y swung about the *world* Z axis like a propeller — shipped, cost a paid
+  generation, and passed `storyboard`, `depth` and `clip` without a murmur because every individual
+  frame was a good picture. The response was `check_motion`, which is **honest that it cannot
+  adjudicate**: after the fix, correct rotation measures 14.3–16.3 against the bug's 18.1–19.5, so a
+  single threshold cannot separate right from wrong. That left the repo's worst bug guarded by a
+  WARNING. The entry recording the fix said, accurately, "the sole implementation; no numeric
+  regression test."
+- **A numeric test was available the whole time, in six lines.** Turning a screw does not move the
+  axis it turns about. So the local Z axis of `R_base @ R_spin` must equal that of `R_base`, for
+  every base orientation and every angle. It needs `mathutils` and no Blender scene, and runs in
+  milliseconds. The bug violates it by 1.414.
+- **The trap in the fixture.** At a whole number of turns the buggy composition lands back on the
+  correct answer — `ad02`'s track ran 0 -> 2160 degrees and the two agree at **both** keyframes. Only
+  the interpolated angles between them were wrong, which is precisely why no per-frame check could
+  ever see it. A test using only 360-multiples would have passed on the broken code.
+- **The general form:** when a check is downgraded to advisory because it cannot separate right from
+  wrong, that is a signal to go looking for the **invariant** underneath, not to accept the warning
+  as the guard. "What does this operation promise not to change?" is usually cheaper to assert than
+  the effect is to measure.
+- **Check:** `spin_euler` holds the part's own Z axis for 24 base/spin pairs, with the `.z`-slot bug
+  as the control that proves the assertion can fail.
+- **Where:** `harness/render.py` (`spin_euler`, extracted from `_apply_tracks` so the test exercises
+  shipped code rather than a copy that can drift), `tests/spin_axis.py`.
+- **ENFORCED BY:** `tests/run.sh` ("a spin turns the part about its own axis, for every base
+  rotation").
+
+## 2026-09-18 — The edit order came from the filesystem, not from the spec
+
+- **Context:** `assemble._shot_dirs` globbed the episode directory for anything containing
+  `frame_*.png` and `sorted()` the result. Two faults rode in it, both silent, both in the
+  deliverable. **Filename order is not edit order** — it agrees with the spec only while every shot
+  id happens to sort the way it is listed, so ids `s1, s2, s10` cut in the order 1, 10, 2 and
+  narrative ids (`open`, `dig`, `advance`) cut alphabetically. And **a directory is not a shot
+  list** — rename or drop a shot and its old frames stay on disk, and went straight back into the
+  cut. `deliver`'s duration guard catches a surplus shot; it cannot catch a reordered one.
+- **It was live, not hypothetical.** `renders/ep01/manifest.json` currently reports **3 shots** at
+  480x854 because a later `render --shots` run overwrote it with a partial list, while the delivered
+  `ep01.mp4` is 8 shots at 384x682. The two disagree in the repo as it stands.
+- **Note which path had it right.** `_deliver_from_backend` iterates `ep.shots`; the Blender path
+  globbed. The correct pattern was already in the file — the same shape as H2, where `cmd_deliver`'s
+  duration check existed and was not carried across to the generated path.
+- **Check:** the spec's shot list is the edit order; a declared shot with no frames is refused, and a
+  frame directory that is not a shot in the spec is refused rather than cut in.
+- **Where:** `harness/assemble.py` (`_shot_dirs`, `assemble(shots=...)`), `harness/__main__.py`
+  (`cmd_pipeline`, `cmd_deliver` pass `[s["id"] for s in ep.shots]`).
+- **ENFORCED BY:** `tests/run.sh` ("the cut follows the spec's shot order, not the filesystem's",
+  "a leftover or missing shot directory is refused, not cut in"). The fixture uses ids `s1, s2, s10`
+  deliberately, and asserts that they do **not** already sort into spec order — a fixture whose ids
+  sort correctly would pass on the broken code, which is the same trap the spin test's whole-turn
+  angles set.
+
+## 2026-09-18 — "Fitted" printed a success line over a truncation
+
+- **Context:** `audio.synthesise` time-compresses a VO take that overruns its shot, capped at
+  `MAX_TEMPO = 1.35` because "truncating narration mid-sentence is a defect; a 1.1–1.2x tempo shift
+  is not" — the module comment says exactly that. Past the cap it clamped the tempo anyway and let
+  the trailing `-t slot` hard-cut the remainder, printing `fitted: c03: VO 4.00s in a 2.00s slot ->
+  tempo 1.35x`. Narration is the product. The code removed words and reported it in the vocabulary
+  of success.
+- **The check the repo already believes in, applied to audio.** Every pixel check here exists
+  because a failure was silent; this was a silent failure in the one track nobody looks at, since
+  reviewing a cut means watching the picture.
+- **Consequence to watch.** `cmd_deliver` catches `AudioError` and continues **without a voice
+  track**, which is correct when `say` is simply absent (not a Mac) and wrong-looking when the script
+  does not fit. The warning now reads `WARNING: delivering with NO VOICEOVER` so it cannot be read
+  past. Splitting the two causes into two exceptions is the real fix and is not done.
+- **Check:** an overrun past `MAX_TEMPO` raises, naming the shot, the seconds that would be cut, and
+  the shot length that would fit.
+- **Where:** `harness/audio.py` (`synthesise`), `harness/__main__.py` (both `AudioError` handlers).
+- **ENFORCED BY:** the raise in `harness/audio.py`, on every `voice` and every `deliver` that
+  synthesises — **no fixture test.** It needs macOS `say`, so it cannot run on the render node; a
+  test would have to inject a duration rather than speak. Honest answer: unguarded by the suite.

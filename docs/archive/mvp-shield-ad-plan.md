@@ -1,4 +1,9 @@
-> **SUPERSEDED 2026-09-18 — rolled into [docs/spec.md](spec.md). Do not edit; edit spec.md.**
+> **SUPERSEDED 2026-09-18 — rolled into [docs/strategy/spec.md](../strategy/spec.md). Do not edit.**
+>
+> Kept, when the rest of `docs/archive/` was deleted, because `LESSONS.md` and `spec/ad01/ad01.toml`
+> still cite §1a, §2 and §4 — §4 in particular holds the Cosmos endpoint probe results, recorded so
+> nobody re-runs that search. A superseded document that nothing points into gets deleted; this one
+> is load-bearing.
 
 # MVP — The Shield Ad: dig the dirt, then advance inch by inch
 

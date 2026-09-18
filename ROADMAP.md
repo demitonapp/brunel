@@ -237,7 +237,7 @@ Observable, checkable exit criteria. You can look at a render and say yes or no.
 | `library/GEN/` — parameterised asset kit | The compounding asset. `shield_frame` is parameterised `frames × cells_per_frame` — E1 uses 12×3, and the same shape serves Greathead's 1869 Tower Subway shield. | Episode 1 |
 | `library/MAT/` — procedural material masters | Victorian brick, cast iron, wrought iron, oak, pine, hemp rope, canvas, coal smoke, gas flame. Kills the "grey plastic" tell. | Ep 1–3 |
 | `library/SHOTS/` — parameterised shot templates | Authorship moves from shots to templates: Episode N's shot 4 becomes a parameter diff. | Ep 1, then 1/quarter |
-| `goldens/canary/` | The regression gate. Cycles is not bit-reproducible, so hash testing is a mirage — use SSIM + LPIPS at fixed seed. | Episode 1 |
+| `goldens/<episode>/` | The regression gate. **Built 2026-09-18.** Hash testing is a mirage, but not for the reason first given here — see the measurement under the regression rule below. SSIM, floor 0.995. | Episode 1 |
 | `qa/rubrics/*.md` | The tier checklist *is* the rubric. | Episode 1 |
 | `facts/epNN.facts.json` + `factgate` | The accuracy product, made mechanical. Written **before** the script. | Episode 1 |
 | `render-bench.json` | Replaces every estimated number in this roadmap with a measured one. | Day 3 |
@@ -245,8 +245,22 @@ Observable, checkable exit criteria. You can look at a render and say yes or no.
 | `LESSONS.md` | Every entry carries an executable check, or it does not belong here. | Continuous |
 | `eval/` | The eval ledger. The only evidence accepted in a retrospective. | Episode 1 |
 
-**Regression rule:** every merge renders the canary. Pass = SSIM ≥ 0.98 AND LPIPS ≤ 0.05 per shot,
-with no shot degrading more than 20% of its previous margin.
+**Regression rule:** every merge renders the canary — `render --stills` then `verify`. Pass =
+**SSIM ≥ 0.995** per shot (`GOLDEN_SSIM_MIN`). **LPIPS is not implemented and is not planned**: it
+needs a dependency this repo does not have, and it sat in this rule for a year without existing.
+
+**Why a hash will not do, measured 2026-09-18 rather than assumed.** This roadmap previously said
+"Cycles is not bit-reproducible, so hash testing is a mirage". The conclusion is right and the
+stated reason is not, which matters because the reason is what tells you when the rule changes. Two
+clean runs of `ad02` at 480×854 / 8 spp produce **pixel-identical** frames — the decoded RGB of all
+five shots hashes the same — while the **PNG files differ on every run** in their container bytes.
+So: hashing the file fails today, hashing decoded pixels would work today, and neither survives the
+move to a GPU render node, where the pixels themselves will drift. SSIM is correct in all three
+cases, which is why it is the rule.
+
+Calibration, same session: a 2.5% lens change scores **0.860**, a 5 cm camera move **0.827**. The
+floor sits far below either and far above the zero noise measured today, deliberately, to leave
+headroom for the render node. Re-measure it when that node lands rather than relaxing it.
 
 ---
 
@@ -296,10 +310,17 @@ benchmark shot has been re-rendered and compared.
 Shot 4, **"The Board"** — the shield in section.
 
 Re-rendered at the start of every quarter from the *current* asset kit, at fixed camera, fixed
-lighting rig and fixed settings. Only the toolchain and the assets improve. Compare SSIM/LPIPS and
-put both frames side by side in `eval/`.
+lighting rig and fixed settings. Only the toolchain and the assets improve. Compare SSIM (`harness
+verify`; LPIPS is not implemented) and put both frames side by side in `eval/`.
 
 This is the compounding proof. Without it, "each video is better" is a feeling.
+
+**Note the inversion here, because it is easy to get backwards.** Everywhere else a falling SSIM is
+a regression. Here it is the *point*: the benchmark shot is supposed to change as the asset kit
+improves, and a score of 1.000 quarter on quarter means nothing got better. So the benchmark shot is
+deliberately **not** a `goldens/` canary — same metric, opposite verdict. `eval/ledger.json` carries
+it as `benchmark_shot.ssim_vs_last_quarter`, which is `null` in the first row because there is no
+previous quarter yet.
 
 ---
 
