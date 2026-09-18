@@ -8,9 +8,18 @@ Format:
 ```
 ## YYYY-MM-DD — <one-line lesson>
 - **Context:** what happened
-- **Check:** the assertion, golden, or rubric item that now enforces it
+- **Check:** the assertion, golden, or rubric item that should enforce it
 - **Where:** the file that implements the check
+- **ENFORCED BY:** what actually runs it today, or `nothing — prose only`
 ```
+
+**Why `Check:` and `ENFORCED BY:` are separate.** A 2026-09-18 audit found that `Check:` alone had
+drifted into aspiration in several entries — describing what *should* catch a regression, not what
+*does*. Four defects it named ("Two channels that are one mechanism", the crushed-to-black clip,
+and two others) were already recorded here as solved and shipped anyway. `ENFORCED BY:` is the
+line that gets re-verified against the current code, not copied from the `Check:` bullet that
+inspired it — "nothing — prose only" is a legitimate, honest answer, and every entry below states
+one or the other.
 
 ---
 
@@ -20,6 +29,7 @@ Format:
   build succeeded and produced the wrong geometry. Nothing failed; the render was simply wrong.
 - **Check:** The compiler raises `SpecError` on any key not in the schema's closed vocabulary.
 - **Where:** `harness/spec.py` (top-level keys and `[part.params]` via `GENERATOR_PARAMS`).
+- **ENFORCED BY:** `harness/spec.py` (`_unknown`), exercised by `tests/run.sh` ("an unknown spec key is refused") via `tests/fixtures/unknown_key.toml`.
 
 ## 2026-09-17 - The closed vocabulary had a hole, and only a test found it
 
@@ -30,6 +40,7 @@ Format:
 - **Check:** `spec.py` declares `GENERATOR_PARAMS`, the allowed keys per generator, and refuses any
   others. `build.py` raises at import time if a generator has no declared schema.
 - **Where:** `harness/spec.py`, `tests/fixtures/unknown_key.toml`.
+- **ENFORCED BY:** `harness/spec.py` (`GENERATOR_PARAMS`), `harness/build.py` (import-time assert that every generator has a declared param schema), `tests/run.sh` ("an unknown spec key is refused").
 
 ## 2026-09-17 - A chained job is a delayed-action failure
 
@@ -39,6 +50,7 @@ Format:
 - **Check:** `tests/run.sh` checks that every subcommand parses. Anything a chained job will invoke
   must be proven to START before the expensive step begins.
 - **Where:** `tests/run.sh`.
+- **ENFORCED BY:** `tests/run.sh` ("cli parses" loop - every subcommand's `--help` must exit 0).
 
 ## 2026-09-17 - A check that has never been seen to fail is not a check
 
@@ -47,6 +59,7 @@ Format:
 - **Check:** Every assertion gets a negative fixture that MUST fail, plus a positive control that
   MUST pass. `./tests/run.sh` runs both directions.
 - **Where:** `tests/run.sh`, `tests/fixtures/`.
+- **ENFORCED BY:** `tests/run.sh` itself - this is the rule the whole file follows, not one assertion in it.
 ## 2026-09-17 — Score renders, not code
 
 - **Context:** "The script ran" and "the shot works" are different claims, and only the second one
@@ -54,12 +67,14 @@ Format:
 - **Check:** The canary reel is compared with SSIM >= 0.98 and LPIPS <= 0.05 per shot. Hash
   equality is not used, because Cycles is not bit-reproducible across driver or OptiX versions.
 - **Where:** `goldens/canary/` (not yet populated).
+- **ENFORCED BY:** nothing - prose only. `goldens/` is empty as of 2026-09-18 (no canary render, no SSIM/LPIPS comparison exists anywhere in `harness/`). This is the exact pattern the entry two below warns about: a check described here and not built.
 
 ## 2026-09-17 — Archived evidence only
 
 - **Context:** Web sources rot. A citation that no longer resolves is not a citation.
 - **Check:** `factgate` warns on every source without `archived: true`.
 - **Where:** `harness/factgate.py`.
+- **ENFORCED BY:** `harness/factgate.py` (rule `every_web_source_has_an_archive_url`) - runs on every `factgate` invocation.
 
 ## 2026-09-17 — Blender's Action API is mid-transition; do not bet on one shape
 
@@ -67,6 +82,7 @@ Format:
   being retired. Camera keyframe interpolation silently did nothing.
 - **Check:** `_fcurves()` enumerates both the legacy and the slotted layout.
 - **Where:** `harness/render.py` — `_fcurves()`.
+- **ENFORCED BY:** `harness/render.py` (`_fcurves`) - runs on every render; no fixture regression-tests the slotted-action code path specifically (would need a Blender 4.4+ file authored with one).
 
 ## 2026-09-17 - A camera can sit inside the geometry, and nothing will tell you
 
@@ -79,6 +95,7 @@ Format:
   failure. Parts opt out with `camera_inside_ok = true`. Flat parts are skipped: a plane has no
   volume to be inside of.
 - **Where:** `harness/build.py` (`_assert_cameras_clear`).
+- **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`), `tests/run.sh` ("camera inside geometry is rejected" / "camera clear of geometry is accepted") via `tests/fixtures/camera_inside.toml` / `camera_clear.toml`.
 
 ## 2026-09-17 - Do NOT try to automate "is the framing good"
 
@@ -91,6 +108,7 @@ Format:
   trains people to ignore it, which is worse than having no check. Framing is judged in the
   storyboard pass, by a human, on eight stills that cost a minute.
 - **Where:** recorded in the `_assert_cameras_clear` docstring.
+- **ENFORCED BY:** nothing, by design - the entry itself states why (a check here cries wolf on correct work). The storyboard pass is the control, not a check.
 
 ## 2026-09-17 - Storyboard before you render
 
@@ -99,6 +117,7 @@ Format:
 - **Check:** `render --stills` renders the middle frame of each shot. Run it, build a contact
   sheet, and look at it before starting a full render.
 - **Where:** `harness/render.py` (`stills_only`), `harness/__main__.py` (`--stills`).
+- **ENFORCED BY:** `harness/__main__.py` (`cmd_render` calls `check.check_storyboard` after `--stills`), and `check_storyboard` itself is unit-tested in `tests/run.sh` ("a black frame is reported, a real frame is not").
 
 ## 2026-09-17 - Track time must be normalised, not frame-numbered
 
@@ -107,6 +126,7 @@ Format:
 - **Check:** Track `frames` are 0.0-1.0 of the shot; the renderer scales them to the shot's actual
   frame count, and the validator rejects anything outside that range.
 - **Where:** `harness/spec.py`, `harness/render.py` (`_apply_tracks`).
+- **ENFORCED BY:** `harness/spec.py` (the 0.0-1.0 range check on `track.frames`, and the ascending-order check) - runs on every spec load; no dedicated negative fixture, but every real spec (`ep01`, `ad01`, `ad02`) exercises the positive case.
 
 ## 2026-09-17 - A generator in the schema but not the registry is silent drift
 
@@ -114,6 +134,7 @@ Format:
   which means the list can drift from `generators.py`.
 - **Check:** `build.py` raises `ImportError` at import time if the two disagree.
 - **Where:** `harness/build.py`, module level.
+- **ENFORCED BY:** `harness/build.py` (module-level `_missing` assert, raises `ImportError`) - unconditional: the module cannot be imported if the two lists disagree.
 
 ## 2026-09-17 - `set -e` does not fail on a pipeline
 
@@ -125,6 +146,7 @@ Format:
 - **Check:** `deliver` compares the assembled duration against the sum of the spec's shot
   durations and aborts on a mismatch. Validate the OUTPUT, not the exit status.
 - **Where:** `harness/__main__.py` (`cmd_deliver`), which returns 3 on a short assembly.
+- **ENFORCED BY:** `harness/__main__.py` (`cmd_deliver`'s duration check, `abs(got - expected) > 0.75`) - runs on every frame-based `deliver`; no fixture forces a partial render to exercise it.
 
 ## 2026-09-17 - A benchmark that includes fixed costs is not a benchmark
 
@@ -134,6 +156,7 @@ Format:
 - **Check:** Benchmark over hundreds of frames, or subtract the build explicitly, and record which
   of the two a number is.
 - **Where:** `render-bench.json` (`kind: steady_state` vs `includes_build`).
+- **ENFORCED BY:** nothing mechanical - `render-bench.json`'s `kind` field is a human-maintained convention (correctly followed as of 2026-09-18), not validated by code.
 ## 2026-09-17 - The pipeline trap, again, in the test harness
 
 - **Context:** A lesson about `set -e` and pipelines was written earlier the same day. Hours
@@ -143,6 +166,7 @@ Format:
 - **Check:** Capture the output into a variable, then grep the variable. Never pipe a
   deliberately-failing command into a matcher.
 - **Where:** `tests/run.sh`, fact-gate section.
+- **ENFORCED BY:** nothing automated - a coding convention in `tests/run.sh`, not a lint. Re-violated and re-caught by testing, not by a check, while adding the "deliver --backend" tests on 2026-09-18 - direct evidence this remains a discipline, not an enforcement.
 
 ## 2026-09-17 - A rule can be present, correct, and still not fire
 
@@ -151,6 +175,7 @@ Format:
   which is truthy, so the rule passed while enforcing nothing.
 - **Check:** A quote containing "placeholder" does not count as a quote.
 - **Where:** `harness/factgate.py` (`_has_quote`), fixture-backed in `tests/run.sh`.
+- **ENFORCED BY:** `harness/factgate.py` (`_has_quote`, the `PLACEHOLDER` regex), `tests/run.sh` ("a PLACEHOLDER quote does not count as a quote").
 
 ---
 
@@ -167,6 +192,7 @@ Format:
   observable is the histogram: a depth pass of a scene with real depth spread must span most of
   0-1, not sit inside half of it.
 - **Where:** `harness/passes.py` (`_render_one_pass`, the `original_view` save/restore).
+- **ENFORCED BY:** `harness/passes.py` (`_render_one_pass`'s view-transform override) - runs on every depth/seg pass; the effect is checked indirectly via `check_depth_pass`'s range assertions, not by a dedicated view-transform test.
 
 ## 2026-09-18 - A confounded test produced a wrong belief, and it shipped into the design
 
@@ -181,6 +207,7 @@ Format:
   are quoted in the README.
 - **Where:** recorded here and in the `_depth_override_material` docstring; verified by the
   greyscale-outlier count (0 of 57,600 pixels) reported in the README.
+- **ENFORCED BY:** `harness/check.py` (`is_greyscale`, used inside `check_depth_pass`) - runs on every real `passes` invocation that requests depth; not covered by an isolated fixture in `tests/run.sh`.
 
 ## 2026-09-18 - Blender 5.2 removed the compositor's arithmetic
 
@@ -195,6 +222,7 @@ Format:
   (shader nodes still have Map Range), which renders through machinery that is known to work.
 - **Where:** `harness/passes.py` (`_depth_override_material`). Related: the existing
   "Blender's Action API is mid-transition" entry above — the same class of failure, one subsystem over.
+- **ENFORCED BY:** `harness/passes.py` (`_depth_override_material`) - the sole implementation; there is no compositor code path left to regress to.
 
 ## 2026-09-18 - A check that fires correctly can still be wrong about the geometry
 
@@ -206,6 +234,7 @@ Format:
   right response is to use it **with a comment saying why**, so the next reader does not "fix" the
   problem by moving the camera out of the tunnel the shot is about.
 - **Where:** `spec/ad01/ad01.toml` (`bore`), asserted by `harness/build.py` (`_assert_cameras_clear`).
+- **ENFORCED BY:** nothing new - covered by `_assert_cameras_clear`'s existing `camera_inside_ok` opt-out (see the entry above), plus a spec comment for the next reader.
 
 ## 2026-09-18 - The un-excavated face must be roof and invert, never a wall
 
@@ -218,6 +247,7 @@ Format:
   belongs above and below the frame's subject, leaving the cells visible in the gap. Found by the
   storyboard pass, which is what it is for.
 - **Where:** `spec/ad01/ad01.toml` (`face_upper`, `face_lower`).
+- **ENFORCED BY:** nothing - deliberately manual, per Context. The storyboard pass is the control.
 
 ## 2026-09-18 - Two channels that are one mechanism must share a time window
 
@@ -250,6 +280,7 @@ Format:
   A light aimed at a point is what a spec author means; an Euler rotation is an implementation detail
   they will get wrong.
 - **Where:** `harness/spec.py` (`LIGHT_KEYS`), `harness/build.py` (`build_lights`).
+- **ENFORCED BY:** `harness/spec.py` (`LIGHT_KEYS` includes `look_at`), `harness/build.py` (`build_lights` reuses `aim`) - runs whenever a light declares `look_at`; no fixture test.
 
 ## 2026-09-18 - A free hosted endpoint that does not exist is not a plan
 
@@ -263,6 +294,7 @@ Format:
   that needs a host says so via `missing_credentials` and its `note` field, and `harness backends`
   prints it.
 - **Where:** `docs/mvp-shield-ad-plan.md` §4, `harness/backend.py` (`CosmosNimBackend.note`).
+- **ENFORCED BY:** `harness/backend.py` (`CosmosNimBackend.note`, printed by `harness backends`) - a documentation guard, not a code assertion; nothing stops someone re-pointing `COSMOS_NIM_URL` at a hosted endpoint that still does not exist.
 
 ## 2026-09-18 - A key pasted into a transcript is disclosed
 
@@ -273,6 +305,7 @@ Format:
   from a gitignored file and never echoed.
 - **Where:** `.gitignore`, `harness/backend.py` (`load_env`, `ENV_FILE`). The key in question should
   be rotated.
+- **ENFORCED BY:** `.gitignore` (`.env`, `.env.*`, `!.env.example`) - mechanically verified this session (`git check-ignore -v .env.local` confirms it stays untracked).
 
 ## 2026-09-18 - The best backend is the one you can run today, if it is shaped like the one you want
 
@@ -287,6 +320,7 @@ Format:
   `generate --dry-run` verifies setup without spending.
 - **Where:** `harness/backend.py` (`DEFAULT_WAN_URL`, the `wan` backend docstring), README
   "Start with `wan`, not `cosmos`".
+- **ENFORCED BY:** `harness/__main__.py` (`cmd_backends`, `--dry-run` in `cmd_generate`) - both runnable and confirmed working this session.
 
 ## 2026-09-18 - The one pass that two backends share is the one worth making first-class
 
@@ -298,6 +332,7 @@ Format:
   built around `seg` or `edge` would be locked to Cosmos and would have to be rebuilt to move.
 - **Where:** `harness/passes.py` (depth is the pass with the most verification effort),
   `harness/backend.py` (`WanVaceBackend.requires = ("plate", "depth")`).
+- **ENFORCED BY:** `harness/check.py` (`check_depth_pass`) - the most thorough of the pixel checks, wired into `cmd_passes`; runs on every real `passes` invocation that requests depth.
 
 ## 2026-09-18 - Depth polarity is a convention, and guessing it wrong looks like a model failure
 
@@ -311,6 +346,7 @@ Format:
   (measured 120.9 of 255), not a saturated one (248.4 before the fix). Compare against the reference,
   never against intuition.
 - **Where:** `harness/passes.py` (`_depth_override_material`, `To Min = 1.0 / To Max = 0.0`).
+- **ENFORCED BY:** `harness/check.py` (`DEPTH_MEAN_MIN`/`DEPTH_MEAN_MAX` in `check_depth_pass`) - would flag a re-inverted polarity as saturated toward one end; all five `ad02` shots measured 113-156 (in range) when re-checked 2026-09-18.
 
 ## 2026-09-18 - Two attempts at "derive the near/far from geometry" both failed
 
@@ -322,6 +358,7 @@ Format:
   Boring, predictable, and independent of whichever scenery happens to be in the file. What matters
   is not the constant but that it is set **once per shot, never per frame**.
 - **Where:** `harness/passes.py` (`_depth_range`).
+- **ENFORCED BY:** `harness/passes.py` (`_depth_range`) - the sole implementation. Note: the multipliers have since moved to `x0.22`/`x1.9` (from the `x0.4`/`x2.5` this entry recorded) as more shots were staged; the constant was never the point, only that it is set once per shot.
 
 ## 2026-09-18 - Blender's default camera clip planes are not authored intent
 
@@ -333,6 +370,7 @@ Format:
   in the spec, it is a default, and treating a default as intent is the same class of error as the
   closed-vocabulary rule at the top of this file.
 - **Where:** `harness/passes.py` (`_depth_range`), `harness/spec.py` (`CAMERA_KEYS`).
+- **ENFORCED BY:** `harness/spec.py` (`CAMERA_KEYS` - `clip_start`/`clip_end` are not declared keys, so `_unknown()` would reject them if ever added to a camera table).
 
 ## 2026-09-18 - A duplicate function definition is silent, and Python takes the last one
 
@@ -344,6 +382,7 @@ Format:
 - **Check:** `grep -c "^def <name>"` after any scripted rewrite. An unchanged measurement across a
   changed input is the signal; treat identical results after a fix as a bug in the fix.
 - **Where:** `harness/passes.py` — the duplicate was removed (67 lines).
+- **ENFORCED BY:** `tests/run.sh` ("harness hygiene" - an AST pass that fails on any shadowed top-level definition) - the automated form of the manual `grep` this entry describes.
 
 ## 2026-09-18 - urllib has no CA bundle on this machine; curl does
 
@@ -354,6 +393,7 @@ Format:
 - **Check:** `harness/backend.py` downloads via `curl`, which is already a hard dependency for the
   `edge` and `vis` passes. One fewer thing that depends on how Python was installed.
 - **Where:** `harness/backend.py` (`_download`).
+- **ENFORCED BY:** `harness/backend.py` (`_download` uses `curl`) - architectural: there is no `urllib` download path left for the final video fetch to regress to.
 
 ## 2026-09-18 - fal's queue has a cold start measured in minutes, and that is not a failure
 
@@ -367,6 +407,7 @@ Format:
   concurrently would cut wall-clock time roughly three-fold, and should be the next change.
 - **Where:** `harness/backend.py` (`WanVaceBackend._poll`), and `--dry-run` in
   `harness/__main__.py` for checking setup before spending.
+- **ENFORCED BY:** `harness/backend.py` (`WanVaceBackend._poll` status printing). The "untested corollary" about submitting concurrently is no longer a corollary - `cmd_generate`'s submit-all-then-collect-all branch (`harness/__main__.py`) implements it.
 
 ## 2026-09-18 - In Blender's XYZ Euler, Z is applied LAST, so a spin belongs on the axis the shaft lies along
 
@@ -380,6 +421,7 @@ Format:
   axis order. With the shaft along +Y, `Ry` leaves +Y unchanged — which is exactly why `.y` is the
   slot that works and `.z` is the slot that produced a windmill.
 - **Where:** `harness/render.py` (`_apply_tracks`, the `spin` branch), `spec.py` (`CHANNELS`).
+- **ENFORCED BY:** `harness/render.py` (`_apply_tracks`, `spin` branch) - the sole implementation; no numeric regression test, but `check_motion`'s worst-step threshold (see two entries below) would flag a regression to the old propeller-sweep magnitude.
 
 ## 2026-09-18 - An object that is symmetric about its axis cannot show that it is turning
 
@@ -392,6 +434,7 @@ Format:
   what these jacks were actually turned with. The rule: if an animation is supposed to be visible,
   the geometry must be asymmetric about the axis being animated.
 - **Where:** `harness/generators.py` (`gen_screw`).
+- **ENFORCED BY:** `harness/generators.py` (`gen_screw`, `bar` param) - and, as of 2026-09-18, `harness/library.py`'s import-time drift assert against `spec.GENERATOR_PARAMS`, which is what caught `bar` missing from the catalogue in the first place.
 
 ## 2026-09-18 - A per-frame check structurally cannot see a fault that lives between frames
 
@@ -403,6 +446,7 @@ Format:
   frozen shot (nothing changes) is a hard failure; a busy one is a warning to go and look. Wired
   into `check_depth_pass`.
 - **Where:** `harness/check.py` (`check_motion`, `frame_diff`).
+- **ENFORCED BY:** `harness/check.py` (`check_motion`, called from `check_depth_pass`) - runs on every real depth-pass check; not covered by a synthetic fixture in `tests/run.sh` (see H18, `docs/spec.md`).
 
 ## 2026-09-18 - A threshold calibrated on the bug cannot separate the bug from the fix
 
@@ -414,6 +458,7 @@ Format:
   (60.0) is a failure. The contact sheet is the adjudicator. A check that pretends to a precision it
   does not have is worse than a smoke alarm that says it is a smoke alarm.
 - **Where:** `harness/check.py` (the threshold block, with both measurements recorded).
+- **ENFORCED BY:** `harness/check.py` (`MOTION_BUSY`, `MOTION_MAX_STEP`) - same as above, real but not fixture-tested.
 
 ## 2026-09-18 - A scripted string replace that matches nothing does nothing, silently
 
@@ -426,6 +471,7 @@ Format:
   assert a non-zero count. An unchanged result after a fix is the signal.
 - **Where:** this file's sibling in `tests/run.sh` — "no shadowed top-level definitions" — catches
   the duplicate half of this class; the no-op half is caught only by grepping after the edit.
+- **ENFORCED BY:** `tests/run.sh` ("harness hygiene") catches the duplicate-definition half; the no-op-replacement half remains a manual `grep`-after-edit discipline, same as the entry above.
 
 ## 2026-09-18 - A documented check is not an enforced check
 
@@ -443,9 +489,13 @@ Format:
   ships (`harness/__main__.py`, `_deliver_from_backend`), `cmd_generate`'s `_accept` refuses one
   before counting it as delivered, and `docs/spec.md` §16 states the acceptance criteria the fix is
   measured against. Going forward: a lesson recorded here without a line naming what enforces it is a
-  lesson that can ship again. New entries should name the check; old ones get a status update, as
-  above, the next time they turn out to matter rather than as a batch rewrite - annotating all 40
-  entries in one pass was tried and rejected for this session: it would have meant asserting
-  enforcement for lessons nobody had just re-verified, which is the same trap in a different shape.
+  lesson that can ship again.
 - **Where:** `harness/__main__.py` (`cmd_generate`'s `_accept`, `cmd_deliver`'s
   `_deliver_from_backend`), `tests/run.sh` ("deliver --backend" section), `docs/spec.md`.
+- **ENFORCED BY:** `harness/__main__.py` (`_accept`, `_deliver_from_backend`), `tests/run.sh`
+  ("deliver --backend" section - a synthetic black clip and a synthetic mistimed clip are both
+  proven refused). Every other entry in this file was given this same line the day this one was
+  written: annotating all 40 in one pass was first tried and rejected as "asserting enforcement
+  for lessons nobody had just re-verified" - then done anyway, deliberately re-checking each
+  "Check:" bullet against the current code rather than trusting it, which is what turned the
+  batch pass from the trap it would have been into the same discipline this entry asks for.
