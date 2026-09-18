@@ -766,8 +766,16 @@ def cmd_sheet(args: argparse.Namespace) -> int:
         ep_dir = Path(args.out) / ep.id
         gen = ep_dir / f"generated-{args.backend}"
         if gen.exists() and not args.frames:
+            # Only the harness's own per-shot output, `{shot_id}_{chunk}.mp4`.
+            # This used to be a blocklist of specific hand-made filenames
+            # (a manually concatenated cut and its captioned/silent copies
+            # left in the same directory) - a blocklist means every new kind
+            # of hand-made file needs its own new entry. An allowlist keyed
+            # to the harness's own naming convention needs none.
+            shot_ids = {s["id"] for s in ep.shots}
             for clip in sorted(gen.glob("*.mp4")):
-                if clip.stem.startswith("shield") or clip.stem.endswith("nocaps"):
+                shot_id = clip.stem.rsplit("_", 1)[0]
+                if shot_id not in shot_ids:
                     continue
                 sources.append((clip.stem, clip))
         for shot_dir in sorted(ep_dir.glob("*/depth/*")):
