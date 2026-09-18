@@ -3,6 +3,20 @@
 > A harness for making video that gets measurably better every time.
 > One person. One Mac. One Windows render node. DeepSeek in the loop.
 
+**Partly superseded, 2026-09-18.** The maturity ladder (§4), the ratchet (§5), the three modes (§2)
+and the machine topology (§3) all still hold and are still the reference. Four sections were
+overtaken and are left in place rather than rewritten, because silently editing a plan is how a repo
+forgets it ever had one.
+
+| Section | Superseded by | Why |
+|---|---|---|
+| §0a, the three-layer architecture | [`docs/harness/decisions.md`](docs/harness/decisions.md) **D1** | `local` ships. Generative is off the critical path, not the render layer. |
+| §6, Episode 1 = the Thames Tunnel shield | [`docs/strategy/slate.md`](docs/strategy/slate.md) | Brunel is **S4**, a 30-second Short, not a 72-second flagship. |
+| §7, the twelve-month plan | [`docs/strategy/slate.md`](docs/strategy/slate.md) | Reordered by measured demand: mechanism evergreens first. |
+| §9's per-frame estimate | measured — [`render-bench.json`](render-bench.json) | See the note in §9. |
+
+The language and engine questions behind all of this are settled in **D5** and **D6**.
+
 ---
 
 ## 0. What this repo is
@@ -296,6 +310,19 @@ A 72-second episode at 30 fps is **2,160 frames.**
 On an RTX 3080 at 1080×1920, Cycles at 128 samples plus OptiX denoise, a mid-complexity
 engineering scene is plausibly **20–45 s/frame** → **12–27 hours of pure GPU time for one final
 pass.** Revision is where quality comes from; three iterations is 36–80 hours.
+
+> **That range is still an estimate, and it is the last unmeasured number that governs the
+> schedule.** The M1 half is now measured — 26.86 s/frame at 1080×1920 @ 8 spp — and the measurement
+> came in at **1.7× the extrapolation** that preceded it, so treat the 3080 range above with the same
+> suspicion. Replace it, on the node:
+>
+> ```bash
+> python -m harness bench spec/ad01/ad01.toml --shots a01 \
+>     --res 1080x1920 --samples 8 --device OPTIX --frames 24
+> ```
+>
+> On an otherwise idle machine: the same 24 frames measured 31.98 vs 26.86 s/frame on the Mac
+> depending on what else was running.
 
 Two hard consequences:
 

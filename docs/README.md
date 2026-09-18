@@ -28,8 +28,8 @@ script, then spec, then render, in that order, every time.
 
 | File | What it is |
 |---|---|
-| [`backlog.md`](harness/backlog.md) | H1–H20 and C1–C6, ranked by which video they block. |
-| [`decisions.md`](harness/decisions.md) | D1–D4. Dated, with the evidence and the reopening condition. |
+| [`backlog.md`](harness/backlog.md) | H1–H24 and C1–C6, ranked by which video they block. |
+| [`decisions.md`](harness/decisions.md) | D1–D6. Dated, with the evidence and the reopening condition. |
 
 ## research/
 

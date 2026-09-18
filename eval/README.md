@@ -1,5 +1,9 @@
 # Eval ledger
 
+> **This file is the ratchet aimed at renders.** The one aimed at the audience is
+> [`audience.md`](audience.md), and it must carry a baseline before the first upload.
+> `docs/strategy/spec.md` §6.
+
 The only evidence accepted in a retrospective.
 
 One row per episode. A claim of "this episode is better" is not admissible; a row here is.

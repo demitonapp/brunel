@@ -141,6 +141,7 @@ python -m harness generate spec/ad01/ad01.toml --backend local # hand it to a mo
 | **`sheet`** | **contact sheets — a shot's motion in one image** |
 | **`library`** | **browse the reusable engineering components** |
 | **`verify`** | **run every output check over what exists** |
+| **`bench`** | **measure s/frame at a real delivery resolution and record it** |
 
 ---
 
@@ -258,6 +259,23 @@ depth_range = [1.2, 9.5]   # near, far — overrides the camera-derived default
 That is the shape of the ratchet: the check found the fault, the fault produced a spec capability,
 and the capability is now available to every future shot.
 
+**A part can ask for smooth shading, and it is an angle, not a flag.**
+
+```toml
+[[part]]
+id = "barrel"
+gen = "cylinder"
+smooth = 30                                   # degrees; sharper edges stay sharp
+params = { radius = 0.070, depth = 0.90, segments = 64 }
+```
+
+There was no mesh smooth shading in the harness at all until 2026-09-18 — `render._smooth()` is
+f-curve easing, not `shade_smooth`. Flat is right for the shield's boxes and bricks and wrong for a
+turned steel surface. It is an **angle** because shading every polygon smooth turns a cylinder's end
+cap into a dome, and an end cap is exactly what an exploded mechanism shot is showing. Opt-in per
+part, so no existing frame changes. `segments` is new for the same reason: `_cyl` always took it and
+no spec could set it, so every cylinder in the repo was 24-sided whatever it was for.
+
 **A per-frame check cannot see a fault that lives between frames.** The windmilling screws — a
 `.z` Euler track that swung the whole shaft round like a propeller — passed `storyboard`, `depth`
 and `clip` without a murmur, because every individual frame was a perfectly good picture.
@@ -297,8 +315,22 @@ four more dead copies of the same mistake in the same file.
 | `spec/mvp/mvp.toml` | 384×682 | 8 | 3.00 | over 48 frames, so ~half of it was scene build |
 | `spec/mvp/mvp.toml` | 384×682 | 8 | 3.91 | Metal — *slower* than CPU on the M1 |
 
-Extrapolated to Episode 1's final settings (1080×1920, 32 spp): roughly **62 s/frame**, or about
-**37 hours** for 2,160 frames on the Mac.
+**Measured at delivery resolution**, 2026-09-18, by `harness bench` — because everything above is a
+384×682 render and every schedule claim used to be a pixel-and-sample extrapolation from it:
+
+| Scene | Resolution | spp | s/frame | |
+|---|---|---|---|---|
+| `spec/ad01/ad01.toml` a01 | 1080×1920 | 8 | **26.86** | 24 frames, M1 CPU, build time excluded |
+
+The extrapolation predicted 62.4 s/frame at 32 spp — 15.6 scaled to 8 spp — so the real cost is
+**1.7× the estimate**. Which is the point: a 30 s Short is **6.7 h** (one overnight) and a 7-minute
+long-form is **94 h and ~29 GB** against 12 GiB free. See H19/H20 in
+[docs/harness/backlog.md](docs/harness/backlog.md).
+
+**Run a bench on an idle machine.** The same 24 frames measured 31.98 s/frame with other work on the
+same 8 cores and 26.86 idle — a 19% spread. One row is a measurement with an error bar.
+
+The **RTX 3080 / OptiX row is still `not_measured`**, and it governs Phase 1.
 
 **Control passes are far cheaper than beauty frames**, which is what makes the generative loop viable
 at all. Measured on the M1 at 320×180: depth **0.13 s/frame** (Cycles, 1 sample, unlit emission),

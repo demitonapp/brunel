@@ -168,6 +168,12 @@ footage, and get ~1M views for it.
 From `render-bench.json` and `README.md`: 1.97 s/frame at 384×682/8spp, extrapolating to **~62
 s/frame** at 1080×1920/32spp on the M1 — **~37 hours for 72 seconds of video.**
 
+> **Superseded by measurement, later the same day.** `harness bench` records **26.86 s/frame** at
+> 1080×1920 @ 8 spp. The extrapolation's equivalent at 8 spp was 15.6, so the real cost is **1.7× the
+> estimate** — which means the table below is *understated*, and this section's conclusion is
+> strengthened rather than weakened. The figures are left as written because they are what the
+> argument was made on.
+
 | Target | Frames | M1 render | 3080 node at 10× |
 |---|---|---|---|
 | 12-minute episode | 21,600 | **372 h** (15.5 days continuous) | ~37 h |
