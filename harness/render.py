@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import bpy
+from mathutils import Euler
 
 from . import build as build_mod
 from . import spec as spec_mod
@@ -143,21 +144,52 @@ def _apply_tracks(
     n = 0
     span = max(1, total_frames - 1)
     for t in ep.tracks_for_shot(shot_id):
-        root = built[t["part"]]["root"]
         chan = t["channel"]
-        for frac, v in zip(t["frames"], t["values"]):
-            f = 1 + round(frac * span)
-            if chan == "location":
-                root.location = tuple(v)
-                root.keyframe_insert(data_path="location", frame=f)
-            elif chan == "rotation":
-                root.rotation_euler = tuple(math.radians(x) for x in v)
-                root.keyframe_insert(data_path="rotation_euler", frame=f)
-            elif chan == "scale":
-                root.scale = tuple(v)
-                root.keyframe_insert(data_path="scale", frame=f)
-        _smooth(root)
-        n += 1
+        # A track may drive one part or an assembly. `part = ["a","b","c"]` is
+        # the difference between remembering to track all six pieces of a moving
+        # cell and forgetting one. The key existed; nothing used it.
+        parts = t["part"] if isinstance(t["part"], list) else [t["part"]]
+        offset = t.get("mode") == "offset"
+        for pid in parts:
+            entry = built[pid]
+            root = entry["root"]
+            # With mode = "offset" the track values are a DELTA from the part's
+            # declared location, so one track can drive an assembly whose pieces
+            # sit in different places. Without it, moving six parts of a cell
+            # together needs six tracks with six different absolute vectors -
+            # and forgetting one leaves a piece behind, which is exactly the bug
+            # class this removes.
+            base = entry["spec"].get("loc") or [0.0, 0.0, 0.0]
+            for frac, v in zip(t["frames"], t["values"]):
+                f = 1 + round(frac * span)
+                if chan == "location":
+                    got = [b + d for b, d in zip(base, v)] if offset else list(v)
+                    root.location = tuple(got)
+                    root.keyframe_insert(data_path="location", frame=f)
+                elif chan == "rotation":
+                    root.rotation_euler = tuple(math.radians(x) for x in v)
+                    root.keyframe_insert(data_path="rotation_euler", frame=f)
+                elif chan == "scale":
+                    root.scale = tuple(v)
+                    root.keyframe_insert(data_path="scale", frame=f)
+                elif chan == "spin":
+                    # Turn about the part's OWN axis, which is the only thing a
+                    # screw can do and the one thing a raw Euler track cannot
+                    # express. Blender's XYZ order is R = Rz.Ry.Rx, so Z is
+                    # applied LAST: writing the spin into the .z slot rotates the
+                    # already-laid shaft about the world Z axis and the screw
+                    # sweeps round like a propeller. That bug shipped once.
+                    #
+                    # Here the spin is composed as R_base @ R_spin - a rotation
+                    # about local Z, applied before the part's own orientation -
+                    # which is what "turn the screw" means for any base rot.
+                    base = entry["spec"].get("rot") or [0.0, 0.0, 0.0]
+                    r_base = Euler([math.radians(x) for x in base], "XYZ").to_matrix()
+                    r_spin = Euler((0.0, 0.0, math.radians(v[2])), "XYZ").to_matrix()
+                    root.rotation_euler = (r_base @ r_spin).to_euler("XYZ")
+                    root.keyframe_insert(data_path="rotation_euler", frame=f)
+            _smooth(root)
+            n += 1
     return n
 
 

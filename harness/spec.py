@@ -25,15 +25,17 @@ TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
 META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device", "units"}
 PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots"}
 CAMERA_KEYS = {"id", "lens_mm", "loc", "look_at"}
-LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "color", "angle", "shots"}
+LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "look_at", "color", "angle", "shots"}
 MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic"}
-SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes", "narration"}
-TRACK_KEYS = {"part", "channel", "frames", "values", "shots"}
+SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes",
+             "narration", "depth_range", "mechanism"}
+MECHANISM_KEYS = {"turns", "pitch", "advance", "tolerance"}
+TRACK_KEYS = {"part", "channel", "frames", "values", "shots", "mode"}
 
 GENERATORS = {
     "box", "cylinder", "sphere", "plane",
     "shield", "brick_wall", "crew", "ring",
-    "boat", "dock", "train", "arch", "timber",
+    "boat", "dock", "train", "arch", "timber", "screw", "lining",
 }
 # Allowed generator parameters. This lives here, not in generators.py, so that
 # `validate` works on a machine with no Blender; build.py asserts the two agree.
@@ -48,13 +50,15 @@ GENERATOR_PARAMS = {
     "shield": {"frames", "levels", "width", "height", "depth", "plate", "hood"},
     "brick_wall": {"length", "height", "brick_l", "brick_h", "brick_d", "mortar",
                    "max_bricks"},
-    "crew": {"height"},
+    "crew": {"height", "pose", "facing"},
     "ring": {"radius", "thickness", "height", "segments"},
     "boat": {"length", "beam", "depth"},
     "dock": {"length", "height", "depth", "blocks"},
     "train": {"length", "width", "height"},
     "arch": {"span", "height", "count"},
     "timber": {"dims"},
+    "screw": {"radius", "depth", "pitch", "turns", "foot", "bar"},
+    "lining": {"radius", "thickness", "length", "segments"},
 }
 # Every part may carry this regardless of generator.
 UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}
@@ -62,7 +66,7 @@ UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}
 LIGHT_TYPES = {"SUN", "POINT", "AREA", "SPOT"}
 ENGINES = {"CYCLES", "BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"}
 DEVICES = {"CPU", "GPU", "METAL", "OPTIX", "CUDA"}
-CHANNELS = {"location", "rotation", "scale"}
+CHANNELS = {"location", "rotation", "scale", "spin"}
 METRE = 1.0
 MAX_CHANNEL_DIM = 3
 
@@ -103,10 +107,16 @@ class Episode:
 
     def tracks_for_shot(self, shot_id: str) -> list[dict[str, Any]]:
         visible = {p["id"] for p in self.parts_for_shot(shot_id)}
-        return [
-            t for t in self.tracks
-            if t["part"] in visible and (not t["shots"] or shot_id in t["shots"])
-        ]
+        out: list[dict[str, Any]] = []
+        for t in self.tracks:
+            if t["shots"] and shot_id not in t["shots"]:
+                continue
+            # A track may name an assembly; it applies if ANY of its parts is
+            # visible in this shot.
+            names = t["part"] if isinstance(t["part"], list) else [t["part"]]
+            if any(n in visible for n in names):
+                out.append(t)
+        return out
 
     def with_overrides(self, *, fast: bool = False, shots: list[str] | None = None) -> "Episode":
         """Return a copy with preview overrides applied.
@@ -275,7 +285,16 @@ def load(path: str | Path) -> Episode:
             raise SpecError(f"{where}.type: {li['type']!r} not in {sorted(LIGHT_TYPES)}")
         li.setdefault("energy", 3.0)
         li["loc"] = _vec(where, li, "loc", default=[0.0, 0.0, 10.0])
-        li["rot"] = _vec(where, li, "rot", default=[0.0, 0.0, 0.0])
+        # A light may be aimed at a point instead of given an Euler rotation.
+        # This exists because Blender's AREA lights default to pointing straight
+        # down: a "work light" placed at head height and left unrotated lights
+        # the floor and leaves the subject black. Aiming is what a human means,
+        # and `build.aim` already does it for cameras.
+        if "look_at" in li:
+            li["look_at"] = _vec(where, li, "look_at", default=[0.0, 0.0, 0.0])
+            li["rot"] = [0.0, 0.0, 0.0]
+        else:
+            li["rot"] = _vec(where, li, "rot", default=[0.0, 0.0, 0.0])
         li.setdefault("color", [1.0, 1.0, 1.0])
         li.setdefault("angle", 0.526)  # sun angular diameter, radians
         li["shots"] = list(li.get("shots", []))
@@ -302,6 +321,38 @@ def load(path: str | Path) -> Episode:
             s["move_to"] = _vec(where, s, "move_to", default=s["move_to"])
         if bool(s.get("move_from")) != bool(s.get("move_to")):
             raise SpecError(f"{where}: move_from and move_to must be given together")
+
+        # A declared mechanism, checked HERE - at validation time. No Blender,
+        # no render, no money, no waiting for a paid generation to reveal that
+        # the machine cannot work.
+        #
+        # The invariant is `turns x pitch == advance`. A jack that turns six
+        # times and moves nothing is not a subtle animation error; it is a
+        # machine that cannot exist. An earlier version of ad02 shipped exactly
+        # that - the screws rotated across the whole shot while the cell only
+        # budged in the last third - and the arithmetic lived in a comment where
+        # nothing could check it.
+        mech = s.get("mechanism")
+        if mech:
+            unknown = set(mech) - MECHANISM_KEYS
+            if unknown:
+                raise SpecError(f"{where}.mechanism: unknown key(s) {sorted(unknown)}; "
+                                f"allowed {sorted(MECHANISM_KEYS)}")
+            need = {"turns", "pitch", "advance"}
+            missing = need - set(mech)
+            if missing:
+                raise SpecError(f"{where}.mechanism: needs {sorted(need)}, "
+                                f"missing {sorted(missing)}")
+            tol = float(mech.get("tolerance", 0.02))
+            implied = float(mech["turns"]) * float(mech["pitch"])
+            declared = float(mech["advance"])
+            if abs(implied - declared) > tol:
+                raise SpecError(
+                    f"{where}.mechanism: {mech['turns']} turns x {mech['pitch']} m pitch "
+                    f"= {implied:.4f} m, but advance is declared as {declared:.4f} m "
+                    f"(tolerance {tol}). A jack cannot turn and not move."
+                )
+            s["mechanism"] = {k: float(v) for k, v in mech.items()}
         shots.append(s)
 
     if not shots:
@@ -325,12 +376,25 @@ def load(path: str | Path) -> Episode:
         t = dict(t)
         _unknown(where, t, TRACK_KEYS)
         pid = _require(where, t, "part")
-        where = f"track[{pid}]"
-        if pid not in part_ids:
-            raise SpecError(f"{where}: no such part")
+        # A track may name one part or an assembly. Normalise to a list here so
+        # nothing downstream has to care which the author wrote.
+        names = pid if isinstance(pid, list) else [pid]
+        if not names:
+            raise SpecError(f"{where}.part: empty")
+        for n in names:
+            if not isinstance(n, str):
+                raise SpecError(f"{where}.part: expected part ids, got {n!r}")
+            if n not in part_ids:
+                raise SpecError(f"track[{n}]: no such part")
+        where = f"track[{names[0]}]"
+        t["part"] = names if isinstance(pid, list) else names[0]
         chan = _require(where, t, "channel")
         if chan not in CHANNELS:
             raise SpecError(f"{where}.channel: {chan!r} not in {sorted(CHANNELS)}")
+        mode = t.get("mode", "absolute")
+        if mode not in ("absolute", "offset"):
+            raise SpecError(f"{where}.mode: {mode!r} - use absolute | offset")
+        t["mode"] = mode
         frames = list(_require(where, t, "frames"))
         values = list(_require(where, t, "values"))
         if len(frames) != len(values):

@@ -63,6 +63,18 @@ def _cyl(name: str, radius: float, depth: float, collection: Any, segments: int 
     return _link(name, bm, collection)
 
 
+def _cone(name: str, r1: float, r2: float, depth: float, collection: Any,
+          segments: int = 20) -> Any:
+    """A tapered cylinder. Used for torsos and limbs, where a plain cylinder
+    reads as a pipe rather than a body."""
+    bm = bmesh.new()
+    bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=segments,
+        radius1=r1, radius2=r2, depth=depth,
+    )
+    return _link(name, bm, collection)
+
+
 def _sphere(name: str, radius: float, collection: Any, segments: int = 16) -> Any:
     bm = bmesh.new()
     try:
@@ -159,21 +171,192 @@ def gen_brick_wall(name: str, params: dict[str, Any], collection: Any) -> list[A
 
 
 def gen_crew(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
-    """A reference figure of the given height, feet at local z = 0.
+    """A human figure of the given height, feet at local z = 0.
 
-    The scale witness in every hero frame. Its height is asserted, because a
-    wrong scale figure silently poisons every judgement about scale made from
-    that frame.
+    The scale witness in every hero frame - and, since ad02, a character in it.
+    Its height is asserted, because a wrong scale figure silently poisons every
+    judgement about scale made from that frame.
+
+    **Rebuilt 2026-09-18.** The first version was a cylinder torso, a sphere
+    head and two leg cylinders, with no arms - which was honest as a *scale
+    witness* and useless as a *person*. The feedback on the first cut was blunt
+    and correct: "why does the human look so unlike a human?" A figure meant to
+    stand inside a cell and be understood as a man at work needs shoulders, arms
+    and a head that sits on a neck.
+
+    Proportions are the standard human figure broken at the real landmarks, so a
+    1.70 m figure measures 1.70 m and reads at a glance:
+
+        feet 0.00 · knee 0.29 · hip 0.47 · shoulder 0.82 · eye 0.93 · top 1.00
+
+    Params:
+        height  metres, default 1.70 - the number the assertion checks
+        pose    ``stand`` (default) | ``work`` (arms forward and down, torso
+                leaning into the job) | ``bend`` (folded at the waist, digging)
+        facing  degrees about Z. 0 faces -Y, which is the direction of drive.
     """
     height = float(params.get("height", CREW_HEIGHT_M))
+    pose = str(params.get("pose", "stand"))
+    facing = float(params.get("facing", 0.0))
     objs: list[Any] = []
-    objs.append(_place(_cyl(f"{name}_body", height * 0.11, height * 0.62, collection),
-                       (0.0, 0.0, height * 0.31 + height * 0.19)))
-    objs.append(_place(_sphere(f"{name}_head", height * 0.085, collection),
-                       (0.0, 0.0, height * 0.92)))
+
+    hip_z = height * 0.47
+    shoulder_z = height * 0.82
+    torso_len = shoulder_z - hip_z
+
+    lean = 0.0
+    arm_pitch = 0.0
+    arm_swing = 6.0
+    if pose == "work":
+        lean = 14.0
+        arm_pitch = 46.0
+        arm_swing = 10.0
+    elif pose == "bend":
+        lean = 36.0
+        arm_pitch = 74.0
+        arm_swing = 14.0
+    elif pose != "stand":
+        raise BuildError(f"crew: unknown pose {pose!r}; use stand | work | bend")
+
+    # legs - thigh and shin as separate segments so a bent pose is possible later
     for side, sx in (("l", -1.0), ("r", 1.0)):
-        objs.append(_place(_cyl(f"{name}_leg_{side}", height * 0.055, height * 0.46, collection),
-                           (sx * height * 0.065, 0.0, height * 0.23)))
+        objs.append(_place(
+            _cyl(f"{name}_leg_{side}", height * 0.053, height * 0.47, collection),
+            (sx * height * 0.062, 0.0, height * 0.235)))
+    # hips
+    objs.append(_place(
+        _cone(f"{name}_hips", height * 0.088, height * 0.082, height * 0.10, collection),
+        (0.0, 0.0, hip_z + height * 0.02)))
+    # torso, tapering up to the shoulders
+    objs.append(_place(
+        _cone(f"{name}_torso", height * 0.085, height * 0.105, torso_len, collection),
+        (0.0, 0.0, hip_z + torso_len * 0.5), (lean, 0.0, 0.0)))
+    # shoulders
+    objs.append(_place(
+        _cyl(f"{name}_shoulders", height * 0.052, height * 0.21, collection),
+        (0.0, 0.0, shoulder_z), (0.0, 90.0, 0.0)))
+    # arms, hanging or reaching depending on the pose
+    for side, sx in (("l", -1.0), ("r", 1.0)):
+        objs.append(_place(
+            _cyl(f"{name}_arm_{side}", height * 0.034, height * 0.34, collection),
+            (sx * height * 0.115, 0.0, shoulder_z - height * 0.17),
+            (lean + arm_pitch, sx * arm_swing, 0.0)))
+    # neck and head
+    objs.append(_place(
+        _cyl(f"{name}_neck", height * 0.038, height * 0.05, collection),
+        (0.0, 0.0, shoulder_z + height * 0.025)))
+    objs.append(_place(
+        _sphere(f"{name}_head", height * 0.072, collection),
+        (0.0, 0.0, height * 0.93)))
+
+    # A flat cap. Period labourers wore one, and it does more for reading a
+    # silhouette as "a person" than any amount of extra limb detail.
+    objs.append(_place(
+        _cyl(f"{name}_cap", height * 0.082, height * 0.045, collection),
+        (0.0, 0.0, height * 0.975)))
+
+    if facing:
+        for o in objs:
+            o.rotation_euler.z += math.radians(facing)
+    return objs
+
+
+def gen_lining(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """A circular segmental tunnel lining: rings of voussoirs about the axis.
+
+    Added 2026-09-18 because ad02 lined the shield with a FLAT brick wall, and a
+    tunnel lining is the one thing a flat wall is not. The outline of the
+    Thames Tunnel is the single most recognisable thing about it, and it was
+    absent from every frame.
+
+    The axis runs along local Z; ``rot = [90, 0, 0]`` lays it along the drive.
+
+    Params:
+        radius     internal radius
+        thickness  lining thickness
+        length     one ring's width along the tunnel
+        segments   voussoirs around the circumference
+    """
+    radius = float(params.get("radius", 5.20))
+    thickness = float(params.get("thickness", 0.45))
+    length = float(params.get("length", 1.20))
+    segments = int(params.get("segments", 24))
+    objs: list[Any] = []
+    r_mid = radius + thickness * 0.5
+    step = 360.0 / segments
+    # Voussoirs as radial blocks. Each is a small box turned to face the axis,
+    # so the ring reads as brickwork rather than as a smooth tube.
+    for i in range(segments):
+        ang = i * step
+        rad = math.radians(ang)
+        seg_len = 2.0 * math.pi * r_mid / segments
+        # Segments TOUCH. At 0.94 of the pitch they read as scattered blocks
+        # rather than a lining - which is what the first attempt looked like.
+        # 0.995 leaves a mortar-thin joint that still reads as coursed brick.
+        objs.append(_place(
+            _box(f"{name}_v{i:03d}", (seg_len * 0.995, thickness, length * 0.97), collection),
+            (r_mid * math.cos(rad), r_mid * math.sin(rad), 0.0),
+            (0.0, 0.0, ang)))
+    return objs
+
+
+def gen_screw(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """A screw jack: a shaft with a visible thread and a bearing foot.
+
+    Added 2026-09-18. The first cut used a plain cylinder for the jacks and the
+    feedback was immediate - "why are the screws spinning in mid air?" Two
+    faults, and the second was only visible once the first was fixed: the rods
+    were detached from both the cell and the brick, AND they had no thread, so
+    once attached they still read as pipes rather than screws.
+
+    The thread is a stack of thin collars. It is not a true helix - a real
+    thread would be thousands of triangles per jack, and at 480p it resolves to
+    the same silhouette. The collars give the one thing a thread actually
+    communicates: that this is a thing which turns and therefore moves.
+
+    The shaft runs along local Z; ``rot = [90, 0, 0]`` lays it along Y, which is
+    the direction of drive.
+
+    Params:
+        radius   shaft radius
+        depth    overall length, bearing face at +Z
+        pitch    thread pitch - the distance the jack advances per full turn.
+                 This is the number that makes the rotation honest: change it
+                 only if the advance animation changes to match.
+        turns    how many thread collars to draw
+        foot     radius of the bearing plate at the +Z end, 0 for none
+    """
+    radius = float(params.get("radius", 0.055))
+    depth = float(params.get("depth", 1.06))
+    turns = int(params.get("turns", 22))
+    foot = float(params.get("foot", radius * 2.2))
+    bar = float(params.get("bar", 0.0))
+    objs: list[Any] = []
+
+    # shaft
+    objs.append(_place(_cyl(f"{name}_shaft", radius, depth, collection),
+                       (0.0, 0.0, depth * 0.5)))
+    # thread collars, from just off the near end to just short of the bearing
+    span = depth * 0.82
+    step = span / max(1, turns)
+    for i in range(turns):
+        z = depth * 0.09 + i * step
+        objs.append(_place(
+            _cyl(f"{name}_thread_{i:02d}", radius * 1.34, step * 0.42, collection, segments=16),
+            (0.0, 0.0, z)))
+    # the bearing foot, at the far end - the face that presses on the brick
+    if foot > 0:
+        objs.append(_place(_cyl(f"{name}_foot", foot, depth * 0.05, collection),
+                           (0.0, 0.0, depth - depth * 0.025)))
+    # A tommy bar through the near end. Without it the jack is rotationally
+    # symmetric about its own axis, so TURNING IT PRODUCES NO VISIBLE CHANGE AT
+    # ALL - which is why an earlier version animated the rotation in a way that
+    # swung the whole screw round like a propeller: the animation was trying to
+    # show something the geometry could not show. A crossbar is what these jacks
+    # were actually turned with, and it makes the turn legible.
+    if bar > 0:
+        objs.append(_place(_cyl(f"{name}_bar", radius * 0.42, bar, collection, segments=12),
+                           (0.0, 0.0, depth * 0.14), (0.0, 90.0, 0.0)))
     return objs
 
 
@@ -290,6 +473,8 @@ GENERATORS = {
     "train": gen_train,
     "arch": gen_arch,
     "timber": gen_timber,
+    "screw": gen_screw,
+    "lining": gen_lining,
 }
 
 GENERATOR_NAMES = sorted(set(GENERATORS) | {"box", "cylinder", "sphere", "plane"})

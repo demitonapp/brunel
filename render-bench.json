@@ -69,12 +69,36 @@
     "ep01_total_frames": 2160,
     "ep01_hours_on_M1_CPU": 37.4
   },
+  "control_passes": {
+    "measured_at": "2026-09-18",
+    "machine": "Mac M1 - 8-core CPU, 7-core GPU, 16 GB, macOS 26.6.2",
+    "why_it_matters": "The generative interface renders control passes instead of a beauty plate, or alongside one. If the passes cost as much as the plate the loop is unaffordable and the architecture is pointless. They do not: depth is ~52x cheaper than the plate, and depth is the pass that carries the geometry.",
+    "measurements": [
+      {"pass": "plate", "scene": "spec/ad01 a02", "resolution": [1280, 720], "engine": "CYCLES", "spp": 32, "frames": 2, "sec_per_frame": 120.0,
+       "note": "the beauty render - the expensive half, and the half a backend replaces"},
+      {"pass": "depth", "scene": "spec/ad01 a02", "resolution": [1280, 720], "engine": "CYCLES", "spp": 1, "frames": 2, "sec_per_frame": 2.3,
+       "note": "unlit emission driven by Camera Data > View Z Depth. No light transport, so 1 sample is exact rather than noisy."},
+      {"pass": "seg", "scene": "spec/ep01 s05", "resolution": [320, 180], "engine": "BLENDER_WORKBENCH", "spp": null, "frames": 2, "sec_per_frame": 1.5,
+       "note": "flat object-colour shading; resolution-dependent, so expect more at 1280x720"},
+      {"pass": "edge", "scene": "spec/ep01 s05", "resolution": [320, 180], "engine": "ffmpeg edgedetect", "spp": null, "frames": 2, "sec_per_frame": 0.25,
+       "note": "derived from the plate, not rendered"},
+      {"pass": "vis", "scene": "spec/ep01 s05", "resolution": [320, 180], "engine": "ffmpeg gblur", "spp": null, "frames": 2, "sec_per_frame": 0.25,
+       "note": "derived from the plate, not rendered"}
+    ],
+    "findings": [
+      "Depth costs about 2% of the beauty plate at the same resolution. The geometry-carrying pass is essentially free next to the pixels it replaces.",
+      "seg, edge and vis were measured at 320x180 only. The 1280x720 figures are UNKNOWN, and seg in particular is resolution-dependent.",
+      "Depth rendered through the AgX view transform spanned only 0.48-0.77 of its range. Standard is required, or the map is not a linear function of distance - see LESSONS.md 2026-09-18."
+    ]
+  },
   "not_measured": [
     "RTX 3080 / OptiX throughput - the number that actually governs the schedule. UNKNOWN.",
     "VRAM behaviour and the out-of-core fallback on a 10-12 GB card",
     "Cost of volumetrics, displacement and instancing",
     "EEVEE as a preview engine",
-    "Whether Cycles actually scales linearly between 8 and 32 spp on this hardware"
+    "Whether Cycles actually scales linearly between 8 and 32 spp on this hardware",
+    "seg / edge / vis at 1280x720 (measured at 320x180 only)",
+    "Any backend round-trip: no Cosmos or Wan generation has been run from this repo"
   ],
   "next_actions": [
     "Run the ep01 scene on the Windows node with --device OPTIX and fill in the 3080 row. Until that exists, every schedule claim in ROADMAP.md is an estimate.",

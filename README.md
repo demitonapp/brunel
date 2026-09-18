@@ -1,22 +1,91 @@
 # Brunel
 
-A harness for producing engineering-history animation - starting with Marc Brunel's tunnelling
-shield for the Thames Tunnel (1825-1843) - that gets **measurably better every episode**.
+A harness for making video that gets **measurably better every time** — starting with Marc Brunel's
+tunnelling shield for the Thames Tunnel (1825–1843), and built to grow into engineering-project and
+construction-site simulation.
 
-One person art-directs. An LLM writes specs. Deterministic Python writes Blender files.
+**One person art-directs. An LLM writes specs. Deterministic Python writes Blender. A pluggable
+generative backend renders it photoreal.**
 
-> The deliverable of Episode 1 is not an episode. It is a **ratchet**.
+> The deliverable of the first cut is not a video. It is a **ratchet**.
 
-See **[ROADMAP.md](ROADMAP.md)** for the full plan: maturity ladder, quarterly plan, budget, risks,
-and the subject dossier.
+See **[ROADMAP.md](ROADMAP.md)** for the thesis, the maturity ladder and the plan, and
+**[docs/mvp-shield-ad-plan.md](docs/mvp-shield-ad-plan.md)** for the current production plan.
+
+---
+
+## The direction
+
+The original framing was "an engineering-history animation harness." The direction is wider and more
+commercially deliberate:
+
+1. **Marketing video now.** Short, compelling cuts about how things work — the shield, the dig, the
+   advance. Made by one person, at a cost that survives iteration.
+2. **Engineering simulation later.** The same architecture scales to construction sites and
+   real-world engineering projects, because the simulation lives in the deterministic scene and the
+   model only supplies the photorealism.
+
+That second step is the reason for the architecture below, and the reason the generative backend is
+deliberately swappable rather than chosen.
+
+---
+
+## The architecture: three layers, and only the middle one is uncertain
+
+```
+  TRUTH                    CONTROL                        RENDER
+  ─────                    ───────                        ──────
+  spec/*.toml              depth, segmentation,           local  (deterministic, free)
+  hand-modelled geometry   edge, blurred RGB,             cosmos (Cosmos Transfer 2.5)
+  fact ledger + factgate   beauty plate                   wan    (Alibaba Wan VACE)
+        │                        │                              │
+        └── Blender ─────────────┴──── harness passes ──────────┴── harness generate
+            (authoritative)          (model-neutral)              (swappable)
+```
+
+**The scene graph never leaves Blender.** No video model accepts a mesh, a USD stage or a scene
+graph — that is a structural gap in the industry, not a temporary limitation
+([evidence](docs/research/video-api-geometric-control-comparison-2026-09-18.md) §9). What leaves is a
+set of *rasterised control passes* that every control-capable backend already accepts. The scene
+graph stays authoritative; the model constrains itself to the passes.
+
+**Why that is the durable decision.** It is a 2026 finding that the vendors with the best aesthetics
+have no geometric control, and the vendors with geometric control are a generation behind on looks —
+Wan *closed* its control line at 2.5, LTX moved its frontier LoRAs to editing tasks, and Runway's
+entire published API has zero geometric parameters. So the passes are the portability hedge: swapping
+Cosmos for Wan for whatever ships next year is a backend config change, not a rewrite.
+
+**What does not move.** Shield geometry, the 12×3 cell count, the screw pitch, the advance distance,
+every dimension callout — all deterministic, all fact-gated, all composited on top. A diffusion model
+garbles text, and a mis-rendered dimension is a fact-gate failure, not a cosmetic one.
 
 ---
 
 ## Status
 
-Episode 1 renders end to end on this Mac as a **72-second low-fidelity animatic with a burned-in
-caption track and a scratch voiceover**. The Mac is the control plane, not a render farm; final
-frames belong on the RTX 3080.
+Honest, as of 2026-09-18.
+
+| | State |
+|---|---|
+| **`spec/ep01`** — the 8-shot, 72 s documentary | renders end to end as a low-fi animatic |
+| **`spec/ad01`** — the 3-beat, 18 s marketing cut | validates and renders; storyboard now reads (see below) |
+| **`harness passes`** — the control-pass exporter | **works**: all five passes verified, depth confirmed linear and greyscale |
+| **`harness backends`** — the pluggable interface | **works**: local / cosmos / wan registered |
+| **Cosmos hosted API** | **does not exist** — see [§4 of the plan](docs/mvp-shield-ad-plan.md). Self-host only. |
+| **Wan** | schema implemented from the published contract; not yet called |
+
+### What the storyboard taught us
+
+The first stills pass on the ad failed its own test, and the failures are the reason `ad01` exists in
+its current shape. The shield read as a **flat fence**; the screws were **hidden behind the board**;
+there was **nothing being dug** (no clay geometry at all, despite the narration promising it); there
+was **no tunnel** — just an infinite grey plane; and the cameras were **dead-on symmetrical**.
+
+All six are fixed in `spec/ad01/ad01.toml` and documented inline. The camera-placement lesson is
+worth repeating here because it bit twice: **every camera must sit inside the bore radius**, and the
+un-excavated clay must be **roof and invert, never a wall between camera and subject**.
+
+---
 
 ## Quick start
 
@@ -31,19 +100,18 @@ python -m harness doctor                # verify the toolchain lock
 staging and lighting disasters that a full render would otherwise hide for an hour:
 
 ```bash
-python -m harness validate spec/ep01/ep01.toml            # no Blender needed
-python -m harness render   spec/ep01/ep01.toml --fast --stills
+python -m harness validate spec/ad01/ad01.toml
+python -m harness render   spec/ad01/ad01.toml --fast --stills
 ```
 
-Then render and deliver:
+Then the generative interface — two commands, deliberately separate because the first is
+deterministic and free and the second costs money:
 
 ```bash
-python -m harness render  spec/ep01/ep01.toml --fast --res 384x682
-python -m harness deliver spec/ep01/ep01.toml --fast
+python -m harness backends                                    # what is available
+python -m harness passes spec/ad01/ad01.toml --backend cosmos  # rasterise the scene graph
+python -m harness generate spec/ad01/ad01.toml --backend local # hand it to a model
 ```
-
-`deliver` assembles the cut, writes SRT + ASS captions from the spec's narration, synthesises a
-scratch voiceover, burns the captions in, and muxes the audio.
 
 | Command | Does |
 |---|---|
@@ -56,6 +124,135 @@ scratch voiceover, burns the captions in, and muxes the audio.
 | `voice` | scratch VO via macOS `say`, aligned to the shot timeline |
 | `pipeline` | build + render + assemble |
 | `deliver` | assemble + captions + voice -> finished file |
+| **`passes`** | **rasterise the scene graph into control passes for a backend** |
+| **`generate`** | **send those passes to a backend and collect the frames** (concurrent, costed) |
+| **`backends`** | **list backends and the control-pass profile each one needs** |
+| **`sheet`** | **contact sheets — a shot's motion in one image** |
+| **`library`** | **browse the reusable engineering components** |
+| **`verify`** | **run every output check over what exists** |
+
+---
+
+## The generative interface
+
+A backend is anything that turns control passes into finished frames. It declares three things:
+
+```
+name       what to call it on the command line
+profile    the resolution / fps / frame-count it needs
+requires   which control passes it consumes
+```
+
+| Backend | Control passes it takes | Profile | Cost |
+|---|---|---|---|
+| `local` | plate | 1080×1920 @ 30 fps | **free, offline** |
+| **`wan`** | **plate, depth** | 1280×720 @ 16 fps, 81-frame chunks | **~$0.08/s at 720p** |
+| `cosmos` | plate, depth, seg, edge, vis | 1280×720 @ 16 fps, 93–480 frame chunks | self-hosted NIM, 65.4 GB VRAM |
+
+### Start with `wan`, not `cosmos`
+
+Cosmos is the better long-term destination and the worse first step. A hosted Cosmos API **does not
+exist** — the only path is a self-hosted NIM on **65.4 GB** of VRAM, with an NGC key, a Docker
+container and a 20 GB+ model pull. Nothing about that is "today."
+
+**fal.ai's Wan VACE is the same shape and works in minutes:**
+
+- **Sign up:** <https://fal.ai/login> — one key, a card, pay-as-you-go. **No minimum, no prepaid bundle.**
+- **Price:** **$0.08/s at 720p**, $0.06/s at 580p, $0.04/s at 480p, billed at 16 fps. The 18-second
+  shield ad costs about **$1.44**.
+- **Licence:** marked commercial use.
+- **Speed:** roughly a minute per generation.
+
+Put the key in the gitignored `.env.local`:
+
+```bash
+printf 'FAL_KEY=your-key-here\n' > .env.local
+```
+
+**Why this is not a detour.** VACE and Cosmos Transfer both take a **depth control video** and return
+a photoreal video. `depth` is the one pass the two share — which is why the harness renders it
+first-class, and why the pipeline built on VACE ports to Cosmos without changing a spec, a pass, or a
+line of the exporter. Only the backend name changes:
+
+```bash
+python -m harness backends                                    # what is available
+python -m harness generate spec/ad01/ad01.toml --backend wan --dry-run   # check setup, spend nothing
+python -m harness passes   spec/ad01/ad01.toml --backend wan  # rasterise (depth + plate)
+python -m harness generate spec/ad01/ad01.toml --backend wan  # ~$1.44 for 18 s
+```
+
+`--dry-run` checks credentials and shows exactly what would be submitted, without spending anything.
+An API you cannot smoke-test before paying is an API you will pay to debug.
+
+**`local` remains the default**, and not as a consolation prize: MechVerse measured the best video
+model in the world at **2.91 out of 5** on mechanical correctness, and found perceptual quality
+uncorrelated with it. A deterministic render is still the strongest engineering-explainer asset
+available — the generative backend is for atmosphere, not for mechanism.
+
+Adding a backend is one class in `harness/backend.py` and one entry in `BACKENDS`. No spec changes,
+no pass-exporter changes.
+
+---
+
+## The harness looks at the result
+
+Every expensive failure in this project has been **silent**. A camera outside the tunnel bore rendered
+black. A depth map was inverted. Another saturated to white. A colour map had no colour. A screenshot
+showed a frame that never changed when the code did. **None of them raised an error, and all of them
+were visible in the pixels.**
+
+So the harness checks the pixels, at the points where checking is cheap:
+
+| Check | Runs | Catches |
+|---|---|---|
+| **storyboard** | `render --stills` | frames that are black, flat, or 92% dark — i.e. a camera in the wrong place, which is this project's most common failure |
+| **depth pass** | `passes` | a depth map that is not neutral, is saturated to one end of its range, or whose mean drifts across the shot (the per-frame normalisation the stock preprocessors do) |
+| **clip** | `generate` | a generated clip crushed to black |
+
+`python -m harness verify <spec>` runs all of them over whatever exists. `tests/run.sh` proves the
+storyboard check fires on a black frame *and* stays quiet on a real one — a check that has never been
+seen to fail is not a check.
+
+**The depth check pays for itself.** On `ad02` it blocked a paid generation because three of four
+depth passes were saturated, and the fix was to let a shot declare its own range:
+
+```toml
+[[shot]]
+id = "m01"
+depth_range = [1.2, 9.5]   # near, far — overrides the camera-derived default
+```
+
+That is the shape of the ratchet: the check found the fault, the fault produced a spec capability,
+and the capability is now available to every future shot.
+
+**A per-frame check cannot see a fault that lives between frames.** The windmilling screws — a
+`.z` Euler track that swung the whole shaft round like a propeller — passed `storyboard`, `depth`
+and `clip` without a murmur, because every individual frame was a perfectly good picture.
+`check_motion` now samples across the shot and measures adjacent differences: a frozen shot is a
+hard failure, a busy one is a warning to go and look. **And the check is honest about its limits:**
+after the fix, correct rotation measured 14.3–16.3 against the bug's 18.1–19.5, so a single
+threshold cannot separate them. Both numbers are recorded in `harness/check.py`.
+
+**The spec can now declare a mechanism, and the harness can check it.** `turns x pitch == advance`
+is asserted at *validation* time — no Blender, no render, no money:
+
+```toml
+[shot.mechanism]
+turns = 6.0
+pitch = 0.033    # m per turn
+advance = 0.20   # 6 x 0.033 = 0.198, within tolerance
+```
+
+A jack that turns six times and moves nothing is not a subtle animation error; it is a machine that
+cannot exist, and it shipped once with the arithmetic written in a comment where nothing could
+check it.
+
+Also in `tests/run.sh`: **no shadowed top-level definitions.** A scripted rewrite left a duplicate
+`_depth_range` in `passes.py`, and Python takes the last one — so two rounds of careful fixes changed
+nothing, and the same broken number came back three times to three decimal places. The test found
+four more dead copies of the same mistake in the same file.
+
+---
 
 ## Measured, not estimated
 
@@ -63,17 +260,27 @@ scratch voiceover, burns the captions in, and muxes the audio.
 
 | Scene | Resolution | spp | s/frame | Notes |
 |---|---|---|---|---|
-| `spec/ep01/ep01.toml` | 384x682 | 8 | **1.97** | 864 frames, 1442 objects - the number to trust |
-| `spec/mvp/mvp.toml` | 384x682 | 8 | 3.00 | over 48 frames, so ~half of it was scene build |
-| `spec/mvp/mvp.toml` | 384x682 | 8 | 3.91 | Metal - *slower* than CPU on the M1 |
+| `spec/ep01/ep01.toml` | 384×682 | 8 | **1.97** | 864 frames, 1442 objects — the number to trust |
+| `spec/mvp/mvp.toml` | 384×682 | 8 | 3.00 | over 48 frames, so ~half of it was scene build |
+| `spec/mvp/mvp.toml` | 384×682 | 8 | 3.91 | Metal — *slower* than CPU on the M1 |
 
-Extrapolated to Episode 1's final settings (1080x1920, 32 spp): roughly **62 s/frame**, or about
-**37 hours** for 2,160 frames on the Mac. The RTX 3080 row is still blank, and every schedule claim
-in `ROADMAP.md` depends on it.
+Extrapolated to Episode 1's final settings (1080×1920, 32 spp): roughly **62 s/frame**, or about
+**37 hours** for 2,160 frames on the Mac.
 
-**Short benchmark runs lie.** Scene construction is a fixed cost independent of frame count, so a
-48-frame benchmark overstates per-frame time by about half. Measure over hundreds of frames, or
-subtract the build.
+**Control passes are far cheaper than beauty frames**, which is what makes the generative loop viable
+at all. Measured on the M1 at 320×180: depth **0.13 s/frame** (Cycles, 1 sample, unlit emission),
+edge and blur **~0.25 s/frame** (ffmpeg), segmentation **~1.5 s/frame** (Workbench). The beauty plate
+is the expensive one, and it is the one a generative backend replaces.
+
+**Two measured traps, both recorded in `LESSONS.md`:**
+
+- **Short benchmark runs lie.** Scene construction is a fixed cost independent of frame count, so a
+  48-frame benchmark overstates per-frame time by about half. Measure over hundreds of frames.
+- **AgX destroys a depth map.** Rendering depth through the episode's AgX view transform compressed
+  it into 0.48–0.77 instead of 0–1. A control pass is data, not a picture: depth and segmentation
+  render with the Standard transform.
+
+---
 
 ## Layout
 
@@ -83,11 +290,14 @@ harness/          the compiler - the only thing that writes bpy
   generators.py   geometry generators
   build.py        scene graph, assertion layer, manifest
   render.py       per-shot staging, visibility, tracked animation
+  passes.py       scene graph -> control passes (depth/seg/edge/vis/plate)
+  backend.py      the pluggable video backends (local / cosmos / wan)
   captions.py     narration -> SRT/ASS, burn-in
   audio.py        scratch voiceover via macOS say
   factgate.py     accuracy gate (--publish blocks)
   assemble.py     frames -> mp4
 spec/             episode specs (TOML), shot lists, fact ledgers
+docs/research/    the evidence base - every vendor claim, with sources and confidence
 library/          the compounding asset kit (GEN / MAT / SHOTS)
 goldens/          canary renders for regression
 qa/               rubrics, one per maturity level
@@ -96,23 +306,33 @@ eval/             the eval ledger - the only accepted retrospective evidence
 renders/          gitignored output
 ```
 
+---
+
 ## Principles
 
-1. **The model is interchangeable; the harness is the moat.** The LLM writes a diffable spec.
-   Only deterministic Python writes `bpy`.
-2. **Automate generation, never adjudication.** The critic is advisory. The human gate is mandatory.
-3. **Score renders, not code.** "The script ran" is not "the shot works".
-4. **Storyboard before you render.** Eight stills are cheaper than an hour of wrong frames.
-5. **1 Blender unit = 1 metre.** Always. Hero dimensions within +/-10% of a cited source.
-6. **Facts before script; script before render.** The fact ledger is bound to the
-   narration by hash, and `factgate` evaluates 11 rules against it. See
-   `docs/research/` for the source research and `spec/fact-ledger.schema.json` for
-   the contract.
+1. **The model is interchangeable; the harness is the moat.** The LLM writes a diffable spec; only
+   deterministic Python writes `bpy`; the generative backend is one class with three attributes.
+2. **The scene graph never leaves Blender.** What leaves is control passes. That is what makes the
+   backend swappable and the geometry authoritative at the same time.
+3. **Automate generation, never adjudication.** The critic is advisory. The human gate is mandatory.
+4. **Score renders, not code.** "The script ran" is not "the shot works".
+5. **Storyboard before you render.** Eight stills are cheaper than an hour of wrong frames — and this
+   project's own storyboard has now caught two rounds of staging failures before a frame of quality
+   render.
+6. **A control pass is data, not a picture.** Linear, full-range, consistent across frames. Depth
+   normalised once per shot, never per frame.
+7. **1 Blender unit = 1 metre.** Always. Hero dimensions within ±10% of a cited source.
+8. **Facts before script; script before render.** The fact ledger is bound to the narration by hash,
+   and `factgate` evaluates 11 rules against it.
+
+---
 
 ## Requirements
 
 - Python **3.13** exactly (bpy 5.2.2 requires it)
-- `ffmpeg` (present: 8.0.1)
-- `jsonschema` - a HARD dependency of the fact gate. A gate that silently skips
-  schema validation when a library is missing is not a gate.
+- `ffmpeg` (present: 8.0.1) — now also required for the `edge` and `vis` passes
+- `jsonschema` — a HARD dependency of the fact gate. A gate that silently skips schema validation
+  when a library is missing is not a gate.
 - Optional: a Windows box with an NVIDIA GPU for final frames
+- Optional: a GPU with **65.4 GB VRAM** for a self-hosted Cosmos NIM — the hosted endpoint does not
+  exist, so this is the only Cosmos path

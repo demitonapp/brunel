@@ -1,0 +1,420 @@
+# ad01 - "The Shield": a three-beat marketing cut of Brunel's tunnelling shield
+#
+# Why this spec exists separately from ep01
+# -----------------------------------------
+# ep01 is the documentary: eight shots, 72 s, accuracy above all. This is the
+# *ad*: three beats, ~18 s, built to be watched by someone who does not already
+# know what a tunnelling shield is.
+#
+# It exists because the first storyboard pass on ep01's equivalent shots failed
+# its own test (see docs/mvp-shield-ad-plan.md section 1a):
+#
+#   1. the shield read as a flat fence - dead-on symmetrical framing, no depth
+#   2. s05 hid the screws behind the board - the mechanism was invisible
+#   3. there was nothing being dug: no clay or earth geometry at all, despite
+#      the narration promising it
+#   4. no tunnel - the shield stood on an infinite grey plane under a dark sky
+#   5. the crew read as peg dolls (they are scale witnesses, by design)
+#   6. the lighting was flat: one sun and a fill, no contrast, no warmth
+#
+# Beats 1-4 are fixed here by geometry and staging. Beat 5 is answered by
+# *leaning in*: the crew figures are declared scale witnesses, and this cut uses
+# them as silhouettes against working light rather than pretending they are
+# people. Beat 6 is fixed with period tunnel work-light.
+#
+# The generative pipeline consumes THIS: `harness passes` rasterises it to
+# depth/seg/edge/vis and any backend (Cosmos, Wan, or nothing) can take it from
+# there. Every dimension that appears on screen still comes from the fact ledger.
+
+[meta]
+id = "ad01"
+title = "The Shield - how it dug, and how it moved"
+fps = 30
+width = 1080
+height = 1920
+samples = 32
+engine = "CYCLES"
+device = "OPTIX"
+units = "metric"
+
+# --- materials -----------------------------------------------------------
+# Flat and procedural. `clay` is the one that matters most here: it is the
+# un-excavated ground the shield is cutting, and its absence was the single
+# biggest reason the first pass did not read as "digging".
+
+[[material]]
+id = "iron"
+base_color = [0.09, 0.10, 0.12]
+roughness = 0.55
+metallic = 0.85
+
+[[material]]
+id = "brick"
+base_color = [0.40, 0.17, 0.12]
+roughness = 0.90
+metallic = 0.0
+
+[[material]]
+id = "timber"
+base_color = [0.33, 0.23, 0.13]
+roughness = 0.80
+metallic = 0.0
+
+[[material]]
+id = "clay"
+base_color = [0.24, 0.20, 0.16]
+roughness = 0.92
+metallic = 0.0
+
+[[material]]
+id = "stone"
+base_color = [0.16, 0.15, 0.14]
+roughness = 0.85
+metallic = 0.0
+
+[[material]]
+id = "ground"
+base_color = [0.10, 0.09, 0.08]
+roughness = 0.95
+metallic = 0.0
+
+# --- the place: a tunnel, not an infinite plane ---------------------------
+# Fix 4. The bore is rotated so its axis runs along Y, the direction of drive.
+# At radius 6.2 m it clears the shield's 11.43 x 6.78 m envelope (half-diagonal
+# ~6.6 m, so the corners graze it - deliberately, the shield should nearly fill
+# its hole).
+
+[[part]]
+id = "ground"
+gen = "plane"
+material = "ground"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+size = 240.0
+
+[[part]]
+id = "bore"
+gen = "ring"
+material = "brick"
+loc = [0.0, 6.0, 3.39]
+rot = [90.0, 0.0, 0.0]
+[part.params]
+radius = 6.20
+thickness = 0.35
+height = 34.0
+segments = 32
+# Deliberate: the bore is a hollow tube and the cameras stand inside it. The
+# bounding-box check cannot tell a tube from a solid, so this opts out - and
+# says why, so the next reader does not "fix" it by moving the camera out of
+# the tunnel the shot is about.
+camera_inside_ok = true
+
+# --- the thing being dug: the un-excavated face ---------------------------
+# Fix 3. A clay mass ahead of the shield, in two blocks with a gap between them
+# so the cut is legible - the upper block is still standing, the lower has been
+# taken out by the miners. Without this the shot is a shield floating in space.
+
+# The un-excavated ground must sit ABOVE and BELOW the shield's face, never in
+# front of it. The first draft put a clay block spanning z 3.25-6.85 directly
+# between the camera and the shield - and since the camera is ahead of the
+# shield (the direction of drive is -Y), that block was the whole frame. What
+# the shot needs is the roof the shield is cutting toward, and the invert under
+# it, so the cells stay visible in the gap between.
+
+[[part]]
+id = "face_upper"
+gen = "box"
+material = "clay"
+loc = [0.0, -2.40, 8.10]
+[part.params]
+dims = [11.80, 3.20, 2.60]
+
+[[part]]
+id = "face_lower"
+gen = "box"
+material = "clay"
+loc = [0.0, -2.40, 0.55]
+[part.params]
+dims = [11.80, 3.20, 1.10]
+
+# --- the shield ----------------------------------------------------------
+# 12 frames x 3 levels = 36 cells. Cast iron, 37 ft 6 in x 22 ft 3 in.
+
+[[part]]
+id = "shield"
+gen = "shield"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+shots = ["a01", "a03"]
+[part.params]
+frames = 12
+levels = 3
+width = 11.43
+height = 6.78
+depth = 0.75
+plate = 0.06
+hood = 0.90
+
+# A single cell, isolated, for beat 2. Same generator, frames=1.
+
+[[part]]
+id = "cell_frame"
+gen = "shield"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+shots = ["a02"]
+[part.params]
+frames = 1
+levels = 1
+width = 0.9525
+height = 2.26
+depth = 0.75
+plate = 0.07
+hood = 0.30
+
+# Fix 2. The board starts WITHDRAWN and the screws start visible. In ep01 the
+# board sat in front of the screws for most of the shot, so the mechanism the
+# beat is about could not be seen.
+
+[[part]]
+id = "cell_board"
+gen = "box"
+material = "timber"
+loc = [0.0, -0.98, 3.39]
+shots = ["a02"]
+[part.params]
+dims = [0.82, 0.09, 2.05]
+
+[[part]]
+id = "screw_head"
+gen = "cylinder"
+material = "iron"
+loc = [0.0, 0.0, 3.39]
+rot = [90.0, 0.0, 0.0]
+shots = ["a02"]
+[part.params]
+radius = 0.090
+depth = 1.15
+
+[[part]]
+id = "screw_foot"
+gen = "cylinder"
+material = "iron"
+loc = [0.0, 0.0, 2.50]
+rot = [90.0, 0.0, 0.0]
+shots = ["a02"]
+[part.params]
+radius = 0.055
+depth = 1.15
+
+# The finished brickwork the screws push against - close enough to read as the
+# thing being pushed off, not a wall floating in the background.
+
+[[part]]
+id = "cell_lining"
+gen = "brick_wall"
+material = "brick"
+loc = [0.0, 0.72, 3.39]
+shots = ["a02"]
+[part.params]
+length = 2.60
+height = 2.40
+brick_l = 0.215
+brick_h = 0.065
+brick_d = 0.1025
+mortar = 0.010
+
+# The full lining being built behind the shield.
+
+[[part]]
+id = "lining"
+gen = "brick_wall"
+material = "brick"
+loc = [0.0, 1.90, 2.60]
+shots = ["a01", "a03"]
+[part.params]
+length = 14.0
+height = 4.60
+brick_l = 0.215
+brick_h = 0.065
+brick_d = 0.1025
+mortar = 0.010
+
+# --- the crew: scale witnesses, used as silhouettes ------------------------
+# 1.70 m reference figures. Beat 5 is answered by accepting what they are: the
+# ROADMAP lists CHR_worker_scale as a must-ship asset precisely so a viewer can
+# read the shield's size. Here they stand in the working light so the contrast
+# does the work, rather than the geometry pretending to be anatomy.
+
+[[part]]
+id = "crew_a"
+gen = "crew"
+material = "timber"
+loc = [-3.40, -1.70, 0.0]
+shots = ["a01", "a03"]
+
+[[part]]
+id = "crew_b"
+gen = "crew"
+material = "timber"
+loc = [3.40, -1.70, 0.0]
+shots = ["a01", "a03"]
+
+[[part]]
+id = "crew_c"
+gen = "crew"
+material = "timber"
+loc = [-0.60, -2.90, 0.0]
+shots = ["a02", "a03"]
+
+# --- cameras: oblique, never dead-on -------------------------------------
+# Fix 1. ep01 framed the shield square-on from 14 m, which flattened 6.78 m of
+# iron into a fence. Every camera here is off-axis and closer.
+
+# Every camera here must sit INSIDE the bore (radius 6.2 m about the axis at
+# x=0, z=3.39). The first draft put the three-quarter camera at x=8.2, which is
+# outside the tube, so the shot framed the tunnel's exterior brickwork and the
+# shield was hidden behind it. Radial distance from the axis is the constraint
+# to check when moving these.
+[[camera]]
+id = "cam_three_quarter"
+lens_mm = 28.0
+loc = [4.20, -10.20, 4.90]
+look_at = [0.0, -0.60, 3.30]
+
+[[camera]]
+id = "cam_cell_detail"
+lens_mm = 50.0
+loc = [2.30, -3.60, 3.25]
+look_at = [0.0, -0.20, 3.30]
+
+[[camera]]
+id = "cam_along"
+lens_mm = 28.0
+loc = [3.40, -8.80, 3.10]
+look_at = [0.0, 0.60, 3.25]
+
+# --- lights: period tunnel work-light ------------------------------------
+# Fix 6. A warm key at the face and a cold falloff behind gives the iron an edge
+# to catch and separates the shield from the bore. Still only two lights - this
+# is not a relighting exercise, it is contrast.
+
+[[light]]
+id = "worklight_face"
+type = "AREA"
+loc = [-2.20, -3.60, 4.60]
+look_at = [0.0, -0.60, 3.30]
+energy = 1400.0
+color = [1.0, 0.82, 0.58]
+shots = ["a01", "a02", "a03"]
+
+[[light]]
+id = "worklight_far"
+type = "AREA"
+loc = [3.60, 2.60, 5.20]
+look_at = [0.0, -0.30, 3.30]
+energy = 700.0
+color = [0.72, 0.80, 1.0]
+shots = ["a01", "a02", "a03"]
+
+# A low bounce from the invert, so the underside of the shield is not a void.
+[[light]]
+id = "invert_bounce"
+type = "AREA"
+loc = [0.0, -1.20, 0.60]
+look_at = [0.0, -0.40, 3.30]
+energy = 320.0
+color = [0.86, 0.72, 0.54]
+shots = ["a01", "a02", "a03"]
+
+# --- the cut: three beats, ~18 s -----------------------------------------
+
+[[shot]]
+id = "a01"
+name = "The Shield"
+camera = "cam_three_quarter"
+seconds = 6.0
+move_from = [4.60, -11.40, 5.30]
+move_to = [3.90, -9.40, 4.60]
+notes = "Slow push in from three-quarter. The shield nearly fills its bore."
+narration = "Twelve frames. Three levels. Thirty-six cells, and one man to a cell."
+
+[[shot]]
+id = "a02"
+name = "The Dig"
+camera = "cam_cell_detail"
+seconds = 6.0
+move_from = [2.70, -4.10, 3.40]
+move_to = [2.10, -3.30, 3.15]
+notes = "One cell: board out, clay cut away, board back in."
+narration = "A miner draws back his board and cuts into the clay behind it."
+
+[[shot]]
+id = "a03"
+name = "The Advance"
+camera = "cam_along"
+seconds = 6.0
+move_from = [3.90, -9.80, 3.30]
+move_to = [3.00, -7.90, 2.95]
+notes = "Along the drive. Screws turn, the shield steps forward, brick follows."
+narration = "Then two screws turn, and thirty-six cells move forward together - an inch and a half at a time."
+
+# --- animation -----------------------------------------------------------
+# Track frames are 0.0-1.0 of the shot, so the same spec animates correctly at
+# any frame rate - which is what lets `passes` re-time it to a backend's fps.
+
+# a02: board withdrawn and returned, clay cut, frame advanced.
+[[track]]
+part = "cell_board"
+channel = "location"
+frames = [0.0, 0.30, 0.62, 1.0]
+values = [[0.0, -0.98, 3.39], [0.0, -0.98, 3.39], [0.0, -0.42, 3.39], [0.0, -0.34, 3.39]]
+
+# The advance is 0.30 m and the screws turn six times. 0.30 m over 6 turns is a
+# 50 mm pitch, which is the number that makes the two channels one mechanism.
+# In ep01 the screws turned over the whole shot while the frame only moved in
+# the last third - four of the six turns did nothing. Both channels now share
+# the same window, which is the physically admissible version.
+[[track]]
+part = "cell_frame"
+channel = "location"
+frames = [0.0, 0.62, 1.0]
+values = [[0.0, 0.0, 3.39], [0.0, 0.0, 3.39], [0.0, -0.30, 3.39]]
+
+[[track]]
+part = "screw_head"
+channel = "location"
+frames = [0.0, 0.62, 1.0]
+values = [[0.0, 0.0, 3.39], [0.0, 0.0, 3.39], [0.0, -0.30, 3.39]]
+
+[[track]]
+part = "screw_foot"
+channel = "location"
+frames = [0.0, 0.62, 1.0]
+values = [[0.0, 0.0, 2.50], [0.0, 0.0, 2.50], [0.0, -0.30, 2.50]]
+
+# Six full turns, over exactly the window in which the cell advances.
+[[track]]
+part = "screw_head"
+channel = "rotation"
+frames = [0.0, 0.62, 1.0]
+values = [[90.0, 0.0, 0.0], [90.0, 0.0, 0.0], [90.0, 0.0, 2160.0]]
+
+[[track]]
+part = "screw_foot"
+channel = "rotation"
+frames = [0.0, 0.62, 1.0]
+values = [[90.0, 0.0, 0.0], [90.0, 0.0, 0.0], [90.0, 0.0, 2160.0]]
+
+# a03: the whole shield steps forward, and the lining follows it.
+[[track]]
+part = "shield"
+channel = "location"
+frames = [0.0, 0.45, 1.0]
+values = [[0.0, 0.0, 3.39], [0.0, -0.05, 3.39], [0.0, -0.30, 3.39]]
+
+[[track]]
+part = "lining"
+channel = "location"
+frames = [0.0, 1.0]
+values = [[0.0, 1.90, 2.60], [0.0, 1.60, 2.60]]

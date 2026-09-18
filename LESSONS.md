@@ -151,3 +151,269 @@ Format:
   which is truthy, so the rule passed while enforcing nothing.
 - **Check:** A quote containing "placeholder" does not count as a quote.
 - **Where:** `harness/factgate.py` (`_has_quote`), fixture-backed in `tests/run.sh`.
+
+---
+
+# 2026-09-18 — the generative-interface pass
+
+## 2026-09-18 - A control pass is data, not a picture
+
+- **Context:** The depth pass was rendered through the episode's AgX view transform, because that is
+  what `reset_scene` sets and nothing changed it. AgX is a filmic curve: it compressed a linear
+  0-1 depth range into **0.48-0.77**. The map was no longer a linear function of distance, which
+  means a model consuming it would read a warped scene. Nothing errored; the file looked like a
+  plausible grey image.
+- **Check:** `depth` and `seg` render with the Standard view transform, restored afterwards. The
+  observable is the histogram: a depth pass of a scene with real depth spread must span most of
+  0-1, not sit inside half of it.
+- **Where:** `harness/passes.py` (`_render_one_pass`, the `original_view` save/restore).
+
+## 2026-09-18 - A confounded test produced a wrong belief, and it shipped into the design
+
+- **Context:** The first depth implementation assumed that setting `use_pass_combined = False` and
+  `use_pass_mist = True` makes `write_still` emit the mist pass. It was "verified" against a plain
+  grey cube — whose **beauty render is also grey**, so the test could not distinguish the two cases.
+  The belief survived into a working-looking implementation and was only caught when the real scene's
+  depth pass came out with colour in it (mean channel spread 0.095).
+- **Check:** A pass test must use a subject whose beauty render and control pass are **different in
+  the property being tested**. For depth that means checking R==G==B across all pixels, not eyeballing
+  "does it look like a gradient". `harness/passes.py` now verifies greyscale purity, and the numbers
+  are quoted in the README.
+- **Where:** recorded here and in the `_depth_override_material` docstring; verified by the
+  greyscale-outlier count (0 of 57,600 pixels) reported in the README.
+
+## 2026-09-18 - Blender 5.2 removed the compositor's arithmetic
+
+- **Context:** The obvious way to normalise a Z pass is a compositor graph: `Render Layers -> Map
+  Range -> Composite`. In Blender 5.2 **none of those three nodes exist.** `CompositorNodeComposite`,
+  `CompositorNodeMapRange`, `CompositorNodeMapValue` and `CompositorNodeMath` are all gone;
+  `CompositorNodeOutputFile` now accepts only `OPEN_EXR_MULTILAYER`; and the compositor node tree
+  moved from `scene.node_tree` to `scene.compositing_node_group`. Four separate API breaks in one
+  small feature.
+- **Check:** The depth pass does not use the compositor at all. It puts the depth into the beauty
+  pipeline as an unlit emission shader driven by `Camera Data > View Z Depth -> Map Range`
+  (shader nodes still have Map Range), which renders through machinery that is known to work.
+- **Where:** `harness/passes.py` (`_depth_override_material`). Related: the existing
+  "Blender's Action API is mid-transition" entry above — the same class of failure, one subsystem over.
+
+## 2026-09-18 - A check that fires correctly can still be wrong about the geometry
+
+- **Context:** Adding a brick tunnel bore to the ad spec made the camera assertion fire on every
+  shot: "camera is INSIDE part 'bore'". The check is right in general — a camera inside a solid
+  renders its interior — but a **ring is a hollow tube**, and the bounding box of a 34 m tube is a
+  solid slab. The camera standing inside the tunnel was exactly where it should be.
+- **Check:** None added, deliberately. The check already offers `camera_inside_ok = true`, and the
+  right response is to use it **with a comment saying why**, so the next reader does not "fix" the
+  problem by moving the camera out of the tunnel the shot is about.
+- **Where:** `spec/ad01/ad01.toml` (`bore`), asserted by `harness/build.py` (`_assert_cameras_clear`).
+
+## 2026-09-18 - The un-excavated face must be roof and invert, never a wall
+
+- **Context:** Building "the dig" as a first-class beat, a clay block was placed ahead of the shield
+  to be the thing being cut. It was placed at the shield's own height, spanning z 3.25-6.85 — i.e.
+  directly **between the camera and the shield**, because the camera is ahead of the shield in the
+  direction of drive. The shot rendered a wall. Two successive rounds of camera repositioning failed
+  to fix it because the camera was never the problem.
+- **Check:** None automatic. The rule is geometric and stated inline: material ahead of the shield
+  belongs above and below the frame's subject, leaving the cells visible in the gap. Found by the
+  storyboard pass, which is what it is for.
+- **Where:** `spec/ad01/ad01.toml` (`face_upper`, `face_lower`).
+
+## 2026-09-18 - Two channels that are one mechanism must share a time window
+
+- **Context:** In `spec/ep01/ep01.toml` shot 5, the jack screws rotated across the *whole* shot
+  (2160 degrees, six turns) while the cell frame only advanced in the last third. Four of the six
+  turns moved nothing — a screw jack cannot do that. The spec validated, rendered, and was
+  physically nonsense.
+- **Check:** In `ad01` both channels share one window, and the invariant is stated as a number: 0.30 m
+  over six turns is a **50 mm pitch**. A future assertion should read the advance and the rotation at
+  the frame where motion starts and assert they agree within tolerance.
+- **Where:** `spec/ad01/ad01.toml` (`cell_frame` and `screw_*` tracks); the ep01 version is still
+  wrong and is annotated as such in `docs/mvp-shield-ad-plan.md` §2.
+
+## 2026-09-18 - Blender's AREA lights default to pointing straight down
+
+- **Context:** The ad's "tunnel work lights" were placed at head height and given no rotation. An
+  AREA light's emission direction is its -Z axis, so both lights aimed at the floor. The subject was
+  black. Nothing warned; the render was just dark, which is easy to mistake for a lighting-design
+  problem rather than a bug.
+- **Check:** A light may now declare `look_at`, exactly as a camera does, and `build.aim` is reused.
+  A light aimed at a point is what a spec author means; an Euler rotation is an implementation detail
+  they will get wrong.
+- **Where:** `harness/spec.py` (`LIGHT_KEYS`), `harness/build.py` (`build_lights`).
+
+## 2026-09-18 - A free hosted endpoint that does not exist is not a plan
+
+- **Context:** The Cosmos plan assumed a hosted API at `build.nvidia.com`. There isn't one: the model
+  page is a scenario-locked demo with **no code sample and no endpoint URL**, `cosmos-transfer2.5-2b`
+  is absent from the `/v1/models` catalogue, every plausible hosted path returns 404, and the
+  self-hosted NIM's health paths 404 on both NVIDIA hosts. The only path is a self-hosted NIM on
+  **65.4 GB** of VRAM. Several turns were spent probing for an endpoint that was never there.
+- **Check:** The access path is recorded as resolved-and-negative in
+  `docs/mvp-shield-ad-plan.md` §4, with the probe results, so nobody re-runs the search. A backend
+  that needs a host says so via `missing_credentials` and its `note` field, and `harness backends`
+  prints it.
+- **Where:** `docs/mvp-shield-ad-plan.md` §4, `harness/backend.py` (`CosmosNimBackend.note`).
+
+## 2026-09-18 - A key pasted into a transcript is disclosed
+
+- **Context:** An API key was pasted into a chat session rather than read from a file. Whatever else
+  is true, it now exists in that transcript, and a transcript can be shared, forked or exported.
+- **Check:** `.gitignore` gained `.env` / `.env.*` (with `!.env.example`) — the repo had **no** env
+  pattern at all, so a key file would have been committable by default. Secrets are read at call time
+  from a gitignored file and never echoed.
+- **Where:** `.gitignore`, `harness/backend.py` (`load_env`, `ENV_FILE`). The key in question should
+  be rotated.
+
+## 2026-09-18 - The best backend is the one you can run today, if it is shaped like the one you want
+
+- **Context:** The plan was built around Cosmos because Cosmos is the right long-term destination —
+  multi-control conditioning, an open licence, a documented Sim2Real pipeline. Then it turned out
+  there is no hosted Cosmos API, and the only path is a self-hosted NIM on **65.4 GB** of VRAM with
+  an NGC key, a Docker container and a 20 GB model pull. That is not a first step; it is a project.
+- **Check:** The initial backend is chosen on **shape plus reachability**, not on destination
+  quality. fal.ai's Wan VACE is depth-conditioned — the *same control pass* Cosmos Transfer takes —
+  and costs $0.08/s behind one key with no minimum. So the pipeline built on it ports to Cosmos by
+  changing one string. `harness backends` prints each backend's cost and its honest status, and
+  `generate --dry-run` verifies setup without spending.
+- **Where:** `harness/backend.py` (`DEFAULT_WAN_URL`, the `wan` backend docstring), README
+  "Start with `wan`, not `cosmos`".
+
+## 2026-09-18 - The one pass that two backends share is the one worth making first-class
+
+- **Context:** Five control passes are rendered. Cosmos takes four of them (depth, seg, edge, blur);
+  Wan VACE takes depth and pose and has **no canny and no normal** (verified from its control
+  registry). The intersection of the two is **depth alone**.
+- **Check:** `depth` is the pass prioritised for correctness — linear, full-range, normalised once
+  per shot, verified greyscale — because it is the only one that survives a backend swap. A pipeline
+  built around `seg` or `edge` would be locked to Cosmos and would have to be rebuilt to move.
+- **Where:** `harness/passes.py` (depth is the pass with the most verification effort),
+  `harness/backend.py` (`WanVaceBackend.requires = ("plate", "depth")`).
+
+## 2026-09-18 - Depth polarity is a convention, and guessing it wrong looks like a model failure
+
+- **Context:** The first real Wan VACE generation preserved the scene's structure almost perfectly
+  and still came out as a flat amber silhouette. The cause was not the model: **depth was inverted.**
+  This repo's map was near=black/far=white; VACE expects **near=white/far=black**. Downloading fal's
+  own reference depth video and *looking at it* settled it in one minute — the woman is near-white,
+  the buildings mid-grey, the sky black.
+- **Check:** The polarity is asserted in the code as a comment with its evidence, and the observable
+  is quotable: a correct depth pass of a subject at the look-at point has a mid-range **mean**
+  (measured 120.9 of 255), not a saturated one (248.4 before the fix). Compare against the reference,
+  never against intuition.
+- **Where:** `harness/passes.py` (`_depth_override_material`, `To Min = 1.0 / To Max = 0.0`).
+
+## 2026-09-18 - Two attempts at "derive the near/far from geometry" both failed
+
+- **Context:** Setting the depth range from the scene's measured bounds is the obvious approach and
+  it was wrong twice. Including every part let the **240 m ground plane** and a **34 m tunnel bore**
+  set the range, compressing the subject into a sliver. Excluding the enclosures just let the ground
+  plane win instead, and the output was uniformly white.
+- **Check:** The range comes from the **camera's distance to its look-at point** (`× 0.4` to `× 2.5`).
+  Boring, predictable, and independent of whichever scenery happens to be in the file. What matters
+  is not the constant but that it is set **once per shot, never per frame**.
+- **Where:** `harness/passes.py` (`_depth_range`).
+
+## 2026-09-18 - Blender's default camera clip planes are not authored intent
+
+- **Context:** `_depth_range` preferred the camera dict's `clip_start` / `clip_end` when present.
+  They were present — as Blender's own defaults, **0.1 to 184.5** — because they are not in the spec's
+  camera vocabulary and so could not have been authored. The result: a subject four metres away mapped
+  to 2% of the ramp, i.e. pure white. The code was faithfully honouring a number nobody wrote.
+- **Check:** Do not read keys the spec's schema does not define. If a value cannot have been authored
+  in the spec, it is a default, and treating a default as intent is the same class of error as the
+  closed-vocabulary rule at the top of this file.
+- **Where:** `harness/passes.py` (`_depth_range`), `harness/spec.py` (`CAMERA_KEYS`).
+
+## 2026-09-18 - A duplicate function definition is silent, and Python takes the last one
+
+- **Context:** Rewriting `_depth_range` with a scripted string replace inserted the new version
+  **without removing the old**. Python resolved to the *later* definition, so two rounds of careful
+  fixes changed nothing at all — the same broken number came back three times to three decimal
+  places, which is what finally gave it away. A render that does not change when you change the code
+  is not a stubborn model, it is a shadowed function.
+- **Check:** `grep -c "^def <name>"` after any scripted rewrite. An unchanged measurement across a
+  changed input is the signal; treat identical results after a fix as a bug in the fix.
+- **Where:** `harness/passes.py` — the duplicate was removed (67 lines).
+
+## 2026-09-18 - urllib has no CA bundle on this machine; curl does
+
+- **Context:** Downloading the finished video from fal's CDN failed with
+  `CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate chain` — under the *system*
+  Python, while `curl` on the same box succeeded. Not a fal problem and not a network problem: the
+  interpreter has no trust store configured.
+- **Check:** `harness/backend.py` downloads via `curl`, which is already a hard dependency for the
+  `edge` and `vis` passes. One fewer thing that depends on how Python was installed.
+- **Where:** `harness/backend.py` (`_download`).
+
+## 2026-09-18 - fal's queue has a cold start measured in minutes, and that is not a failure
+
+- **Context:** The first generation attempt was killed at a 600 s timeout with no output, which read
+  as a hang. It was not. Polling two jobs in parallel showed both sitting at `IN_QUEUE` with
+  `queue_position: 0` for roughly **two and a half minutes** before moving to `IN_PROGRESS`, then
+  completing almost immediately. Three sequential shots exceeded the shell timeout on queue time
+  alone.
+- **Check:** `generate` reports fal's queue state as it polls, so `IN_QUEUE` is visible rather than
+  silent, and long runs belong in the background. Untested corollary: submitting the shots
+  concurrently would cut wall-clock time roughly three-fold, and should be the next change.
+- **Where:** `harness/backend.py` (`WanVaceBackend._poll`), and `--dry-run` in
+  `harness/__main__.py` for checking setup before spending.
+
+## 2026-09-18 - In Blender's XYZ Euler, Z is applied LAST, so a spin belongs on the axis the shaft lies along
+
+- **Context:** A screw laid along +Y by `rot_x = -90` was animated to turn by writing
+  0→2160° into the `.z` rotation slot. Blender's XYZ order is **R = Rz·Ry·Rx**, so Z is the
+  outermost rotation: it took the *already-laid* shaft and swung it about the world Z axis. The
+  screws swept round like a propeller. The user's note was four words long — "the screws are
+  screwing all weird" — and the contact sheet showed it immediately: horizontal, tipping, vertical.
+- **Check:** A `spin` channel that means "turn about this part's own axis". The harness composes it
+  as `R_base @ R_spin` and writes the resulting Euler, so a spec author never has to know Blender's
+  axis order. With the shaft along +Y, `Ry` leaves +Y unchanged — which is exactly why `.y` is the
+  slot that works and `.z` is the slot that produced a windmill.
+- **Where:** `harness/render.py` (`_apply_tracks`, the `spin` branch), `spec.py` (`CHANNELS`).
+
+## 2026-09-18 - An object that is symmetric about its axis cannot show that it is turning
+
+- **Context:** The first fix attempt moved the spin to the right Euler slot. Nothing changed
+  visibly, because the screw was a plain cylinder — rotationally identical at every angle. The
+  animation had been trying to show something the geometry could not express, which is *why* the
+  original bug went unnoticed: writing a spin into the wrong slot looked like it was doing
+  something, because the geometry gave no feedback either way.
+- **Check:** `gen_screw` takes a `bar` parameter and draws a tommy bar through the head — which is
+  what these jacks were actually turned with. The rule: if an animation is supposed to be visible,
+  the geometry must be asymmetric about the axis being animated.
+- **Where:** `harness/generators.py` (`gen_screw`).
+
+## 2026-09-18 - A per-frame check structurally cannot see a fault that lives between frames
+
+- **Context:** The windmilling screws passed every check in the harness. `check_storyboard` saw a
+  good picture. `check_depth_pass` saw a neutral, in-range, stable depth map. `check_clip` saw a
+  clip that was not black. Each frame was fine; the *motion* was nonsense. Nine checks guarded
+  appearance and none guarded motion.
+- **Check:** `check_motion` — frames sampled across the shot, adjacent differences measured. A
+  frozen shot (nothing changes) is a hard failure; a busy one is a warning to go and look. Wired
+  into `check_depth_pass`.
+- **Where:** `harness/check.py` (`check_motion`, `frame_diff`).
+
+## 2026-09-18 - A threshold calibrated on the bug cannot separate the bug from the fix
+
+- **Context:** `check_motion` first flagged the windmill at a worst-step of 18.1 and 19.5 against
+  6.8–7.8 for clean shots — a clean separation. After the fix, the *correct* animation measured 14.3
+  and 16.3. **The bug and the correct behaviour now overlap.** Any single threshold either passes the
+  fault or fails the fix.
+- **Check:** Two tiers, and an honest one: `MOTION_BUSY` (12.0) is a warning, `MOTION_MAX_STEP`
+  (60.0) is a failure. The contact sheet is the adjudicator. A check that pretends to a precision it
+  does not have is worse than a smoke alarm that says it is a smoke alarm.
+- **Where:** `harness/check.py` (the threshold block, with both measurements recorded).
+
+## 2026-09-18 - A scripted string replace that matches nothing does nothing, silently
+
+- **Context:** The mechanism assertion was written, "added", and reported as added — and never
+  appeared. The replacement targeted `shots.append(shot)`; the code says `shots.append(s)`. This is
+  the **second** time in one session that a scripted edit silently no-op'd (the first left a
+  duplicate `_depth_range` that shadowed the fixed one). In both cases the giveaway was a fix that
+  changed nothing.
+- **Check:** After any scripted rewrite, `grep` for a string that only the new code contains and
+  assert a non-zero count. An unchanged result after a fix is the signal.
+- **Where:** this file's sibling in `tests/run.sh` — "no shadowed top-level definitions" — catches
+  the duplicate half of this class; the no-op half is caught only by grepping after the edit.

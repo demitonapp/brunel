@@ -1,6 +1,6 @@
 # Brunel — Production Roadmap
 
-> A harness for making engineering-history animation that gets measurably better every episode.
+> A harness for making video that gets measurably better every time.
 > One person. One Mac. One Windows render node. DeepSeek in the loop.
 
 ---
@@ -8,13 +8,65 @@
 ## 0. What this repo is
 
 This is not a video project. It is a **ratchet**: a set of versioned, executable artefacts that
-every episode consumes and none rebuilds. Episodes are the symptom; the ratchet is the asset.
+every cut consumes and none rebuilds. Videos are the symptom; the ratchet is the asset.
 
-The north star: **in twelve months, output that reads as premium factual animation, still run by
-one person plus an LLM.** The LOOK is reachable. The studio PROCESS is not — dailies, supervisor
-sign-off and layered coupled simulation are an organisation, and one person plus agents is not an
-organisation. Say which tier each episode actually holds. The genre's currency is accuracy, and a
-channel that overstates its own tier has already spent it.
+The north star has widened. It is no longer only "premium factual animation about engineering
+history." It is:
+
+1. **Marketing video, now.** Short, compelling cuts about how things work — starting with Brunel's
+   shield: the dig, the advance, inch by inch. Made by one person at a cost that survives iteration.
+2. **Engineering simulation, in one to two years.** The same architecture extends to construction
+   sites and real-world engineering projects, because **the simulation lives in the deterministic
+   scene** and the model supplies only the photorealism. That is the NVIDIA Cosmos positioning
+   exactly — "Omniverse renders can be fed into Cosmos Transfer" — and it is why the generative
+   backend below is swappable rather than chosen.
+
+The LOOK is reachable. The studio PROCESS is not — dailies, supervisor sign-off and layered coupled
+simulation are an organisation, and one person plus agents is not an organisation. Say which tier
+each cut actually holds. The genre's currency is accuracy, and a channel that overstates its own tier
+has already spent it.
+
+---
+
+## 0a. The three-layer architecture
+
+Added 2026-09-18, after the generative research pass. This is the structural decision the rest of
+this document now assumes.
+
+```
+  TRUTH                    CONTROL                        RENDER
+  ─────                    ───────                        ──────
+  spec/*.toml              depth, segmentation,           local  (deterministic, free)
+  hand-modelled geometry   edge, blurred RGB,             cosmos (Cosmos Transfer 2.5)
+  fact ledger + factgate   beauty plate                   wan    (Alibaba Wan VACE)
+        │                        │                              │
+        └── Blender ─────────────┴──── harness passes ──────────┴── harness generate
+            (authoritative)          (model-neutral)              (swappable)
+```
+
+**The finding that forced it.** As of September 2026 the industry splits cleanly and nobody bridges
+it: the vendors with the best aesthetics have **no geometric control** (Veo, Sora, Kling, Seedance,
+Runway, Luma, Wan 3.0 — Runway's entire published OpenAPI contains zero depth/pose/edge/segmentation
+parameters), and the vendors with geometric control are a generation behind on looks. Worse, the
+trend is *away* from control at the frontier: Wan 2.1/2.2 shipped open weights with ControlNet-family
+conditioning, **2.5 shipped no weights at all**, and 3.0 is API-only with no geometric parameter.
+LTX moved its frontier LoRAs from structural control to editing tasks.
+
+**The consequence.** No video model accepts a mesh, a USD stage or a scene graph — that is a
+structural gap, not a temporary limitation. So the harness rasterises its own scene graph into the
+modalities every control-capable backend already accepts, and keeps the scene graph authoritative.
+**The passes are the portability hedge**: swapping backends is a config change, not a rewrite.
+
+**What does not move.** Shield geometry, the 12×3 cell count, the screw pitch, the advance distance,
+every dimension callout. All deterministic, all fact-gated, all composited over the finished plate.
+A diffusion model garbles text, and a mis-rendered dimension is a fact-gate failure.
+
+**The measured case for keeping the truth layer.** MechVerse (arXiv 2605.14843; 21,156 clips, 1,357
+mechanical assemblies, 14 models) puts the best video model in the world at **2.91 out of 5** on
+mechanical correctness, and finds perceptual quality *uncorrelated* with it: models "rotate a part
+that should translate, deform a rigid component, break coupling between parts." Its own conclusion is
+that models need "more explicit representations of parts, joints, and dependency structures" — which
+is precisely what the Blender scene graph already holds.
 
 ---
 

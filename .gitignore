@@ -13,6 +13,13 @@ blender_tx/
 
 .DS_Store
 
+# Secrets. An API key must never be committable by accident: this repo publishes,
+# and a key in history is disclosed the moment it is pushed. Kept out by pattern
+# rather than by remembering.
+.env
+.env.*
+!.env.example
+
 # Research payload: third-party primary sources and downloaded text.
 # ~119 MB of public-domain scans and downloaded runs. Kept locally for the
 # fact ledger, deliberately not published.

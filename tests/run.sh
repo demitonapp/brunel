@@ -93,13 +93,71 @@ else
 fi
 
 echo "cli parses"
-for cmd in doctor validate build render assemble captions voice pipeline deliver; do
+for cmd in doctor validate build render assemble captions voice pipeline deliver \
+           passes generate backends; do
     if $PY -m harness "$cmd" --help >/dev/null 2>&1; then
         echo "  pass  harness $cmd --help"
     else
         echo "  FAIL  harness $cmd --help"; fail=1
     fi
 done
+
+echo "harness hygiene"
+if $PY - <<'PY'
+import ast, pathlib, sys
+bad = []
+for path in sorted(pathlib.Path("harness").glob("*.py")):
+    tree = ast.parse(path.read_text(), filename=str(path))
+    seen = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if node.name in seen:
+                bad.append(f"{path}:{node.lineno}: {node.name} redefined "
+                           f"(first at line {seen[node.name]}) - Python takes the LAST one")
+            seen[node.name] = node.lineno
+if bad:
+    print("\n".join(bad))
+    sys.exit(1)
+PY
+then
+    echo "  pass  no shadowed top-level definitions in harness/"
+else
+    echo "  FAIL  a top-level definition is shadowed by a later one"; fail=1
+fi
+
+echo "output checks"
+if $PY - <<'PY'
+import sys
+sys.path.insert(0, ".")
+from pathlib import Path
+from harness import check
+# A frame that is entirely black must be reported, and one with a picture must not.
+import subprocess, tempfile, shutil
+tmp = Path(tempfile.mkdtemp())
+try:
+    ff = shutil.which("ffmpeg")
+    black = tmp / "black.png"
+    grey = tmp / "grey.png"
+    subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=64x64",
+                    "-frames:v", "1", str(black)], check=True)
+    subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "testsrc=s=64x64",
+                    "-frames:v", "1", str(grey)], check=True)
+    p_black = check.check_storyboard([black])
+    p_grey = check.check_storyboard([grey])
+    if not p_black:
+        print("a black frame was NOT reported - the storyboard check cannot fire")
+        sys.exit(1)
+    if p_grey:
+        print(f"a non-black frame was wrongly reported: {p_grey}")
+        sys.exit(1)
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+PY
+then
+    echo "  pass  a black frame is reported, a real frame is not"
+else
+    echo "  FAIL  the storyboard check is wrong in one direction or the other"; fail=1
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then echo "all checks passed"; else echo "CHECKS FAILED"; fi
