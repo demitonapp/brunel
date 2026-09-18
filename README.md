@@ -299,10 +299,11 @@ harness/          the compiler - the only thing that writes bpy
 spec/             episode specs (TOML), shot lists, fact ledgers
 docs/research/    the evidence base - every vendor claim, with sources and confidence
 library/          the compounding asset kit (GEN / MAT / SHOTS)
-goldens/          canary renders for regression
-qa/               rubrics, one per maturity level
+goldens/          canary renders for regression - EMPTY as of 2026-09-18, no canary yet
+qa/               rubrics, one per maturity level - only L0's is written
 legal/            per-asset licence register
-eval/             the eval ledger - the only accepted retrospective evidence
+eval/             the eval ledger - the only accepted retrospective evidence -
+                  README only as of 2026-09-18, no ledger entries yet
 renders/          gitignored output
 ```
 

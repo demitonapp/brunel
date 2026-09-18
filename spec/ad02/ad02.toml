@@ -426,6 +426,7 @@ narration = "They push against the brick behind. The tunnel is lined as it goes.
 [[track]]
 part = ["screw_head", "screw_foot"]
 channel = "spin"
+shots = ["c02"]
 frames = [0.0, 0.20, 0.80, 1.0]
 values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1440.0], [0.0, 0.0, 1440.0]]
 
@@ -434,12 +435,14 @@ values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1440.0], [0.0, 0.0, 1440.
 [[track]]
 part = "clay"
 channel = "location"
+shots = ["c03"]
 frames = [0.0, 0.15, 0.55, 1.0]
 values = [[0.0, -1.30, 3.50], [0.0, -1.30, 3.50], [0.0, -1.62, 3.50], [0.0, -1.74, 3.50]]
 
 [[track]]
 part = "spoil"
 channel = "location"
+shots = ["c03"]
 frames = [0.0, 0.30, 0.70, 1.0]
 values = [[0.0, -0.80, 3.50], [0.0, -0.60, 3.50], [0.0, 0.30, 3.50], [0.0, 1.10, 3.50]]
 
@@ -450,6 +453,7 @@ values = [[0.0, -0.80, 3.50], [0.0, -0.60, 3.50], [0.0, 0.30, 3.50], [0.0, 1.10,
 [[track]]
 part = ["screw_head", "screw_foot"]
 channel = "spin"
+shots = ["c04"]
 frames = [0.0, 0.15, 0.85, 1.0]
 values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 2160.0], [0.0, 0.0, 2160.0]]
 
@@ -465,6 +469,7 @@ values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 2160.0], [0.0, 0.0, 2160.
 part = ["cell_back", "cell_far", "cell_floor", "cell_roof", "board", "miner", "spoil"]
 channel = "location"
 mode = "offset"
+shots = ["c04"]
 frames = [0.0, 0.15, 0.85, 1.0]
 values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, -0.20, 0.0], [0.0, -0.20, 0.0]]
 
@@ -475,6 +480,7 @@ values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, -0.20, 0.0], [0.0, -0.20, 0.0]
 [[track]]
 part = "lining_new"
 channel = "location"
+shots = ["c05"]
 frames = [0.0, 0.50, 1.0]
 values = [[0.0, 2.10, 3.50], [0.0, 2.10, 3.50], [0.0, 1.50, 3.50]]
 
@@ -483,6 +489,7 @@ values = [[0.0, 2.10, 3.50], [0.0, 2.10, 3.50], [0.0, 1.50, 3.50]]
 part = ["cell_back", "cell_far", "cell_floor", "cell_roof", "board", "miner"]
 channel = "location"
 mode = "offset"
+shots = ["c05"]
 frames = [0.0, 0.50, 1.0]
 values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, -0.26, 0.0]]
 

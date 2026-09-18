@@ -217,6 +217,10 @@ _add(Component(
                                    "rotation animation must agree with"),
         "turns": Param(22, "", "thread collars drawn"),
         "foot": Param(0.12, "m", "bearing plate radius, 0 for none"),
+        "bar": Param(0.0, "m", "tommy-bar length through the near end, 0 for "
+                               "none. A screw is rotationally symmetric about "
+                               "its own axis, so turning one with no bar "
+                               "produces no visible change at all."),
     },
     provenance="Not a measured object: the pitch is chosen so six turns advance "
                "the cell 0.20 m, which is the order of a real shield increment. "
@@ -391,6 +395,32 @@ def detail(name: str) -> str:
         out += [f"    {line}" for line in c.example.split("\n")]
     return "\n".join(out)
 
+
+
+# This catalogue duplicates spec.GENERATOR_PARAMS by hand, and it has already
+# drifted once: `screw.bar` existed in the spec vocabulary and was missing
+# here a day after `screw` was added, silently, with nothing to notice.
+# `build.py` asserts spec<->generators agree at import time for the same
+# reason - a mismatch here is undiscoverable except by reading both files
+# side by side, which is exactly the failure mode a catalogue exists to end.
+from . import spec as _spec_mod  # noqa: E402
+
+_missing_components = _spec_mod.GENERATORS - set(COMPONENTS)
+if _missing_components:
+    raise ImportError(
+        f"generators in spec.GENERATORS with no library.py entry: "
+        f"{sorted(_missing_components)}"
+    )
+for _gen_name in _spec_mod.GENERATORS:
+    _spec_params = set(_spec_mod.GENERATOR_PARAMS.get(_gen_name, ()))
+    _lib_params = set(COMPONENTS[_gen_name].params)
+    if _spec_params != _lib_params:
+        raise ImportError(
+            f"library.py entry for {_gen_name!r} has drifted from "
+            f"spec.GENERATOR_PARAMS: spec-only={sorted(_spec_params - _lib_params)} "
+            f"library-only={sorted(_lib_params - _spec_params)}"
+        )
+del _gen_name, _spec_params, _lib_params, _missing_components
 
 __all__ = ["Component", "Param", "COMPONENTS", "find", "get", "catalogue", "detail",
            "GEN", "CHR", "DET", "MAT", "SHOTS"]

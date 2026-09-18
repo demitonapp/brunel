@@ -322,16 +322,10 @@ def load(path: str | Path) -> Episode:
         if bool(s.get("move_from")) != bool(s.get("move_to")):
             raise SpecError(f"{where}: move_from and move_to must be given together")
 
-        # A declared mechanism, checked HERE - at validation time. No Blender,
-        # no render, no money, no waiting for a paid generation to reveal that
-        # the machine cannot work.
-        #
-        # The invariant is `turns x pitch == advance`. A jack that turns six
-        # times and moves nothing is not a subtle animation error; it is a
-        # machine that cannot exist. An earlier version of ad02 shipped exactly
-        # that - the screws rotated across the whole shot while the cell only
-        # budged in the last third - and the arithmetic lived in a comment where
-        # nothing could check it.
+        # A declared mechanism: schema-checked here, reconciled against the
+        # actual tracks in `_check_mechanisms` once all shots and tracks are
+        # known (turns and pitch alone say nothing about what the animation
+        # actually does - see that function).
         mech = s.get("mechanism")
         if mech:
             unknown = set(mech) - MECHANISM_KEYS
@@ -343,15 +337,6 @@ def load(path: str | Path) -> Episode:
             if missing:
                 raise SpecError(f"{where}.mechanism: needs {sorted(need)}, "
                                 f"missing {sorted(missing)}")
-            tol = float(mech.get("tolerance", 0.02))
-            implied = float(mech["turns"]) * float(mech["pitch"])
-            declared = float(mech["advance"])
-            if abs(implied - declared) > tol:
-                raise SpecError(
-                    f"{where}.mechanism: {mech['turns']} turns x {mech['pitch']} m pitch "
-                    f"= {implied:.4f} m, but advance is declared as {declared:.4f} m "
-                    f"(tolerance {tol}). A jack cannot turn and not move."
-                )
             s["mechanism"] = {k: float(v) for k, v in mech.items()}
         shots.append(s)
 
@@ -424,10 +409,112 @@ def load(path: str | Path) -> Episode:
                 raise SpecError(f"{where}.shots: {sid!r} is not a declared shot")
         tracks.append(t)
 
-    return Episode(
+    # Two tracks driving the same (part, channel) in the same shot collide at
+    # every overlapping frame - keyframe_insert overwrites, so whichever track
+    # is applied last wins per frame, silently mixing both curves. This was
+    # not hypothetical: two UNSCOPED spin tracks on the same screws (1440 deg
+    # and 2160 deg) both applied to every shot in `ad02`, and two unscoped
+    # offset tracks did the same to the whole cell assembly. An unscoped track
+    # (`shots = []`) applies wherever any of its parts is visible, so absence
+    # of `shots` is not absence of scope.
+    owner: dict[tuple[str, str, str], int] = {}
+    for i, t in enumerate(tracks):
+        names = t["part"] if isinstance(t["part"], list) else [t["part"]]
+        applies_to = t["shots"] or sorted(shot_ids)
+        for sid in applies_to:
+            for n in names:
+                key = (sid, n, t["channel"])
+                prior = owner.get(key)
+                if prior is not None:
+                    raise SpecError(
+                        f"track[{prior}] and track[{i}] both drive part {n!r} "
+                        f"channel {t['channel']!r} in shot {sid!r}. Scope one "
+                        f"with `shots = [...]` - an unscoped track applies to "
+                        f"every shot its part is visible in, not just the one "
+                        f"it was written for."
+                    )
+                owner[key] = i
+
+    ep = Episode(
         meta=meta, parts=parts, cameras=cameras, lights=lights,
         materials=materials, shots=shots, tracks=tracks, source=path,
     )
+    _check_mechanisms(ep)
+    return ep
+
+
+def _mechanism_actuals(ep: "Episode", shot: dict[str, Any]) -> tuple[float | None, float | None]:
+    """What the tracks that actually apply to this shot command.
+
+    `turns` is the net rotation of every `spin` track over the shot, in whole
+    turns. `advance` is the net displacement of every offset-mode `location`
+    track. Both are None when no such track applies - which is itself the
+    finding: a mechanism block describing motion nothing keys.
+    """
+    turns: float | None = None
+    advance: float | None = None
+    for t in ep.tracks_for_shot(shot["id"]):
+        if t["channel"] == "spin":
+            delta = abs(t["values"][-1][2] - t["values"][0][2]) / 360.0
+            turns = delta if turns is None else turns + delta
+        elif t["channel"] == "location" and t.get("mode") == "offset":
+            a, b = t["values"][0], t["values"][-1]
+            delta = sum((x - y) ** 2 for x, y in zip(b, a)) ** 0.5
+            advance = delta if advance is None else advance + delta
+    return turns, advance
+
+
+def _check_mechanisms(ep: "Episode") -> None:
+    """`turns x pitch == advance`, checked against what the TRACKS do.
+
+    The original version of this check compared three numbers hand-written in
+    the same `[shot.mechanism]` block, so it validated that the block was
+    internally consistent and nothing else - change the spin track's degrees
+    and forget to update the block, and it still passed. `ad02`'s c05 advanced
+    the cell 0.26 m with no spin track and no mechanism block at all, one shot
+    after the block that WAS checked, and nothing noticed. This derives
+    `turns` and `advance` from the tracks that actually apply to the shot and
+    checks the declared numbers against those, not against each other.
+    """
+    for shot in ep.shots:
+        mech = shot.get("mechanism")
+        if not mech:
+            continue
+        where = f"shot[{shot['id']}].mechanism"
+        tol = float(mech.get("tolerance", 0.02))
+        actual_turns, actual_advance = _mechanism_actuals(ep, shot)
+        if actual_turns is None:
+            raise SpecError(
+                f"{where}: declares turns={mech['turns']}, but no `spin` track "
+                f"applies to shot {shot['id']!r}. The block describes a "
+                f"rotation nothing keys."
+            )
+        if abs(actual_turns - mech["turns"]) > tol:
+            raise SpecError(
+                f"{where}: declares turns={mech['turns']}, but the spin "
+                f"track(s) applying to shot {shot['id']!r} command "
+                f"{actual_turns:.4f} turns (tolerance {tol})."
+            )
+        if actual_advance is None:
+            raise SpecError(
+                f"{where}: declares advance={mech['advance']}, but no offset-"
+                f"mode `location` track applies to shot {shot['id']!r}. The "
+                f"block describes a displacement nothing keys."
+            )
+        if abs(actual_advance - mech["advance"]) > tol:
+            raise SpecError(
+                f"{where}: declares advance={mech['advance']}, but the "
+                f"offset-mode track(s) applying to shot {shot['id']!r} move "
+                f"{actual_advance:.4f} m (tolerance {tol})."
+            )
+        implied = float(mech["turns"]) * float(mech["pitch"])
+        declared = float(mech["advance"])
+        if abs(implied - declared) > tol:
+            raise SpecError(
+                f"{where}: {mech['turns']} turns x {mech['pitch']} m pitch = "
+                f"{implied:.4f} m, but advance is declared as {declared:.4f} m "
+                f"(tolerance {tol}). A jack cannot turn and not move."
+            )
 
 
 def validate_only(path: str | Path) -> Episode:

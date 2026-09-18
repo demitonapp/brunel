@@ -30,11 +30,12 @@ Two rules that are not negotiable
    "Blender/3D software" as the recommended source of synthetic depth renders.
    We take the whole-shot range from the camera's clip planes and the scene's
    measured bounds.
-2. **Passes render with Workbench, not Cycles.** A control pass is not a
-   beauty render; it needs no path tracing. Cycles on this scene measured ~62
-   s/frame at the delivery spec, which would make the iteration loop useless.
-   Workbench renders the same geometry in a fraction of a second and is exactly
-   as deterministic.
+2. **A control pass is not a beauty render; it needs no path tracing.** `seg`
+   renders with Workbench, in a fraction of a second. `depth` renders with
+   Cycles at 1 sample and no denoising - not Workbench, because the depth
+   override needs `Camera Data > View Z Depth`, a shader node Workbench's
+   pipeline does not evaluate - but "no path tracing" still holds: 1 spp with
+   denoising off costs nothing like a beauty frame at the delivery spec's 32.
 
 fps and resolution come from the *backend*, not the spec. A backend declares a
 `PassProfile`; the exporter re-times the shot's normalised animation tracks onto
@@ -70,39 +71,43 @@ COSMOS_FRAME_MAX = 480
 class PassProfile:
     """What a backend needs its control passes to look like.
 
-    `chunk_frames` splits a shot that is longer than the backend accepts into
-    consecutive chunks, each its own generation.
+    A shot is always one chunk. Multi-chunk generation existed here once and
+    was wrong: each chunk re-applied the WHOLE shot's animation at its own
+    frame count (see git history), so two chunks concatenated played the shot
+    twice, not once split in half. It was also unreachable on `wan`, where
+    `max_frames` already equalled the old `chunk_frames`. Deleted rather than
+    fixed - re-add it when a real backend forces a shot past its window, and
+    write the per-chunk track re-timing properly this time.
     """
 
     width: int
     height: int
     fps: int
-    chunk_frames: int | None = None
     min_frames: int = 1
     max_frames: int | None = None
 
     def frame_count(self, seconds: float) -> int:
+        """Frames this profile needs for a shot of this length.
+
+        Refuses rather than clamps at the top end. A silent clamp here once
+        rendered a 6 s shot as 81 frames at 16 fps - 5.06 s of picture - and
+        `_apply_tracks` played the whole normalised animation into that
+        shorter window, so the shot ran 18% fast with nothing to say so.
+        """
         n = int(round(seconds * self.fps))
         n = max(self.min_frames, n)
-        if self.max_frames is not None:
-            n = min(self.max_frames, n)
+        if self.max_frames is not None and n > self.max_frames:
+            raise PassError(
+                f"a {seconds}s shot needs {n} frames at {self.fps}fps, which "
+                f"exceeds this backend's {self.max_frames}-frame limit. "
+                "Shorten the shot, or split it into two shots - a silent "
+                "clamp here plays the shot fast instead of failing."
+            )
         return max(1, n)
 
     def chunks(self, seconds: float) -> list[int]:
-        """Frame counts per chunk, in order. A short shot is one chunk."""
-        total = self.frame_count(seconds)
-        if not self.chunk_frames or total <= self.chunk_frames:
-            return [total]
-        out: list[int] = []
-        left = total
-        while left > 0:
-            take = min(self.chunk_frames, left)
-            # Never emit a runt chunk the backend would reject.
-            if left - take and left - take < self.min_frames:
-                take = left
-            out.append(take)
-            left -= take
-        return out
+        """A shot is one chunk. Kept so callers do not have to special-case it."""
+        return [self.frame_count(seconds)]
 
 
 class PassError(RuntimeError):
@@ -168,7 +173,6 @@ def _set_engine_workbench(scene: Any) -> None:
 def _depth_range(
     ep: spec_mod.Episode,
     shot: dict[str, Any],
-    built: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[float, float]:
     """A fixed near/far for the whole shot, derived from the camera.
 
@@ -268,15 +272,18 @@ def _depth_override_material(near: float, far: float) -> Any:
 
 def _swap_material(
     built: dict[str, dict[str, Any]], mat: Any
-) -> dict[str, list[Any]]:
+) -> tuple[dict[str, list[Any]], set[str]]:
     """Point every mesh at `mat`, remembering what it had.
 
-    Returns the undo record. Slot count is preserved; a mesh with no slot gets
-    one appended so the override actually applies.
+    Returns the undo record and the names of meshes that had NO material slot
+    before the override - `_restore_material` needs both, because a slot
+    created here to carry the depth material has to be removed on restore, not
+    zipped against an empty saved list. Restoring it as "no change" once left
+    those meshes with a slot forever pointed at a material that had already
+    been deleted underneath them.
     """
-    import bpy
-
     saved: dict[str, list[Any]] = {}
+    added_slot: set[str] = set()
     for entry in built.values():
         for obj in entry.get("objs", []):
             if getattr(obj, "type", None) != "MESH":
@@ -284,21 +291,23 @@ def _swap_material(
             saved[obj.name] = [slot.material for slot in obj.material_slots]
             if not obj.material_slots:
                 obj.data.materials.append(mat)
+                added_slot.add(obj.name)
             else:
                 for slot in obj.material_slots:
                     slot.material = mat
-    # bpy is imported for parity with the callers that use it; keep the
-    # reference explicit so linters do not drop the import.
-    _ = bpy
-    return saved
+    return saved, added_slot
 
 
-def _restore_material(saved: dict[str, list[Any]]) -> None:
+def _restore_material(saved: dict[str, list[Any]], added_slot: set[str] = frozenset()) -> None:
     import bpy
 
     for name, mats in saved.items():
         obj = bpy.data.objects.get(name)
         if obj is None:
+            continue
+        if name in added_slot:
+            if obj.data.materials:
+                obj.data.materials.pop()
             continue
         for slot, mat in zip(obj.material_slots, mats):
             slot.material = mat
@@ -406,7 +415,7 @@ def render_passes(
         "episode": ep.id,
         "profile": {
             "width": profile.width, "height": profile.height,
-            "fps": profile.fps, "chunk_frames": profile.chunk_frames,
+            "fps": profile.fps, "max_frames": profile.max_frames,
         },
         "spec_fps": int(ep.meta["fps"]),
         "passes": list(wanted),
@@ -427,75 +436,70 @@ def render_passes(
 
         for shot in selected:
             seconds = float(shot["seconds"])
-            chunk_counts = profile.chunks(seconds)
+            # A shot is one chunk (see PassProfile). frame_count() raises if the
+            # shot does not fit the backend's window - fail here, before any
+            # pixel is rendered, not after.
+            count = profile.frame_count(seconds)
             if frames_override:
                 # A smoke-test cap. Iterating on a storyboard should not require
-                # a full 372-frame chunk before you can see whether the staging
+                # the full frame count before you can see whether the staging
                 # is right - the same reason `render --stills` exists.
-                chunk_counts = [max(1, int(frames_override))]
+                count = max(1, int(frames_override))
+            chunk_tag = "c00"
             shot_dir = ep_dir / shot["id"]
             shot_dir.mkdir(parents=True, exist_ok=True)
 
-            near, far = _depth_range(ep, shot, built)
+            near, far = _depth_range(ep, shot)
             record: dict[str, Any] = {
                 "shot": shot["id"],
                 "name": shot["name"],
                 "seconds": seconds,
-                "chunks": chunk_counts,
-                "frames_total": sum(chunk_counts),
+                "chunks": [count],
+                "frames_total": count,
                 "depth_range": [round(near, 4), round(far, 4)] if "depth" in wanted else None,
                 "passes": {},
             }
 
             if not quiet:
                 print(f"  {shot['id']:<4} {shot['name'][:26]:<28} "
-                      f"{sum(chunk_counts):>4} fr @ {profile.fps} fps  "
-                      f"{profile.width}x{profile.height}  "
-                      f"chunks={chunk_counts}")
+                      f"{count:>4} fr @ {profile.fps} fps  "
+                      f"{profile.width}x{profile.height}")
 
-            offset = 0
-            for ci, count in enumerate(chunk_counts):
-                chunk_tag = f"c{ci:02d}" if len(chunk_counts) > 1 else "c00"
+            # Tracks are 0.0-1.0 of a shot, so the same spec animates correctly
+            # at 16 fps as at 30 - that is why they are stored normalised.
+            from . import render as render_mod
 
-                # Re-apply visibility and animation for THIS chunk's frame count.
-                # Tracks are 0.0-1.0 of a shot, so the same spec animates
-                # correctly at 16 fps as at 30 - that is why they are stored
-                # normalised.
-                from . import render as render_mod
+            render_mod._reset_parts(ep, built)
+            render_mod._set_visibility(ep, built, shot["id"])
+            render_mod._apply_tracks(ep, built, shot["id"], count)
 
-                render_mod._reset_parts(ep, built)
-                render_mod._set_visibility(ep, built, shot["id"])
-                render_mod._apply_tracks(ep, built, shot["id"], count)
+            cam = cameras[shot["camera"]]
+            cam_obj = bpy.data.objects[shot["camera"]]
+            cam_obj.animation_data_clear()
+            cam_obj.location = tuple(cam["loc"])
+            build_mod.aim(cam_obj, cam["look_at"])
+            scene.camera = cam_obj
+            render_mod._apply_camera_move(cam_obj, shot, count)
 
-                cam = cameras[shot["camera"]]
-                cam_obj = bpy.data.objects[shot["camera"]]
-                cam_obj.animation_data_clear()
-                cam_obj.location = tuple(cam["loc"])
-                build_mod.aim(cam_obj, cam["look_at"])
-                scene.camera = cam_obj
-                render_mod._apply_camera_move(cam_obj, shot, count)
+            scene.frame_start = 1
+            scene.frame_end = count
 
-                scene.frame_start = 1
-                scene.frame_end = count
-
-                for pass_name in wanted:
-                    if pass_name in ("edge", "vis"):
-                        continue  # derived from plate below
-                    started = time.time()
-                    n = _render_one_pass(
-                        scene, built, shot_dir, chunk_tag, pass_name, count,
-                        colors=colors, near=near, far=far,
-                    )
-                    record["passes"].setdefault(pass_name, {})[chunk_tag] = {
-                        "frames": n,
-                        "dir": str(shot_dir / pass_name / chunk_tag),
-                        "seconds": round(time.time() - started, 2),
-                    }
-                    if not quiet:
-                        print(f"        {pass_name:<6} {n:>4} frames  "
-                              f"{time.time() - started:>6.1f}s")
-
-                offset += count
+            for pass_name in wanted:
+                if pass_name in ("edge", "vis"):
+                    continue  # derived from plate below
+                started = time.time()
+                n = _render_one_pass(
+                    scene, built, shot_dir, chunk_tag, pass_name, count,
+                    colors=colors, near=near, far=far,
+                )
+                record["passes"].setdefault(pass_name, {})[chunk_tag] = {
+                    "frames": n,
+                    "dir": str(shot_dir / pass_name / chunk_tag),
+                    "seconds": round(time.time() - started, 2),
+                }
+                if not quiet:
+                    print(f"        {pass_name:<6} {n:>4} frames  "
+                          f"{time.time() - started:>6.1f}s")
 
             # Derive edge and vis from the plate once, per shot.
             for derived in ("edge", "vis"):
@@ -557,6 +561,7 @@ def _render_one_pass(
     original_film = scene.render.film_transparent
     original_view = getattr(scene.view_settings, "view_transform", None)
     saved_mats: dict[str, list[Any]] = {}
+    added_slot: set[str] = set()
     depth_mat = None
     saved_world = None
 
@@ -593,7 +598,7 @@ def _render_one_pass(
                 bg.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
                 if "Strength" in bg.inputs:
                     bg.inputs["Strength"].default_value = 1.0
-        saved_mats = _swap_material(built, mat)
+        saved_mats, added_slot = _swap_material(built, mat)
         if not saved_mats:
             raise PassError("no mesh objects were found to carry the depth override")
 
@@ -621,7 +626,7 @@ def _render_one_pass(
     finally:
         _restore_render_passes(scene)
         if saved_mats:
-            _restore_material(saved_mats)
+            _restore_material(saved_mats, added_slot)
         if depth_mat is not None:
             try:
                 bpy.data.materials.remove(depth_mat)

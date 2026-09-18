@@ -255,7 +255,7 @@ class CosmosNimBackend(VideoBackend):  # noqa: D101
     name = "cosmos"
     profile = PassProfile(
         width=1280, height=720, fps=16,
-        chunk_frames=372, min_frames=93, max_frames=480,
+        min_frames=93, max_frames=480,
     )
     requires = ("plate", "depth", "seg", "edge", "vis")
     note = "schema verified against NVIDIA NIM docs; hosted endpoint does NOT exist, self-host required"
@@ -358,13 +358,13 @@ class WanVaceBackend(VideoBackend):
 
     name = "wan"
     # 81 frames at 16 fps is ~5.1 s, the window the 14B Wan family is known to
-    # handle natively. The chunk cap is deliberately conservative: fal does not
-    # publish a max frame count for this endpoint, and a rejected job costs a
-    # round trip to discover. Raise it once a real call confirms the ceiling.
-    profile = PassProfile(
-        width=1280, height=720, fps=16,
-        chunk_frames=81, min_frames=49, max_frames=81,
-    )
+    # handle natively. This is a hard ceiling, not a chunk size: a shot longer
+    # than this is refused by `PassProfile.frame_count` rather than split, and
+    # a shot generation itself came back at 81 frames when 64 were sent - fal
+    # does not honour the control video's own length, which is exactly why
+    # `harness generate` measures what it gets back instead of trusting this
+    # number. Raise the ceiling once a real call confirms it can go higher.
+    profile = PassProfile(width=1280, height=720, fps=16, min_frames=49, max_frames=81)
     requires = ("depth",)
     note = ("fal.ai Wan VACE, depth-conditioned. One key, no minimum, commercial use. "
             "The easiest control-capable video API there is.")
@@ -395,7 +395,6 @@ class WanVaceBackend(VideoBackend):
         if (w, h) != (self.profile.width, self.profile.height):
             self.profile = PassProfile(
                 width=w, height=h, fps=self.profile.fps,
-                chunk_frames=self.profile.chunk_frames,
                 min_frames=self.profile.min_frames,
                 max_frames=self.profile.max_frames,
             )
@@ -633,7 +632,15 @@ def build_bundles(
                 if not src.exists():
                     continue
                 dst = cache / sid / tag / f"{pass_name}.mp4"
-                if not dst.exists():
+                # Invalidate by mtime, not existence. Re-running `passes` after
+                # fixing a depth_range overwrites frame_*.png in place; caching
+                # on existence alone meant `generate --force` paid to generate
+                # from the STALE control video, because the mp4 mux was never
+                # told the frames underneath it had changed.
+                newest_src = max(
+                    (f.stat().st_mtime for f in src.glob("frame_*.png")), default=0.0
+                )
+                if not dst.exists() or dst.stat().st_mtime < newest_src:
                     _mux(src, fps, dst)
                 videos[pass_name] = dst
             if videos:
@@ -645,13 +652,22 @@ def build_bundles(
 def describe() -> str:
     """A human summary for `python -m harness backends`."""
     lines = []
+    from .passes import PASS_NAMES
+
     for name in sorted(BACKENDS):
         cls = BACKENDS[name]
         p = cls.profile
         offline = "offline" if cls.offline else "needs a key or a host"
+        # A spec decision aimed at a pass this backend does not consume - a
+        # material colour, when the backend only takes depth - has no way to
+        # reach the render. Say so here, not only in a comment nobody reads
+        # until after the money is spent.
+        ignores = [n for n in PASS_NAMES if n not in cls.requires]
         lines.append(
             f"  {name:<8} {p.width}x{p.height} @ {p.fps}fps  "
-            f"chunk={p.chunk_frames or '-'}  wants={','.join(cls.requires) or '-'}  ({offline})"
+            f"max={p.max_frames or '-'} frames  "
+            f"wants={','.join(cls.requires) or '-'}  "
+            f"ignores={','.join(ignores) or '-'}  ({offline})"
         )
         if cls.note:
             lines.append(f"           {cls.note}")

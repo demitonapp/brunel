@@ -102,16 +102,23 @@ def build_cues(
     vo_durations: dict[str, float] | None = None,
     lead: float = 0.35,
     tail: float = 0.45,
+    shot_durations: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
     """One cue per chunk, laid out along the episode timeline.
 
     When a real voiceover exists its measured duration drives the spread, so
     the words on screen track the words being spoken.
+
+    `shot_durations` overrides `shot["seconds"]` per shot id when given. A
+    generated backend does not deliver exactly the length it was asked for -
+    Wan returned 5.06s of picture for a 4.00s request - so captions built for
+    the delivered file must be timed on what the file actually contains, not
+    on the spec's request.
     """
     cues: list[dict[str, Any]] = []
     t = 0.0
     for shot in ep.shots:
-        dur = float(shot["seconds"])
+        dur = float((shot_durations or {}).get(shot["id"], shot["seconds"]))
         text = (shot.get("narration") or "").strip()
         if text:
             chunks = chunk_text(text)

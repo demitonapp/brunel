@@ -17,6 +17,7 @@ from mathutils import Matrix, Vector
 
 from . import generators as gen_mod
 from . import spec as spec_mod
+from .generators import BuildError
 
 # The canonical generator list lives in spec.py so that `validate` works on a
 # machine with no Blender. Assert the two agree, loudly, at import time - a
@@ -36,10 +37,6 @@ if _no_params:
 FACE_WIDTH_M = gen_mod.THAMES_TUNNEL["shield_width_m"]
 FACE_HEIGHT_M = gen_mod.THAMES_TUNNEL["shield_height_m"]
 DIM_TOLERANCE = gen_mod.DIM_TOLERANCE
-
-
-class BuildError(Exception):
-    """Raised when the scene cannot be built as specified."""
 
 
 # --- scene setup ---------------------------------------------------------

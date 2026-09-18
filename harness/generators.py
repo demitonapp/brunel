@@ -32,7 +32,13 @@ DIM_TOLERANCE = 0.10
 
 
 class BuildError(Exception):
-    """Raised when a generator cannot produce the requested geometry."""
+    """Raised when the scene cannot be built as specified.
+
+    One class, not two. `build.py` used to define its own `BuildError` and
+    `cmd_build` caught only that one - so a bad `crew` pose, raised from here,
+    surfaced as an uncaught traceback instead of "build FAILED". `build.py`
+    imports this one rather than defining a second.
+    """
 
 
 # --- low-level mesh helpers ---------------------------------------------

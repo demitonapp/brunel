@@ -230,6 +230,15 @@ Format:
   the frame where motion starts and assert they agree within tolerance.
 - **Where:** `spec/ad01/ad01.toml` (`cell_frame` and `screw_*` tracks); the ep01 version is still
   wrong and is annotated as such in `docs/mvp-shield-ad-plan.md` §2.
+- **Status update (2026-09-18):** The "future assertion" above was written as `[shot.mechanism]` in
+  `spec.py`, and it checked `turns x pitch == advance` against three numbers hand-written in the same
+  block — internally consistent, and never compared to what the `spin`/offset tracks actually did.
+  `ad02` shipped with that gap twice over: c04's block matched its own arithmetic while the tracks
+  driving it were unscoped and colliding with every other shot's tracks (see `docs/spec.md` H11), and
+  c05 advanced the cell 0.26 m with no mechanism block and no spin track at all, one shot after the
+  block that *was* checked. Fixed the same day: `_check_mechanisms` in `harness/spec.py` now derives
+  `turns` and `advance` from the tracks actually applying to the shot and checks the declared numbers
+  against those. ENFORCED BY: `tests/run.sh` ("mechanism blocks are checked against tracks").
 
 ## 2026-09-18 - Blender's AREA lights default to pointing straight down
 
@@ -417,3 +426,26 @@ Format:
   assert a non-zero count. An unchanged result after a fix is the signal.
 - **Where:** this file's sibling in `tests/run.sh` — "no shadowed top-level definitions" — catches
   the duplicate half of this class; the no-op half is caught only by grepping after the edit.
+
+## 2026-09-18 - A documented check is not an enforced check
+
+- **Context:** A full audit of `harness/` and of the most recent paid generation
+  (`renders/ad02/generated-wan/shield-cycle-480p-captioned.mp4`) found that `check_clip` — written,
+  tested, and described in this file's own docstrings — was called in the sequential branch of
+  `cmd_generate` and never called in the `submit`/`collect` branch, which is the branch taken
+  whenever more than one shot is generated, i.e. every real run. The payoff shot of `ad02` shipped
+  crushed to black, and the check that would have caught it never ran. Three more findings from the
+  same audit — the mechanism check above, a fix aimed at a colour channel `wan` does not consume, and
+  a "fixed" mid-shot artefact still visible in the delivered clip — were each already written down
+  somewhere in this file as a lesson learned, and shipped anyway. The full audit is
+  `docs/spec.md` Part II-III.
+- **Check:** `deliver --backend` now refuses a crushed-to-black or mistimed generated clip before it
+  ships (`harness/__main__.py`, `_deliver_from_backend`), `cmd_generate`'s `_accept` refuses one
+  before counting it as delivered, and `docs/spec.md` §16 states the acceptance criteria the fix is
+  measured against. Going forward: a lesson recorded here without a line naming what enforces it is a
+  lesson that can ship again. New entries should name the check; old ones get a status update, as
+  above, the next time they turn out to matter rather than as a batch rewrite - annotating all 40
+  entries in one pass was tried and rejected for this session: it would have meant asserting
+  enforcement for lessons nobody had just re-verified, which is the same trap in a different shape.
+- **Where:** `harness/__main__.py` (`cmd_generate`'s `_accept`, `cmd_deliver`'s
+  `_deliver_from_backend`), `tests/run.sh` ("deliver --backend" section), `docs/spec.md`.
