@@ -1,0 +1,32 @@
+# NEGATIVE TEST. `smooth` is an ANGLE in degrees, not a flag. `smooth = true`
+# must be refused rather than guessed at, because the threshold decides whether
+# a cylinder's end cap stays flat or reads as a dome - and an end cap is
+# exactly what an exploded or sectioned mechanism shot is showing.
+[meta]
+id = "selftest_smooth"
+title = "Negative test - smooth is an angle, not a flag"
+fps = 12
+width = 320
+height = 568
+samples = 4
+units = "metric"
+
+[[part]]
+id = "barrel"
+gen = "cylinder"
+loc = [0.0, 0.0, 0.0]
+smooth = true
+[part.params]
+radius = 0.07
+depth = 0.9
+
+[[camera]]
+id = "cam"
+lens_mm = 50.0
+loc = [0.0, -5.0, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[shot]]
+id = "s01"
+camera = "cam"
+seconds = 1.0

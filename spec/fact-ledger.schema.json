@@ -15,7 +15,8 @@
       "additionalProperties": false,
       "required": ["id", "slug", "title", "subject", "period", "runtime_s", "ledger_revision"],
       "properties": {
-        "id": { "type": "string", "pattern": "^EP[0-9]{3}$" },
+        "id": { "type": "string", "pattern": "^(EP|S)[0-9]{3}$",
+               "description": "EPnnn for a long-form episode, Snnn for a Short. Shorts became first-class deliverables in docs/strategy/slate.md; this schema predated that." },
         "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
         "title": { "type": "string" },
         "subject": { "type": "string" },

@@ -23,7 +23,8 @@ from typing import Any
 
 TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
 META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device", "units"}
-PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots"}
+PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots",
+             "smooth"}
 CAMERA_KEYS = {"id", "lens_mm", "loc", "look_at"}
 LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "look_at", "color", "angle", "shots"}
 MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic"}
@@ -44,7 +45,7 @@ GENERATORS = {
 # class this compiler exists to prevent.
 GENERATOR_PARAMS = {
     "box": {"dims"},
-    "cylinder": {"radius", "depth"},
+    "cylinder": {"radius", "depth", "segments"},
     "sphere": {"radius"},
     "plane": {"size"},
     "shield": {"frames", "levels", "width", "height", "depth", "plate", "hood"},
@@ -249,6 +250,20 @@ def load(path: str | Path) -> Episode:
                 f"Allowed: {sorted(allowed)}. "
                 "The compiler does not guess - fix the name or add it to the schema."
             )
+        # `smooth` is an ANGLE in degrees, not a flag. Shading every polygon
+        # smooth turns a cylinder's flat end cap into a dome, and the end caps
+        # are exactly what a sectioned or exploded mechanism shot is showing.
+        # An angle says "smooth where the surface curves, stay sharp at an
+        # edge", which is the only version that is correct for both.
+        if "smooth" in p:
+            if isinstance(p["smooth"], bool) or not isinstance(p["smooth"], (int, float)):
+                raise SpecError(
+                    f"{where}.smooth: expected an angle in DEGREES, e.g. smooth = 30 - "
+                    f"got {p['smooth']!r}. The compiler does not guess a threshold."
+                )
+            if not 0.0 < float(p["smooth"]) < 180.0:
+                raise SpecError(f"{where}.smooth: {p['smooth']} is not an angle in (0, 180)")
+            p["smooth"] = float(p["smooth"])
         p["shots"] = list(p.get("shots", []))
         parts.append(p)
 

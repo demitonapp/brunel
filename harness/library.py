@@ -298,14 +298,17 @@ height = 2.9''',
 
 for _name, _params, _help in (
     ("box", {"dims": [1.0, 1.0, 1.0]}, "A cuboid: [x, y, z] metres."),
-    ("cylinder", {"radius": 0.5, "depth": 1.0}, "A cylinder, axis along Z by default. "
-                                                "rot = [90,0,0] lays it along Y."),
+    ("cylinder", {"radius": 0.5, "depth": 1.0, "segments": 24},
+     "A cylinder, axis along Z by default. rot = [90,0,0] lays it along Y (rot is in "
+     "DEGREES). Raise `segments` for a hero object: 24 is visibly faceted at 1080x1920."),
     ("sphere", {"radius": 0.5}, "A UV sphere."),
     ("plane", {"size": 240.0}, "A flat ground plane, centred on the part origin."),
 ):
     _add(Component(
         name=_name, category=GEN, summary=_help,
-        params={k: Param(v, "m") for k, v in _params.items()},
+        # A count has no unit; everything else on a primitive is metres.
+        params={k: Param(v, "" if isinstance(v, int) else "m")
+                for k, v in _params.items()},
         example=f'[[part]]\nid = "my_{_name}"\ngen = "{_name}"\nmaterial = "iron"\n'
                 f'loc = [0.0, 0.0, 0.0]\n[part.params]\n'
                 + "\n".join(f"{k} = {v}" for k, v in _params.items()),

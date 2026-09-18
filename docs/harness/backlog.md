@@ -288,16 +288,18 @@ flagship opening the channel. The slate now opens on eight Shorts and three mech
 
 | # | Capability | Needed by | Was | Now |
 |---|---|---|---|---|
-| **C4** | **Dual aspect from the spec** — 9:16 and 16:9 from one spec | **S1, i.e. immediately** | 2nd | **1st** |
-| **C1** | **Mode C — diagram/data**: dimension callout, section, annotated arrow | **S3** (the moment-arm reveal) | 1st | 2nd, and incremental |
+| **C1** | **Mode C — diagram/data**: dimension callout, leader line, annotated arrow | **S3** (the moment-arm reveal) | 1st | **1st**, and much smaller |
+| **C4** | **Dual aspect from the spec** — 9:16 and 16:9 from one spec | **L1**, not S1 | 2nd | 2nd |
 | C5 | Thumbnail render from the same scene | L1 | 5th | 3rd |
 | C2 | Geospatial terrain input — DEM heightfield | Phase 3 | 2nd | deferred |
 | C3 | Diagrammatic water flow | Phase 3 | 3rd | deferred |
 | C6 | "As of" facts in the fact gate | Phase 3 | 4th | deferred |
 
-**C4 became first because Phase 0 is entirely vertical.** Every Short is 1080×1920. Building the
-long-form aspect later from the same spec is the whole point; doing it the other way round means
-learning every camera and framing lesson twice.
+**C4 is NOT needed by S1 — corrected 2026-09-18.** An earlier version of this table said "needed
+by S1, i.e. immediately". That was wrong: every Phase 0 Short is 1080×1920, which is already the
+default and already renders. C4 is about getting 16:9 *as well*, from the same spec, and the first
+video that needs it is **L1**. Acting on the old line meant building a capability before the video
+that needs it — the exact inversion this file exists to prevent.
 
 **C1 shrank.** Against a Snowy flagship, Mode C meant terrain maps and cross-sections — a large
 build. Against S3 it means one animated dimension callout with a leader line. Build that much, and
@@ -362,3 +364,72 @@ of render. **Blocks:** Phase 1, on this machine.
 **Fix.** Assemble per shot and drop the frames, or write to a scratch volume declared in the spec.
 **Check.** Refuse a render whose projected frame bytes exceed free space, naming both numbers.
 Not needed until Phase 1 — recorded now so it is not rediscovered at 3 a.m. on frame 9,000.
+
+### H21 — A hero cylinder could not be made to look like one
+
+Found by building S1's cylinder from primitives and **looking at the frame** before writing the
+spec — the repo's own "score renders, not code" rule, applied to a capability question.
+
+**Two faults, both one line, both fixed 2026-09-18.**
+
+`_cyl()` has always taken a `segments` argument, and `GENERATOR_PARAMS["cylinder"]` was
+`{"radius", "depth"}` — so no spec could ever set it and every cylinder in the repo was 24-sided
+whatever it was for. Fine for a screw shaft at 30 m; visibly faceted on a chrome barrel filling a
+1080×1920 frame. **A parameter the spec cannot set is not a parameter.**
+
+There was also **no mesh smooth shading anywhere in the harness.** `render._smooth()` is f-curve
+easing ("Ease in AND out"), not `shade_smooth`, and nothing else touched mesh shading. Correct for
+the shield — boxes and bricks *should* be flat — and wrong for a turned steel surface.
+
+**Fix.** `segments` added to the cylinder's params. `smooth` added to `PART_KEYS` as an **angle in
+degrees**, not a flag: shading every polygon smooth turns a cylinder's end cap into a dome, and the
+end caps are exactly what Beat 3 of S1 is showing. Applied per part, opt-in, so no existing `ep01`
+or `ad01` frame changes. `bpy.ops.object.shade_smooth_by_angle` is the supported path in Blender 5.x
+(`MeshPolygon.use_smooth` was removed in 4.x and `Mesh.shade_auto_smooth` does not exist), and it
+needs a selection, so `_shade_smooth` saves and restores it — a build that leaks selection makes the
+next part's operator do something else, which is an order-dependent bug that will not reproduce.
+
+**Checks.** `tests/run.sh`: `smooth = true` is refused with "expected an angle in DEGREES"
+(`tests/fixtures/smooth_not_an_angle.toml`), and an 8-segment and a 64-segment cylinder must not
+have the same polygon count (`tests/fixtures/cylinder_segments.toml`).
+
+### H22 — `check_storyboard` cannot see "unreadable"
+
+The first S1 probe rendered three disconnected objects floating in near-darkness — `rot` had been
+written in radians against a schema that takes degrees, and the spec declared no lights. The frame
+was meaningless. `check_storyboard` passed it: *"1 frame(s), all carry a picture."*
+
+The check is not wrong. It answers "is this frame black, flat, or 92% dark", and the answer was no.
+It does not answer "does this frame show the thing the shot exists to show" — the same shape as
+§8.7, where every depth pass was a valid depth map and none carried the subject.
+
+**Blocks:** nothing today. The stills pass exists to be looked at by a human, and it was.
+**Candidate check:** a frame whose subject pixels occupy less than some fraction of frame, or whose
+parts project to disjoint clusters, is a WARN pointing at a contact sheet — never a hard gate. The
+repo's own rule about checks that cry wolf applies, and this one would.
+**Recorded so it is not mistaken for a gap nobody noticed.**
+
+### H23 — For a Markdown script, the ledger hash covers the stage directions too
+
+`factgate.narration_text()` extracts `^narration = "..."` lines from a **TOML** spec — "the spec is
+the approved script, so the hash tracks the words". For any other suffix it returns
+`path.read_text()`: **the entire file.**
+
+`spec/s01/facts/s01.facts.json` sets `narration_source` to
+`docs/videos/s01-hydraulic-cylinder/script.md`, which is the right place for a script to live. The
+consequence is that `script_hash_matches_ledger` fails on **any** edit to that file — a reworded
+stage direction, a corrected caption-policy note, a typo in an open question. Observed 2026-09-18:
+editing Beat 3's *Picture* block and the caption policy, touching no narration line, invalidated the
+ledger.
+
+The gate is then wrong in the direction that matters most. A ledger revision should mean "the words
+changed, re-approve the facts". Here it means "the file changed", so it fires on edits that cannot
+possibly affect a factual claim — and a gate that cries wolf is one people learn to re-stamp without
+reading. That is H6's lesson arriving from the other side.
+
+**Blocks:** nothing yet, but it will make the per-video public ledger (§2.5, the wedge) annoying
+enough to route around, which is the failure mode that matters.
+**Fix.** Extract the quoted narration from Markdown the same way TOML extracts it — the `> "..."`
+lines, in order — so the hash tracks the words in both formats. Three lines in `narration_text`.
+**Check.** Editing a non-narration line of a fixture script must NOT change the hash; editing a
+quoted line must.

@@ -35,6 +35,7 @@ echo "harness assertion self-tests"
 check "camera inside geometry is rejected"        fail tests/fixtures/camera_inside.toml "is INSIDE part"
 check "camera clear of geometry is accepted"      pass tests/fixtures/camera_clear.toml  "is INSIDE part"
 check "an unknown spec key is refused"            fail tests/fixtures/unknown_key.toml   "unknown key"
+check "smooth = true is refused; it is an angle"  fail tests/fixtures/smooth_not_an_angle.toml "expected an angle in DEGREES"
 
 echo "fact gate"
 # Assert against fixtures, not the real ep01 ledger. A test that asserts the
@@ -336,6 +337,27 @@ then
     echo "  pass  a black frame is reported, a real frame is not"
 else
     echo "  FAIL  the storyboard check is wrong in one direction or the other"; fail=1
+fi
+
+echo "geometry parameters"
+# `segments` reached _cyl as a default nothing could override. A parameter the
+# spec cannot set is not a parameter.
+$PY -m harness build tests/fixtures/cylinder_segments.toml --out "$TMP" >/dev/null 2>&1
+if $PY - "$TMP/selftest_segments/manifest.json" <<'PYEOF'
+import json, sys
+parts = {p["id"]: p["polys"] for p in json.load(open(sys.argv[1]))["parts"]}
+coarse, fine = parts["coarse"], parts["fine"]
+if coarse == fine:
+    print(f"segments did not reach the mesh: 8-sided and 64-sided both {coarse} polys")
+    sys.exit(1)
+if fine <= coarse:
+    print(f"64 segments produced {fine} polys, 8 produced {coarse} - wrong direction")
+    sys.exit(1)
+PYEOF
+then
+    echo "  pass  cylinder segments reaches the mesh"
+else
+    echo "  FAIL  cylinder segments is ignored"; fail=1
 fi
 
 echo "bench"

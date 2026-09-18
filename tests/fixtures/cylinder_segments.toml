@@ -1,0 +1,42 @@
+# Two cylinders, identical but for `segments`. If the parameter does not reach
+# the mesh the two parts have the same polygon count - which is how it shipped:
+# `_cyl` took a `segments` argument that no spec could ever set, so every
+# cylinder in the repo was 24-sided whatever it was for.
+[meta]
+id = "selftest_segments"
+title = "segments reaches the mesh"
+fps = 12
+width = 320
+height = 568
+samples = 4
+units = "metric"
+
+[[part]]
+id = "coarse"
+gen = "cylinder"
+loc = [-1.0, 0.0, 0.0]
+[part.params]
+radius = 0.5
+depth = 1.0
+segments = 8
+
+[[part]]
+id = "fine"
+gen = "cylinder"
+loc = [1.0, 0.0, 0.0]
+smooth = 30
+[part.params]
+radius = 0.5
+depth = 1.0
+segments = 64
+
+[[camera]]
+id = "cam"
+lens_mm = 50.0
+loc = [0.0, -6.0, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[shot]]
+id = "s01"
+camera = "cam"
+seconds = 1.0

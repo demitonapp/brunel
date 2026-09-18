@@ -131,6 +131,9 @@ def build_parts(
             if p.get("material") and p["material"] in materials:
                 obj.data.materials.append(materials[p["material"]])
 
+        if p.get("smooth"):
+            _shade_smooth(objs, p["smooth"])
+
         built[p["id"]] = {"root": root, "objs": objs, "dims": (0.0, 0.0, 0.0),
                           "bounds": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]),
                           "spec": p, "shots": p.get("shots", [])}
@@ -199,6 +202,32 @@ def aim(obj: Any, target: list[float]) -> None:
     if direction.length < 1e-6:
         return
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+
+
+def _shade_smooth(objs: list[Any], angle_deg: float) -> None:
+    """Smooth-shade curved surfaces and leave real edges sharp.
+
+    `MeshPolygon.use_smooth` was removed in Blender 4.x and `shade_auto_smooth`
+    does not exist on a mesh, so the supported path is the operator - which
+    needs an active object and a selection. Selection is restored to empty
+    afterwards: a build that leaks selection makes the NEXT part's operator do
+    something different, which is the kind of order-dependent bug that does not
+    reproduce.
+    """
+    view_layer = bpy.context.view_layer
+    previous_active = view_layer.objects.active
+    for obj in bpy.context.selected_objects:
+        obj.select_set(False)
+    meshes = [o for o in objs if getattr(o, "type", None) == "MESH"]
+    if not meshes:
+        return
+    for obj in meshes:
+        obj.select_set(True)
+    view_layer.objects.active = meshes[0]
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(angle_deg))
+    for obj in meshes:
+        obj.select_set(False)
+    view_layer.objects.active = previous_active
 
 
 def build_lights(ep: spec_mod.Episode, collection: Any) -> dict[str, Any]:

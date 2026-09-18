@@ -1,0 +1,330 @@
+{
+  "schema_version": "1.0.0",
+  "episode": {
+    "id": "S001",
+    "slug": "hydraulic-cylinder-push-pull",
+    "title": "Why a hydraulic cylinder pushes harder than it pulls",
+    "subject": "A double-acting hydraulic cylinder, 140 mm bore x 100 mm rod, at 350 bar implement pressure",
+    "period": "contemporary",
+    "runtime_s": 30,
+    "ledger_revision": 1,
+    "narration_source": "docs/videos/s01-hydraulic-cylinder/script.md",
+    "spec_script_sha256": "cf217e53bfe34bc6b1453c2d1bb3149048581868241f0c5e6ffcfbab2cb09016"
+  },
+  "sources": [
+    {
+      "id": "S001",
+      "tier": "TIER-1",
+      "citation": "Bosch Rexroth AG. Hydraulic cylinder, mill type, Series CDH1 / CGH1 / CSH1. Data sheet RE 17331/09.05. 44 pp. Mirrored by CMA/Flodyne/Hydradyne.",
+      "url": "https://www.cmafh.com/images/Master%20PDFs/BRH%20CYL/Rexroth%20CDH1%20CGH1%20(250%20Bar)%20(ISO%203320)%20-%20re17331_2005-09.pdf",
+      "locator": "p. 1 (ratings); p. 3, table 'Areas, forces, flows', row piston AL 140 / piston rod MM 100",
+      "quote": "Nominal pressure 250 bar (25 MPa) ... Piston O: 40 to 320 mm ... Piston rod O: 28 to 220 mm ... [Areas, forces, flows; columns Piston AL, Piston rod MM, Area ratio A1/A3, A1, A2, A3, F1, F3] 140 | 100 | 2.04 | 153.94 | 78.54 | 75.40 | 384.75 | 188.40",
+      "accessed": "2026-09-18",
+      "retrieved_by": "agent:research"
+    },
+    {
+      "id": "S002",
+      "tier": "TIER-1",
+      "citation": "Caterpillar Inc. 320 Hydraulic Excavator Technical Specifications. Distributed by Avesco AG.",
+      "url": "https://www.avesco-cat.com/fileadmin/unsorted/320_Specification.pdf",
+      "locator": "p. 2, 'Hydraulic System' and 'Weights'",
+      "quote": "Maximum Pressure - Equipment - Normal 35 000 kPa 5,075 psi ... Maximum Pressure - Equipment - Auto Dig Boost 38 000 kPa 5,510 psi ... Operating Weight 21 700 kg 47,800 lb",
+      "accessed": "2026-09-18",
+      "retrieved_by": "agent:research"
+    },
+    {
+      "id": "S003",
+      "tier": "TIER-5",
+      "citation": "HW Part Store. 'Caterpillar 320C, 320 L & 320 S Excavator Boom Cylinder - Seal Kit' product listing. Retail parts catalogue, no stated provenance.",
+      "url": "https://hwpartstore.com/products/caterpillar-320c-320-l-320-s-excavator-boom-cylinder-w-95-mm-rod-seal-kit",
+      "locator": "variant table, five bore/rod options",
+      "quote": "Rod: 100 mm ... Bore: 140 mm ... Cylinder #: 2590702",
+      "accessed": "2026-09-18",
+      "retrieved_by": "agent:research"
+    }
+  ],
+  "facts": [
+    {
+      "id": "F001",
+      "claim": "The implement hydraulic circuit of a 21.7 tonne Caterpillar 320 excavator operates at a normal maximum pressure of 350 bar (35 000 kPa).",
+      "claim_kind": "measurement",
+      "status": "verified",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source_id": "S002",
+          "stance": "supports",
+          "note": "Caterpillar's own published specification. The 380 bar Auto Dig Boost figure is transient and is deliberately not used."
+        }
+      ],
+      "narration_spans": [
+        {
+          "start_s": 0.0,
+          "end_s": 5.0
+        },
+        {
+          "start_s": 5.0,
+          "end_s": 12.0
+        }
+      ],
+      "on_screen": {
+        "treatment": "assert",
+        "citation_shown": true,
+        "citation_format": "slug_in_description",
+        "depiction_risk": "measured"
+      },
+      "review": {
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T11:00:00Z",
+        "notes": "Read off the PDF this session, not recalled. Awaiting human sign-off."
+      }
+    },
+    {
+      "id": "F002",
+      "claim": "A 140 mm bore with a 100 mm rod is a standard manufactured cylinder size, offered by Bosch Rexroth and used as an excavator boom cylinder.",
+      "claim_kind": "measurement",
+      "status": "verified",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source_id": "S001",
+          "stance": "supports",
+          "note": "Published in the CDH1/CGH1 areas-and-forces table as a catalogue size."
+        },
+        {
+          "source_id": "S003",
+          "stance": "supports",
+          "note": "Independently listed as a Cat 320 boom cylinder variant. Weak tier, but it reproduces a size S001 already establishes."
+        }
+      ],
+      "narration_spans": [
+        {
+          "start_s": 12.0,
+          "end_s": 23.0
+        }
+      ],
+      "on_screen": {
+        "treatment": "assert",
+        "citation_shown": true,
+        "citation_format": "slug_in_description",
+        "depiction_risk": "measured"
+      },
+      "review": {
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T11:00:00Z",
+        "notes": "The previous brief's 120 x 80 was unsourced and is not a size any source ships. Superseded here."
+      }
+    },
+    {
+      "id": "F003",
+      "claim": "The specific cylinder modelled in this video is the boom cylinder of a Caterpillar 320C/320L/320S, Cat part 2590702.",
+      "claim_kind": "identity",
+      "status": "unknown",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "source_id": "S003",
+          "stance": "supports",
+          "note": "The only source that makes this claim, and it is a retail parts listing."
+        },
+        {
+          "source_id": "S002",
+          "stance": "is_silent",
+          "note": "Caterpillar's own 44-page specification publishes no cylinder bore or rod anywhere."
+        }
+      ],
+      "what_would_settle_it": "The Caterpillar parts catalogue (SIS) entry for cylinder 2590702, or a 320C workshop manual giving boom cylinder bore and rod.",
+      "on_screen": {
+        "treatment": "omit",
+        "citation_shown": false,
+        "citation_format": "none"
+      },
+      "review": {
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T11:00:00Z",
+        "notes": "Deliberately not narrated. The script says 'an excavator' and never names the machine, so the weak claim is never made to the viewer."
+      }
+    },
+    {
+      "id": "F004",
+      "claim": "For a 140 mm bore and 100 mm rod, the piston area is 153.94 cm2 and the annulus area is 75.40 cm2.",
+      "claim_kind": "measurement",
+      "status": "verified",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source_id": "S001",
+          "stance": "supports",
+          "note": "Both figures are printed by the manufacturer. Independently derived from the geometry this session as 153.94 and 75.40 - agreement to 0.002 cm2."
+        }
+      ],
+      "narration_spans": [
+        {
+          "start_s": 12.0,
+          "end_s": 23.0
+        }
+      ],
+      "on_screen": {
+        "treatment": "assert",
+        "citation_shown": true,
+        "citation_format": "slug_in_description",
+        "depiction_risk": "measured"
+      },
+      "review": {
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T11:00:00Z",
+        "notes": "These two numbers are the harness assertion: GEN cylinder derives them and must match the printed table."
+      }
+    },
+    {
+      "id": "F005",
+      "claim": "The standard piston rod is the bore divided by the square root of two, which makes the rod's area exactly half the piston's and the annulus exactly half - manufacturers designate this the phi = 2 series.",
+      "claim_kind": "measurement",
+      "status": "verified",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source_id": "S001",
+          "stance": "supports",
+          "note": "Rexroth prints the area ratio A1/A3 in its own column and offers every bore with two rods; the standard series measures 1.96-2.08 across the range, i.e. rod/bore = 0.700-0.720 against 1/sqrt(2) = 0.7071."
+        },
+        {
+          "source_id": "S003",
+          "stance": "supports",
+          "note": "Four of Caterpillar's five 320 boom cylinder variants (120x85, 140x100, 150x105) fall on the same ratio; 160x95 is the slim-rod outlier."
+        }
+      ],
+      "narration_spans": [
+        {
+          "start_s": 12.0,
+          "end_s": 23.0
+        }
+      ],
+      "on_screen": {
+        "treatment": "assert",
+        "citation_shown": true,
+        "citation_format": "slug_in_description",
+        "depiction_risk": "measured"
+      },
+      "review": {
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T11:00:00Z",
+        "notes": "This is the video's reveal. It is a design standard two manufacturers publish independently, not an observation about one cylinder."
+      }
+    },
+    {
+      "id": "F006",
+      "claim": "At 350 bar a 140 x 100 cylinder extends with 538.8 kN (54.9 tonnes-force) and retracts with 263.9 kN (26.9 tonnes-force).",
+      "claim_kind": "quantity",
+      "status": "verified",
+      "confidence": "high",
+      "evidence": [
+        {
+          "source_id": "S001",
+          "stance": "supports",
+          "note": "Supplies both areas. Rexroth's own force columns at its 250 bar nominal are 384.75 / 188.40 kN; derived from the same areas this session as 384.85 / 188.50, i.e. the vendor rounds."
+        },
+        {
+          "source_id": "S002",
+          "stance": "supports",
+          "note": "Supplies the 350 bar working pressure."
+        }
+      ],
+      "narration_spans": [
+        {
+          "start_s": 0.0,
+          "end_s": 5.0
+        }
+      ],
+      "on_screen": {
+        "treatment": "assert",
+        "citation_shown": true,
+        "citation_format": "slug_in_description",
+        "depiction_risk": "measured"
+      },
+      "review": {
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T11:00:00Z",
+        "notes": "Force = pressure x area is arithmetic, not a claim needing its own source; both inputs are TIER-1. Replaces the previous draft's unsourced 395.8 / 219.9 kN."
+      }
+    }
+  ],
+  "gate": {
+    "ruleset_version": "1.0.0",
+    "evaluated_at": "2026-09-18T11:36:55+00:00",
+    "result": "fail",
+    "checks": [
+      {
+        "name": "every_fact_has_a_tier_1_to_3_source_or_declared_status",
+        "result": "pass"
+      },
+      {
+        "name": "no_fact_with_status_unsupported_or_false_is_treated_as_assert",
+        "result": "pass"
+      },
+      {
+        "name": "every_low_confidence_fact_names_what_would_settle_it",
+        "result": "pass"
+      },
+      {
+        "name": "every_web_source_has_an_archive_url",
+        "result": "fail",
+        "detail": "3 web source(s) unarchived: ['S001', 'S002', 'S003']"
+      },
+      {
+        "name": "every_tier_1_to_3_source_has_a_verbatim_quote",
+        "result": "pass"
+      },
+      {
+        "name": "every_contested_fact_has_counter_evidence",
+        "result": "pass"
+      },
+      {
+        "name": "no_claim_kind_causation_is_status_verified_without_a_tier_1_or_2_source",
+        "result": "pass"
+      },
+      {
+        "name": "every_simulation_shot_has_a_role_and_disclaimer",
+        "result": "pass"
+      },
+      {
+        "name": "every_simulation_parameter_is_sourced",
+        "result": "pass"
+      },
+      {
+        "name": "all_facts_reviewed_by_a_human_or_flagged",
+        "result": "fail",
+        "detail": "6 fact(s) not human-approved or blocked",
+        "offending_fact_ids": [
+          "F001",
+          "F002",
+          "F003",
+          "F004",
+          "F005",
+          "F006"
+        ]
+      },
+      {
+        "name": "script_hash_matches_ledger",
+        "result": "pass"
+      }
+    ]
+  },
+  "provenance": {
+    "generated_by": "agent:research",
+    "activity": "s01-datasheet-sourcing-run",
+    "was_derived_from": [
+      "S001",
+      "S002",
+      "S003"
+    ],
+    "was_attributed_to": "agent:research",
+    "generated_at": "2026-09-18T11:00:00Z"
+  }
+}

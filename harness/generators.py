@@ -460,8 +460,11 @@ def gen_simple(gen: str, name: str, params: dict[str, Any], collection: Any) -> 
         dims = params.get("dims", [1.0, 1.0, 1.0])
         return [_box(name, (float(dims[0]), float(dims[1]), float(dims[2])), collection)]
     if gen == "cylinder":
+        # 24 segments is fine for a prop at 30 m and visibly faceted on a hero
+        # object filling a 1080x1920 frame. The spec says which this is.
         return [_cyl(name, float(params.get("radius", 0.5)),
-                     float(params.get("depth", 1.0)), collection)]
+                     float(params.get("depth", 1.0)), collection,
+                     segments=int(params.get("segments", 24)))]
     if gen == "sphere":
         return [_sphere(name, float(params.get("radius", 0.5)), collection)]
     if gen == "plane":
