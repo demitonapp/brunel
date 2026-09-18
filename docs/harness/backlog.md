@@ -222,3 +222,47 @@ asset list is a positive declaration that nothing was borrowed, and is not the s
 **Check.** `tests/run.sh`: a spec whose own register is clean publishes even when the global one
 blocks; and a spec with NO register of its own is refused rather than silently falling through to a
 permissive default.
+
+### H27 — `check_motion` cannot run on the shipping path
+
+`verify` calls `check_storyboard`, `check_depth_pass`, `check_clip` and the canary.
+**It never calls `check_motion`.** The only call site in the repo is inside `check_depth_pass`
+(`harness/check.py:224`), and `verify` reaches that only through `renders/<ep>/*/depth/*` — control
+passes, which exist only when a generative backend is being prepared.
+
+So on `local` — which **D1 declares the shipping path** — the check never runs at all.
+
+**This is the third time a check has existed, been tested, and been wired to nothing.** `check_clip`
+shipped called from the wrong branch of `cmd_generate` and `ad02`'s payoff shot went out crushed to
+black through the gap. `check_motion` was written in response to the windmilling screws — the repo's
+most expensive bug, and the one LESSONS.md calls out as structurally invisible to a per-frame check.
+It is the single check that exists to see faults *between* frames, and the default pipeline cannot
+reach it.
+
+**Found by running it by hand** over s01's 900 finished frames, after `verify` reported
+`all 900 artefact(s) pass`:
+
+```
+b01    150 frames  nothing moves across the shot (total frame-to-frame change 0.00)
+b02    210 frames  nothing moves across the shot (total frame-to-frame change 0.00)
+b04    210 frames  nothing moves across the shot (total frame-to-frame change 0.41)
+```
+
+Three of six shots were frozen on screen. **The tracks were applied and correct** — the rod really
+did stroke 0.55 m. It was invisible: the rod ran off frame, its visible length is a featureless
+cylinder, and the piston was hidden inside a solid barrel, so a half-metre of travel changed not one
+pixel. The same family as "an object symmetric about its axis cannot show that it is turning", and
+3.5 hours of render went into a hook that is a still photograph.
+
+**Blocks:** nothing mechanically - but it let a whole cut render wrong, and `verify` said it passed.
+
+**Fix.** `cmd_verify` groups `renders/<ep>/*/frame_*.png` **by shot directory** and runs
+`check_motion` per shot. It must not be run over the flat glob: `check_storyboard` is per-frame and
+does not care, but `check_motion` compares adjacent frames and would read the seam between two shots
+as a lurch. Note the message interpolates `frames[0].parent.parent.name`, which prints the EPISODE id
+for a `renders/s01/b01/frame_*.png` layout - every problem above says `s01:` where it means `b01:`.
+Fix that with it or the report names the wrong thing six times.
+
+**Check.** `tests/run.sh`: a synthetic shot of identical frames must be reported by `verify`, and a
+shot whose frames differ must not be - the same shape as the black-frame test, which is the only
+evidence that a check works.

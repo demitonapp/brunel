@@ -268,7 +268,7 @@ MOTION_MAX_STEP = 60.0
 
 
 def check_motion(frames: Sequence[Path], *, max_step: float = MOTION_MAX_STEP,
-                 min_total: float = 0.5) -> list[str]:
+                 min_total: float = 0.5, label: str | None = None) -> list[str]:
     """The animation must move, and must not lurch.
 
     **This is the check that would have caught the windmilling screws.** Every
@@ -292,6 +292,11 @@ def check_motion(frames: Sequence[Path], *, max_step: float = MOTION_MAX_STEP,
     if len(frames) < 3:
         return problems
 
+    # `label` because the path cannot be trusted to say which shot this is:
+    # renders/<ep>/<shot>/frame_*.png makes parent.parent the EPISODE, and a
+    # depth pass makes it the literal string "depth". Every problem this check
+    # has ever reported named the wrong thing.
+    name = label or frames[0].parent.name
     step = max(1, len(frames) // 12)
     sampled = list(frames)[::step]
     diffs = [frame_diff(sampled[i], sampled[i + 1]) for i in range(len(sampled) - 1)]
@@ -302,12 +307,12 @@ def check_motion(frames: Sequence[Path], *, max_step: float = MOTION_MAX_STEP,
     worst = max(diffs)
     if total < min_total:
         problems.append(
-            f"{frames[0].parent.parent.name}: nothing moves across the shot "
+            f"{name}: nothing moves across the shot "
             f"(total frame-to-frame change {total:.2f}). A track is missing or not applied."
         )
     if worst > max_step:
         problems.append(
-            f"{frames[0].parent.parent.name}: a large jump between frames "
+            f"{name}: a large jump between frames "
             f"(worst step {worst:.1f}, limit {max_step:.0f}) - a part is sweeping "
             f"rather than turning in place, or the animation is out of order."
         )
@@ -315,7 +320,7 @@ def check_motion(frames: Sequence[Path], *, max_step: float = MOTION_MAX_STEP,
         # Not a fault. A signal that this is the kind of shot where a wrong
         # Euler order hides, and worth a contact sheet before it is paid for.
         problems.append(
-            f"WARN: {frames[0].parent.parent.name}: busy motion (worst step "
+            f"WARN: {name}: busy motion (worst step "
             f"{worst:.1f}) - check a contact sheet of this shot before generating."
         )
     return problems

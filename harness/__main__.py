@@ -795,6 +795,20 @@ def cmd_verify(args: argparse.Namespace) -> int:
         checked += len(storyboard)
         print(f"  storyboard   {len(storyboard)} frame(s)")
 
+    # H27. `check_motion` is the only check that can see a fault living BETWEEN
+    # frames - it exists because of the windmilling screws - and until now its
+    # single call site was inside check_depth_pass, reachable only when control
+    # passes exist. On `local`, the shipping path, it never ran. Three of s01's
+    # six shots rendered frozen and `verify` reported all 900 frames passing.
+    #
+    # Grouped by shot, deliberately: over the flat glob the seam between two
+    # shots reads as a lurch.
+    for shot_dir in sorted(d for d in ep_dir.glob("*") if d.is_dir()):
+        shot_frames = sorted(shot_dir.glob("frame_*.png"))
+        if len(shot_frames) >= 3:
+            problems += check.check_motion(shot_frames, label=shot_dir.name)
+            print(f"  motion       {len(shot_frames)} frame(s)  ({shot_dir.name})")
+
     for depth_dir in sorted(ep_dir.glob("*/depth/*")):
         frames = sorted(depth_dir.glob("frame_*.png"))
         if frames:

@@ -86,6 +86,44 @@ else
     echo "  FAIL  spin axis"; fail=1
 fi
 
+echo "H27 - verify runs the motion check"
+# The regression risk is not that check_motion is wrong; it is that nothing
+# CALLS it. Its only call site used to be inside check_depth_pass, reachable
+# only when control passes exist, so on `local` it never ran - and s01 rendered
+# three frozen shots while verify reported all 900 frames passing.
+if $PY - <<'PYEOF'
+import shutil, subprocess, sys, tempfile
+from pathlib import Path
+tmp = Path(tempfile.mkdtemp())
+ff = shutil.which("ffmpeg")
+try:
+    # testsrc genuinely animates across frames; a single colour does not.
+    moving = tmp / "selftest_clear" / "moving"
+    moving.mkdir(parents=True)
+    subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "testsrc=s=64x64:r=6",
+                    "-frames:v", "6", str(moving / "frame_%04d.png")], check=True)
+    frozen = tmp / "selftest_clear" / "frozen"
+    frozen.mkdir(parents=True)
+    for i in range(1, 7):                       # the SAME frame, six times
+        shutil.copy(moving / "frame_0001.png", frozen / f"frame_{i:04d}.png")
+
+    out = subprocess.run([sys.executable, "-m", "harness", "verify",
+                          "tests/fixtures/camera_clear.toml", "--out", str(tmp)],
+                         capture_output=True, text=True)
+    blob = out.stdout + out.stderr
+    if "frozen: nothing moves" not in blob:
+        print("verify did NOT report the frozen shot:\\n" + blob); sys.exit(1)
+    if "moving: nothing moves" in blob:
+        print("verify wrongly reported the moving shot as frozen:\\n" + blob); sys.exit(1)
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+PYEOF
+then
+    echo "  pass  verify reports a frozen shot and not a moving one"
+else
+    echo "  FAIL  verify's motion check"; fail=1
+fi
+
 echo "H25 - cylinder areas against the published table"
 # The first generator in this repo whose derived QUANTITIES a vendor also
 # prints. Catches an annulus computed from the bore radius instead of the bore

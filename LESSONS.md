@@ -759,3 +759,35 @@ one or the other.
 - **ENFORCED BY:** the raise in `harness/audio.py`, on every `voice` and every `deliver` that
   synthesises — **no fixture test.** It needs macOS `say`, so it cannot run on the render node; a
   test would have to inject a duration rather than speak. Honest answer: unguarded by the suite.
+
+## 2026-09-19 - A track can be applied, correct, and completely invisible
+
+- **Context:** s01's hook is a cylinder extending and retracting. The track was written, validated,
+  applied, and moved the rod 0.55 m. `frame_diff` between the first frame of the stroke and the last
+  is **0.0000** - every pixel identical across 150 frames. The rod ran off the right edge of frame,
+  its visible length is a featureless cylinder, and the piston was hidden inside a solid barrel, so
+  the only features that could have revealed the travel were all out of shot. 3.5 hours of render
+  went into a hook that is a still photograph.
+- **This is the sibling of the windmilling screws, from the other side.** That entry says an object
+  symmetric about its axis cannot show that it is *turning*. This one: an object symmetric about its
+  axis cannot show that it is *sliding along that axis* either - unless an end, a shoulder or a mark
+  is in frame. The fix was not the track. It was shortening the rod from 1.50 m to 1.20 m and
+  widening the camera so the **tip** stays in shot through the whole stroke, because the tip is the
+  only feature the motion has.
+- **Also found: three of six shots were frozen and the harness said the render passed.** `verify`
+  reported `all 900 artefact(s) pass`. It runs `check_storyboard`, `check_depth_pass`, `check_clip`
+  and the canary - and `check_motion` only ever existed as a call inside `check_depth_pass`,
+  reachable only when control passes exist. On `local`, the shipping path, it had never run. See
+  **H27**, now fixed.
+- **And the check's own report named the wrong thing.** `frames[0].parent.parent.name` is the
+  EPISODE for `renders/<ep>/<shot>/frame_*.png` and the literal string `"depth"` for a control pass.
+  Every motion problem this repo has ever printed said `s01:` where it meant `b01:`. `check_motion`
+  now takes an explicit `label`.
+- **Where:** `harness/check.py` (`check_motion`), `harness/__main__.py` (`cmd_verify`),
+  `spec/s01/s01.toml`, `docs/harness/backlog.md` H27.
+- **ENFORCED BY:** `harness/__main__.py` (`cmd_verify` now runs `check_motion` per shot directory -
+  grouped, because over a flat glob the seam between two shots reads as a lurch) and `tests/run.sh`
+  ("verify reports a frozen shot and not a moving one"), which builds six identical frames and six
+  animating ones and asserts the report distinguishes them. The test was written wrong first - it
+  synthesised "moving" frames that were all the same colour - and failed, which is how it earned
+  being believed.
