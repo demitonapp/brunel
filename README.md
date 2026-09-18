@@ -10,7 +10,9 @@ generative backend renders it photoreal.**
 > The deliverable of the first cut is not a video. It is a **ratchet**.
 
 See **[ROADMAP.md](ROADMAP.md)** for the thesis, the maturity ladder and the plan, and
-**[docs/mvp-shield-ad-plan.md](docs/mvp-shield-ad-plan.md)** for the current production plan.
+**[docs/spec.md](docs/spec.md)** for the current product spec — the channel strategy, the slate, and
+the harness audit and fixes behind it. `docs/mvp-shield-ad-plan.md`, `docs/channel-spec.md` and
+`docs/harness-remediation-spec-2026-09-18.md` are superseded by it and kept only for history.
 
 ---
 
@@ -68,11 +70,12 @@ Honest, as of 2026-09-18.
 | | State |
 |---|---|
 | **`spec/ep01`** — the 8-shot, 72 s documentary | renders end to end as a low-fi animatic |
-| **`spec/ad01`** — the 3-beat, 18 s marketing cut | validates and renders; storyboard now reads (see below) |
+| **`spec/ad01`** — the 3-beat, 18 s marketing cut | validates and renders; storyboard now reads (see below); **not usable with `wan`** as written — its 6 s shots exceed the 81-frame limit (see the generative interface, below) |
+| **`spec/ad02`** — the 5-beat, 20 s marketing cut | validates and renders; the current, fuller replacement for `ad01` |
 | **`harness passes`** — the control-pass exporter | **works**: all five passes verified, depth confirmed linear and greyscale |
 | **`harness backends`** — the pluggable interface | **works**: local / cosmos / wan registered |
-| **Cosmos hosted API** | **does not exist** — see [§4 of the plan](docs/mvp-shield-ad-plan.md). Self-host only. |
-| **Wan** | schema implemented from the published contract; not yet called |
+| **Cosmos hosted API** | **does not exist** — see the evidence in [docs/spec.md](docs/spec.md) §8.6/8.7 and [docs/research](docs/research/video-api-geometric-control-comparison-2026-09-18.md). Self-host only. |
+| **Wan** | **called for real** on `ad02`; the delivered clip does not reliably match the requested length or duration (measured 81 frames returned for a 64-frame request) — `generate` and `deliver --backend` now measure and refuse on this rather than trust the request. See [docs/spec.md](docs/spec.md) Part II. |
 
 ### What the storyboard taught us
 
@@ -123,7 +126,7 @@ python -m harness generate spec/ad01/ad01.toml --backend local # hand it to a mo
 | `captions` | narration -> SRT + ASS, respecting the Reels safe zone |
 | `voice` | scratch VO via macOS `say`, aligned to the shot timeline |
 | `pipeline` | build + render + assemble |
-| `deliver` | assemble + captions + voice -> finished file |
+| `deliver` | assemble + captions + voice -> finished file; `--backend <name>` delivers from generated clips instead of Blender frames, timed on their measured length; `--publish` refuses without a passing fact ledger and licence register |
 | **`passes`** | **rasterise the scene graph into control passes for a backend** |
 | **`generate`** | **send those passes to a backend and collect the frames** (concurrent, costed) |
 | **`backends`** | **list backends and the control-pass profile each one needs** |
@@ -146,8 +149,13 @@ requires   which control passes it consumes
 | Backend | Control passes it takes | Profile | Cost |
 |---|---|---|---|
 | `local` | plate | 1080×1920 @ 30 fps | **free, offline** |
-| **`wan`** | **plate, depth** | 1280×720 @ 16 fps, 81-frame chunks | **~$0.08/s at 720p** |
-| `cosmos` | plate, depth, seg, edge, vis | 1280×720 @ 16 fps, 93–480 frame chunks | self-hosted NIM, 65.4 GB VRAM |
+| **`wan`** | **depth** | 1280×720 @ 16 fps, 81-frame limit | **~$0.08/s at 720p** |
+| `cosmos` | plate, depth, seg, edge, vis | 1280×720 @ 16 fps, 93–480-frame limit | self-hosted NIM, 65.4 GB VRAM |
+
+**"limit", not "chunk".** A shot longer than a backend's frame limit is refused at `passes` time,
+not split — an earlier version chunked a long shot by re-applying its whole animation to each
+chunk, which played the shot's full arc once per chunk instead of splitting it once. Shorten the
+shot, or split it into two shots in the spec, if it needs to run longer than a backend's window.
 
 ### Start with `wan`, not `cosmos`
 
@@ -158,8 +166,8 @@ container and a 20 GB+ model pull. Nothing about that is "today."
 **fal.ai's Wan VACE is the same shape and works in minutes:**
 
 - **Sign up:** <https://fal.ai/login> — one key, a card, pay-as-you-go. **No minimum, no prepaid bundle.**
-- **Price:** **$0.08/s at 720p**, $0.06/s at 580p, $0.04/s at 480p, billed at 16 fps. The 18-second
-  shield ad costs about **$1.44**.
+- **Price:** **$0.08/s at 720p**, $0.06/s at 580p, $0.04/s at 480p, billed at 16 fps of *delivered*
+  video — see the caveat below before trusting a cost estimated from the request.
 - **Licence:** marked commercial use.
 - **Speed:** roughly a minute per generation.
 
@@ -175,14 +183,25 @@ first-class, and why the pipeline built on VACE ports to Cosmos without changing
 line of the exporter. Only the backend name changes:
 
 ```bash
-python -m harness backends                                    # what is available
-python -m harness generate spec/ad01/ad01.toml --backend wan --dry-run   # check setup, spend nothing
-python -m harness passes   spec/ad01/ad01.toml --backend wan  # rasterise (depth + plate)
-python -m harness generate spec/ad01/ad01.toml --backend wan  # ~$1.44 for 18 s
+python -m harness passes   spec/ad02/ad02.toml --backend wan             # rasterise (depth only)
+python -m harness generate spec/ad02/ad02.toml --backend wan --dry-run   # check setup, spend nothing
+python -m harness generate spec/ad02/ad02.toml --backend wan             # actual spend printed after
 ```
 
-`--dry-run` checks credentials and shows exactly what would be submitted, without spending anything.
-An API you cannot smoke-test before paying is an API you will pay to debug.
+`passes` has to run first — `generate` (dry-run or not) reads the control videos `passes` wrote and
+refuses if they are missing. `--dry-run` then checks credentials and shows exactly what would be
+submitted, without spending anything. An API you cannot smoke-test before paying is an API you will
+pay to debug.
+
+`ad01` is not usable with `wan` as written: its 6 s shots need 96 frames at 16 fps, and `wan`'s
+81-frame limit is a hard refusal, not a clamp (see the limit note above) — `ad02`'s 4 s shots fit.
+
+**A generated clip's length is not guaranteed to match what was asked for.** The first real `wan`
+generation returned 81 frames (5.06 s) for a 64-frame (4.00 s) request — VACE does not appear to
+honour the control video's own length. `generate` now measures every delivered clip and prints the
+**actual** spend from that measurement, not from the request; `deliver --backend wan` refuses to
+ship a clip whose measured length disagrees with the spec rather than burn captions timed for the
+wrong duration onto it.
 
 **`local` remains the default**, and not as a consolation prize: MechVerse measured the best video
 model in the world at **2.91 out of 5** on mechanical correctness, and found perceptual quality
@@ -207,11 +226,17 @@ So the harness checks the pixels, at the points where checking is cheap:
 |---|---|---|
 | **storyboard** | `render --stills` | frames that are black, flat, or 92% dark — i.e. a camera in the wrong place, which is this project's most common failure |
 | **depth pass** | `passes` | a depth map that is not neutral, is saturated to one end of its range, or whose mean drifts across the shot (the per-frame normalisation the stock preprocessors do) |
-| **clip** | `generate` | a generated clip crushed to black |
+| **clip** | `generate`, `deliver --backend` | a generated clip crushed to black, or delivered at a length that does not match the spec |
 
 `python -m harness verify <spec>` runs all of them over whatever exists. `tests/run.sh` proves the
 storyboard check fires on a black frame *and* stays quiet on a real one — a check that has never been
 seen to fail is not a check.
+
+**The clip check shipped once without actually running.** It existed, was tested, and was called in
+the wrong branch of `generate` — the one taken only when a single shot is generated, not the
+concurrent submit-then-collect branch every real multi-shot run takes. The payoff shot of `ad02`
+went out crushed to black through the gap. Both `generate` and `deliver --backend` now run it
+unconditionally, and `docs/spec.md` records the audit that found it.
 
 **The depth check pays for itself.** On `ad02` it blocked a paid generation because three of four
 depth passes were saturated, and the fix was to let a shot declare its own range:

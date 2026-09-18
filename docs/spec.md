@@ -10,7 +10,17 @@
 **Supersedes:** `docs/channel-spec.md`, `docs/harness-remediation-spec-2026-09-18.md`,
 `docs/mvp-shield-ad-plan.md`. Evidence base stays in `docs/research/`.
 
-**Status:** channel strategy locked 2026-09-18. Harness remediation proposed, not started.
+**Status:** channel strategy (Part I) locked 2026-09-18. Harness remediation (Part III, H1–H18)
+**implemented and merged 2026-09-18** — see [PR #1](https://github.com/demitonapp/brunel/pull/1) and
+`git log`. The findings and evidence in Parts II–III are kept as the historical record of what was
+found and why each fix was made; they are not a live to-do list. What is still open:
+
+- The capability roadmap in Part I §5 (C1–C6: Mode C diagrams, terrain input, dual aspect,
+  thumbnails) — unstarted, months of product work.
+- Fact-ledger *content* for `ad01`/`ad02` (H5 wired the gate; nobody has written the ledger).
+- The underlying Wan duration mismatch itself (§8.1) — the harness now catches and refuses it
+  correctly, but the mismatch is unresolved: `deliver --backend wan` still refuses `ad02` today.
+- `eval/audience.md` (§6) — does not exist yet; needed before the first real upload.
 
 ---
 
@@ -412,6 +422,11 @@ and nothing asks for any.
 
 # Part III — The harness, ranked by what it blocks
 
+**All of H1–H18 below are implemented and merged (2026-09-18, PR #1).** Kept as written — as
+findings, not a checklist with boxes ticked — because the evidence and reasoning behind each fix
+is the part worth keeping; the fix itself is in the code and in `git log`. `LESSONS.md` carries the
+per-entry `ENFORCED BY:` line for what's actually wired in today.
+
 Every defect below is ranked by **which video it stops**, not by engineering severity. `H` numbers
 are stable; reorder the work, not the labels.
 
@@ -622,6 +637,10 @@ Neither becomes a hard gate on a first pass; the repo's own rule about checks th
 
 # Part IV — Order of work
 
+**Done, 2026-09-18 (H1–H18; kept as the record of the order actually followed).** What's left is
+the capability roadmap (C1–C6, below) and the content work named in the Status line at the top of
+this document — neither is "next up" in this list, both are separate, larger efforts.
+
 **Ranked by what unblocks the slate, not by engineering interest.**
 
 ### Now — stop shipping broken video (days)
@@ -665,13 +684,14 @@ drawer. Until such a backend exists, `local` ships and generative supplies atmos
 ## 14. First 30 days
 
 1. **Lock the name and thesis line** (§1) — one sentence the audience remembers.
-2. **Close the "Now" block** (H1, H3, H2, H15). Four items, mostly one-liners. Prove them on Brunel —
-   Episode 0 is the cheap proving ground.
-3. **Ship H4**, then re-cut `ad02` through the fixed path as the proof that the pipeline is whole.
+2. ~~Close the "Now" block (H1, H3, H2, H15).~~ **Done 2026-09-18**, along with the rest of H1–H18 —
+   see the status note at the top of this document.
+3. ~~Ship H4, then re-cut `ad02` through the fixed path.~~ **H4 shipped.** The re-cut is still
+   blocked on the underlying Wan duration mismatch (§8.1), not on the pipeline.
 4. **Write the Snowy flagship script against the five-beat engine** (§2), not against a shot list.
-   Story first, spec second.
-5. **Start C1 + C2.** Everything else in Phase 1 waits on them.
-6. **Stand up `eval/audience.md`** before the first upload.
+   Story first, spec second. Not started.
+5. **Start C1 + C2.** Everything else in Phase 1 waits on them. Not started.
+6. **Stand up `eval/audience.md`** before the first upload. Not started.
 
 ---
 
@@ -679,15 +699,23 @@ drawer. Until such a backend exists, `local` ships and generative supplies atmos
 
 The harness is fixed when:
 
-- `tests/run.sh` fails on today's `renders/ad02/generated-wan/` artefacts.
-- `python -m harness verify spec/ad02/ad02.toml --backend wan` reports the black c05.
-- `deliver --backend wan` produces a captioned cut whose caption timeline matches its picture
-  timeline, measured from the file.
-- `deliver --publish` refuses a spec with no fact ledger.
-- `LESSONS.md` states, per entry, what enforces it.
+- ✅ `python -m harness verify spec/ad02/ad02.toml --backend wan` reports the black c05 (confirmed
+  against the real artefacts, 2026-09-18).
+- ✅ `deliver --publish` refuses a spec with no fact ledger (confirmed against `ad02` and `ep01`).
+- ✅ `LESSONS.md` states, per entry, what enforces it (all 39 entries, 2026-09-18).
+- ⚠️ `deliver --backend wan` **correctly refuses** today's real `ad02` artefacts rather than
+  producing a mistimed cut — proven correct on synthetic fixtures where the delivered length
+  matches the spec. It does not yet produce a captioned cut from the *real* `ad02` clips, because
+  those clips themselves are still 5.06 s against a 4.00 s spec (§8.1) — a real generation cost,
+  not a code fix.
+- The `tests/run.sh`-fails-on-real-artefacts bullet was a point-in-time proof step for this
+  remediation, not a permanent assertion: `tests/run.sh` deliberately does not hard-code an
+  expectation that `renders/ad02/generated-wan/` stays broken forever (see H6 - that pattern
+  inverts the day someone fixes it). The proof was done manually and is recorded above.
 
 The channel is working when `eval/audience.md` shows monotonic improvement in CTR and 30-second
-retention across the first six uploads, and each entry names the one change that moved it.
+retention across the first six uploads, and each entry names the one change that moved it. Not
+started.
 
 ## 16. The one-line version
 
