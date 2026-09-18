@@ -88,6 +88,10 @@ def build_materials(ep: spec_mod.Episode) -> dict[str, Any]:
             bsdf.inputs["Base Color"].default_value = (c[0], c[1], c[2], 1.0)
             bsdf.inputs["Roughness"].default_value = float(m["roughness"])
             bsdf.inputs["Metallic"].default_value = float(m["metallic"])
+            strength = float(m.get("emission", 0.0) or 0.0)
+            if strength > 0.0:
+                bsdf.inputs["Emission Color"].default_value = (c[0], c[1], c[2], 1.0)
+                bsdf.inputs["Emission Strength"].default_value = strength
         out[m["id"]] = mat
     return out
 

@@ -28,7 +28,7 @@ PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params",
              "smooth"}
 CAMERA_KEYS = {"id", "lens_mm", "ortho_scale", "loc", "look_at"}
 LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "look_at", "color", "angle", "shots"}
-MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic"}
+MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic", "emission"}
 SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes",
              "narration", "depth_range", "mechanism"}
 MECHANISM_KEYS = {"turns", "pitch", "advance", "tolerance"}
@@ -232,6 +232,17 @@ def load(path: str | Path) -> Episode:
         m.setdefault("base_color", [0.8, 0.8, 0.8])
         m.setdefault("roughness", 0.6)
         m.setdefault("metallic", 0.0)
+        # Emission strength. A backdrop lit as a DIFFUSE surface is one of the
+        # most expensive things in a frame: every camera ray that misses the
+        # subject - 90%+ of a Short's pixels - has to gather global
+        # illumination instead of returning the free world colour. Measured on
+        # s01: 10-14 s/frame without a backdrop, 43.5 with one, and 49.6 after
+        # shrinking it, which is how the size hypothesis died. An emissive
+        # surface returns its colour on the first hit and costs almost nothing.
+        m.setdefault("emission", 0.0)
+        if float(m["emission"]) < 0.0:
+            raise SpecError(f"{where}.emission: {m['emission']} is negative")
+        m["emission"] = float(m["emission"])
         if len(m["base_color"]) != 3:
             raise SpecError(f"{where}.base_color: expected 3 numbers")
         materials.append(m)

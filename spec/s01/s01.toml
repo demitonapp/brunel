@@ -23,7 +23,10 @@ title = "Why a hydraulic cylinder pushes harder than it pulls"
 fps = 30
 width = 1080
 height = 1920
-samples = 32
+# 16, not 32. Measured on this scene: 43.5 s/frame at 32, 24.5 at 16, and with
+# denoising on 5,672 polys of simple shapes the difference is not visible - the
+# gold callout and the chrome highlight are equally clean. 4.8 hours saved.
+samples = 16
 engine = "CYCLES"
 device = "CPU"
 units = "metric"

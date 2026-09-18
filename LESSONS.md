@@ -791,3 +791,39 @@ one or the other.
   animating ones and asserts the report distinguishes them. The test was written wrong first - it
   synthesised "moving" frames that were all the same colour - and failed, which is how it earned
   being believed.
+
+## 2026-09-19 - Three hypotheses, all wrong, killed by one control
+
+- **Context:** s01 draft 4 rendered at **43.5 s/frame** against draft 2's 9.8. Something in the Tier
+  2/3 rework had quadrupled the cost. The obvious suspect was the new backdrop: a 26 m diffuse plane
+  at roughness 1.0, brightly lit, bouncing global illumination into every ray.
+- **Hypothesis 1, shrink it.** 26 m -> 7 m. Measured **49.6 s/frame** - slightly *worse*.
+- **Hypothesis 2, make it emissive** so camera rays return on first hit. Measured **47.4**. Emission
+  turned a 16 m plane into a 16 m area light, which every shading point then samples. One expensive
+  thing traded for a different expensive thing.
+- **Hypothesis 3, it must be the new geometry** - the `label` text meshes, `crew`, the load rig.
+  `harness build` prints per-part polygons: the entire scene is **5,672 polys across 50 objects**.
+  The two text meshes are 630 and 447. Nothing here is heavy.
+- **The control settled it: 41.4 s/frame with NO backdrop at all.** All four numbers are within noise
+  of each other. The backdrop cost about 5%, not 4x, and had been innocent from the first guess.
+- **The real cause is the improvement.** Draft 2 filled **1.9-2.4%** of frame, so ~98% of rays hit
+  the free world background and cost nothing. Draft 4 fills **43.6%** with `metallic = 1.0` steel and
+  chrome, and every one of those rays takes glossy bounces. The 4x is what filling a frame with metal
+  costs. It is not a regression to be fixed; it is a price to be decided on.
+- **So the lever was samples, and only samples.** 32 -> 16 spp measured 43.5 -> 24.5 s/frame, and
+  with denoising on this geometry the two are visually indistinguishable. 10.9 hours -> 6.1.
+- **The reason this took three wrong turns is that I never measured the control first.** Each
+  hypothesis was tested against the *previous variant* rather than against the scene with the
+  suspect removed entirely, so every result was consistent with the suspect being guilty. The control
+  is the cheapest measurement of the set and it should have been the first.
+- **And it invalidates a planning number.** `docs/strategy/slate.md` budgets ~210 hours for a
+  7-minute Phase 1 cut, extrapolated from a render whose frames were 98% empty. At draft 4's density
+  that estimate is low by roughly 4x. Recorded here rather than silently corrected, because the
+  slate's number is load-bearing for when L1 gets scheduled.
+- **Where:** `spec/s01/s01.toml` (`samples = 16`, with the measurement inline), `docs/strategy/slate.md`
+  (unchanged, flagged), `harness/spec.py` + `harness/build.py` (`emission` material property - kept,
+  because it is a legitimate feature even though it was not the fix).
+- **ENFORCED BY:** nothing automatic, and honestly nothing should be - this is a judgement about what
+  a frame is worth, not a rule. What IS enforced is `harness bench`, which exists precisely so
+  throughput claims are measured; the failure here was not using it before committing a machine to
+  an eleven-hour job.
