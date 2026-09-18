@@ -1,0 +1,45 @@
+# NEGATIVE TEST. A camera cannot be perspective AND orthographic, so `harness
+# build` MUST fail. H24: the conflict is a hard refusal rather than a silent
+# precedence rule, because a spec that sets both has an author expecting one of
+# them to do something, and choosing quietly makes the frame disagree with the
+# file for no visible reason.
+[meta]
+id = "selftest_ortho_conflict"
+title = "Negative test - lens_mm and ortho_scale together"
+fps = 12
+width = 320
+height = 568
+samples = 4
+engine = "CYCLES"
+device = "CPU"
+units = "metric"
+
+[[material]]
+id = "iron"
+base_color = [0.2, 0.2, 0.2]
+
+[[part]]
+id = "crate"
+gen = "box"
+material = "iron"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+dims = [1.0, 1.0, 1.0]
+
+[[camera]]
+id = "cam_both"
+lens_mm = 50.0
+ortho_scale = 2.0
+loc = [0.0, -5.0, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[light]]
+id = "key"
+type = "SUN"
+energy = 2.0
+
+[[shot]]
+id = "s01"
+name = "a camera that is both"
+camera = "cam_both"
+seconds = 1.0

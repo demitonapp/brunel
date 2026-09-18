@@ -94,7 +94,47 @@ def narration_text(ledger: dict[str, Any]) -> str | None:
     if path.suffix == ".toml":
         lines = re.findall(r'^narration\s*=\s*"(.*)"\s*$', text, re.MULTILINE)
         return "\n".join(lines)
+    if path.suffix == ".md":
+        return _markdown_narration(text)
     return text
+
+
+def _markdown_narration(text: str) -> str:
+    """The spoken lines of a Markdown script, in order.
+
+    A script holds two kinds of blockquote. The narration is a quoted line. An
+    editorial note is prose - a revision record, a staging decision - and it is
+    edited far more often than the words are.
+
+    Hashing the whole file treated both the same, so rewording a stage direction
+    invalidated the fact ledger. A ledger revision has to mean "the words
+    changed, re-approve the facts"; if it means "the file changed" it fires on
+    edits that cannot affect a claim, and a gate that cries wolf is one people
+    learn to re-stamp without reading.
+
+    So the unit is the blockquote BLOCK, not the line: a block counts only if it
+    opens with a quote. That keeps the quoted fragments inside an editorial note
+    out of the hash - this file's own notes quote the old script twice - and it
+    survives a narration line wrapping across two `>` lines, which is how the
+    per-line version would have split a sentence in half.
+    """
+    out: list[str] = []
+    block: list[str] = []
+
+    def flush() -> None:
+        body = [ln for ln in block if ln]
+        if body and body[0].startswith('"'):
+            out.extend(re.findall(r'"([^"]*)"', " ".join(body)))
+        block.clear()
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            block.append(stripped[1:].strip())
+        else:
+            flush()
+    flush()
+    return "\n".join(out)
 
 
 def validate_schema(ledger: dict[str, Any]) -> list[str]:

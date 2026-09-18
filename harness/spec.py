@@ -25,7 +25,7 @@ TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
 META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device", "units"}
 PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots",
              "smooth"}
-CAMERA_KEYS = {"id", "lens_mm", "loc", "look_at"}
+CAMERA_KEYS = {"id", "lens_mm", "ortho_scale", "loc", "look_at"}
 LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "look_at", "color", "angle", "shots"}
 MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic"}
 SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes",
@@ -282,6 +282,36 @@ def load(path: str | Path) -> Episode:
         _unknown(where, c, CAMERA_KEYS)
         cid = _require(where, c, "id")
         where = f"camera[{cid}]"
+        # An ORTHOGRAPHIC camera. H24: S1's reveal compares two areas, and an
+        # area comparison under a perspective lens is not a comparison - the
+        # nearer figure is bigger on screen by construction, so the shot argues
+        # for whichever side the lens favours.
+        #
+        # `lens_mm` and `ortho_scale` are mutually exclusive and the conflict is
+        # a hard refusal, not a silent precedence rule. A spec that sets both
+        # has an author who expects one of them to do something, and picking one
+        # quietly means the frame disagrees with the file for no visible reason.
+        # Tested against the RAW dict, because lens_mm gets a default below and
+        # after that every camera looks like it asked for a lens.
+        if "ortho_scale" in c:
+            if "lens_mm" in c:
+                raise SpecError(
+                    f"{where}: sets both lens_mm and ortho_scale. A camera is either "
+                    f"perspective or orthographic - drop one. (ortho_scale is the width "
+                    f"in metres the frame covers; lens_mm is a focal length.)"
+                )
+            if isinstance(c["ortho_scale"], bool) or not isinstance(
+                c["ortho_scale"], (int, float)
+            ):
+                raise SpecError(
+                    f"{where}.ortho_scale: expected the frame WIDTH in metres, e.g. "
+                    f"ortho_scale = 0.62 - got {c['ortho_scale']!r}"
+                )
+            if float(c["ortho_scale"]) <= 0.0:
+                raise SpecError(
+                    f"{where}.ortho_scale: {c['ortho_scale']} is not a positive width"
+                )
+            c["ortho_scale"] = float(c["ortho_scale"])
         c.setdefault("lens_mm", 50.0)
         c["loc"] = _vec(where, c, "loc", default=[0.0, -8.0, 1.6])
         c["look_at"] = _vec(where, c, "look_at", default=[0.0, 0.0, 1.6])

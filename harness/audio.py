@@ -119,7 +119,23 @@ def synthesise(
 
         filters = []
         if spoken > slot:
-            tempo = min(spoken / slot, MAX_TEMPO)
+            needed = spoken / slot
+            if needed > MAX_TEMPO:
+                # Past MAX_TEMPO the old code capped the tempo and let the
+                # trailing `-t slot` hard-cut the remainder - losing the end of
+                # the line while printing a "fitted: ... tempo 1.35x" that reads
+                # like success. Narration IS the product; a defect that removes
+                # words must not be reported as a fit.
+                lost = spoken / MAX_TEMPO - slot
+                raise AudioError(
+                    f"{sid}: narration is {spoken:.2f}s of speech in a "
+                    f"{slot:.2f}s shot. Even at the {MAX_TEMPO:.2f}x ceiling "
+                    f"that is {lost:.2f}s that would be cut off mid-sentence. "
+                    f"Lengthen the shot to at least "
+                    f"{spoken / MAX_TEMPO:.2f}s, or shorten the line "
+                    f"({len(text.split())} words)."
+                )
+            tempo = needed
             filters.append(f"atempo={tempo:.4f}")
             overruns.append(
                 f"{sid}: VO {spoken:.2f}s in a {slot:.2f}s slot -> tempo {tempo:.2f}x"

@@ -165,7 +165,8 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     from .assemble import AssembleError, assemble
 
     try:
-        assemble(Path(args.out) / ep.id, out_path=Path(args.out) / f"{ep.id}.mp4")
+        assemble(Path(args.out) / ep.id, out_path=Path(args.out) / f"{ep.id}.mp4",
+                 shots=[s["id"] for s in ep.shots])
     except AssembleError as exc:
         print(f"assemble FAILED\n{exc}", file=sys.stderr)
         return 2
@@ -328,7 +329,10 @@ def _deliver_from_backend(args: argparse.Namespace, ep: Any, ep_dir: Path) -> in
         try:
             voice_track, durations = synthesise(ep, ep_dir / "audio", voice=args.voice)
         except AudioError as exc:
-            print(f"  warning: no voiceover ({exc})", file=sys.stderr)
+            # This ships a cut with NO NARRATION. Legitimate when `say` is
+            # absent (not a Mac); a defect when the script does not fit the
+            # shot. Either way the operator must not read past it.
+            print(f"  WARNING: delivering with NO VOICEOVER - {exc}", file=sys.stderr)
 
     cues = build_cues(ep, durations, shot_durations=measured)
     ass = write_ass(cues, ep_dir / "captions.ass")
@@ -383,11 +387,15 @@ def cmd_deliver(args: argparse.Namespace) -> int:
             (ep_dir / "audio" / "vo_durations.json").write_text(
                 json.dumps(durations, indent=2) + "\n", encoding="utf-8")
         except AudioError as exc:
-            print(f"  warning: no voiceover ({exc})", file=sys.stderr)
+            # This ships a cut with NO NARRATION. Legitimate when `say` is
+            # absent (not a Mac); a defect when the script does not fit the
+            # shot. Either way the operator must not read past it.
+            print(f"  WARNING: delivering with NO VOICEOVER - {exc}", file=sys.stderr)
 
     print("  assembling silent cut")
     try:
-        silent = assemble(ep_dir, out_path=ep_dir / f"{ep.id}_silent.mp4")
+        silent = assemble(ep_dir, out_path=ep_dir / f"{ep.id}_silent.mp4",
+                          shots=[s["id"] for s in ep.shots])
     except AssembleError as exc:
         print(f"assemble FAILED\n{exc}", file=sys.stderr)
         return 2

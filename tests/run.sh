@@ -75,6 +75,17 @@ check "camera inside geometry is rejected"        fail tests/fixtures/camera_ins
 check "camera clear of geometry is accepted"      pass tests/fixtures/camera_clear.toml  "is INSIDE part"
 check "an unknown spec key is refused"            fail tests/fixtures/unknown_key.toml   "unknown key"
 check "smooth = true is refused; it is an angle"  fail tests/fixtures/smooth_not_an_angle.toml "expected an angle in DEGREES"
+check "a camera cannot be both persp and ortho" fail tests/fixtures/camera_ortho_and_lens.toml "either perspective or orthographic"
+
+echo "H24 - orthographic projection"
+# Asserting camera.type == "ORTHO" would only prove an attribute was set. This
+# measures what the spec author is buying: that two equal objects at different
+# distances project to the same width, and that they do NOT under a lens.
+if $PY tests/h24_projection.py; then
+    echo "  pass  ortho removes perspective scaling; the perspective control still shows it"
+else
+    echo "  FAIL  ortho projection"; fail=1
+fi
 
 echo "fact gate"
 # Assert against fixtures, not the real ep01 ledger. A test that asserts the
@@ -109,6 +120,43 @@ if printf '%s' "$FG_OUT" | grep -q "FAIL. every_tier_1_to_3_source_has_a_verbati
     echo "  pass  a PLACEHOLDER quote does not count as a quote"
 else
     echo "  FAIL  placeholder quotes are being accepted"; fail=1
+fi
+
+if $PY - <<'PY'
+import sys
+sys.path.insert(0, ".")
+from harness.factgate import _markdown_narration
+
+BASE = """# Script
+
+> **Note.** An editorial block. It quotes the old draft as "forty tonnes" on purpose.
+
+## Beat 1
+
+> "This cylinder pushes with fifty-five tonnes of force."
+>
+> "Pulling, it manages twenty-seven."
+"""
+# Rewording an editorial note must NOT move the hash - that is the whole bug.
+EDIT_NOTE = BASE.replace("An editorial block.", "An editorial block, reworded today.")
+# Changing a spoken word MUST move it.
+EDIT_WORD = BASE.replace("fifty-five", "sixty")
+
+base, note, word = (_markdown_narration(t) for t in (BASE, EDIT_NOTE, EDIT_WORD))
+if "forty tonnes" in base:
+    print("an editorial note's quote leaked into the narration hash")
+    sys.exit(1)
+if base != note:
+    print(f"rewording an editorial note changed the narration:\n  {base!r}\n  {note!r}")
+    sys.exit(1)
+if base == word:
+    print("changing a spoken word did NOT change the narration")
+    sys.exit(1)
+PY
+then
+    echo "  pass  the script hash tracks the spoken words, not the stage directions"
+else
+    echo "  FAIL  markdown narration extraction is wrong in one direction or the other"; fail=1
 fi
 
 echo "licence gate"
@@ -203,11 +251,31 @@ try:
 except PassError:
     pass
 assert p.chunks(4.0) == [64], p.chunks(4.0)
+
+# The SAME fault at the other end. `wan`'s real profile has min_frames=49, and
+# a silent pad there rendered a 2.0s shot as 49 frames (3.06s) - the whole
+# normalised animation stretched over it, so the shot played 35% SLOW. Worse
+# than the max_frames case: `deliver --backend` then correctly refuses the
+# clip for being the wrong length, so the generation is paid for and unusable.
+from harness.backend import WanVaceBackend
+wan = WanVaceBackend.profile
+assert wan.min_frames == 49, wan.min_frames
+assert wan.frame_count(4.0) == 64, wan.frame_count(4.0)
+for short in (1.0, 2.0, 3.0):
+    try:
+        n = wan.frame_count(short)
+        print(f"frame_count({short}) returned {n} - a shot below min_frames was "
+              f"padded instead of refused; it will play "
+              f"{(n / wan.fps) / short:.2f}x slow")
+        sys.exit(1)
+    except PassError:
+        pass
 PY
 then
     echo "  pass  PassProfile.frame_count refuses past max_frames, chunks() is one chunk"
+    echo "  pass  a shot below a backend's min_frames is refused, not silently padded"
 else
-    echo "  FAIL  PassProfile no longer refuses an over-long shot"; fail=1
+    echo "  FAIL  PassProfile no longer refuses a shot outside the backend window"; fail=1
 fi
 
 if $PY - <<'PY'

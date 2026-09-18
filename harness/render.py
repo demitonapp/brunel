@@ -11,6 +11,7 @@ import json
 import math
 import shutil
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -132,6 +133,32 @@ def _set_visibility(
     return visible
 
 
+def spin_euler(base_deg: Sequence[float], degrees: float) -> tuple[float, float, float]:
+    """The part's own orientation, turned `degrees` about its OWN Z axis.
+
+    Turning about its own axis is the only thing a screw can do, and the one
+    thing a raw Euler track cannot express. Blender's XYZ order is
+    R = Rz.Ry.Rx, so Z is applied **last**: writing the spin into the `.z` slot
+    rotates the already-laid shaft about the *world* Z axis and the screw sweeps
+    round like a propeller. That bug shipped once, cost a paid generation, and
+    passed every per-frame pixel check because each individual frame was a
+    perfectly good picture.
+
+    The composition is `R_base @ R_spin` - a rotation about local Z applied
+    *before* the part's own orientation - which is what "turn the screw" means
+    for any base rot. The invariant that distinguishes it from the bug, and the
+    one `tests/run.sh` asserts: **the part's local Z axis is unchanged by the
+    spin.** A propeller sweep moves it.
+
+    Public (no underscore) because it is the numeric core of the repo's most
+    expensive bug, and a test that re-implemented it would drift from it.
+    """
+    r_base = Euler([math.radians(x) for x in base_deg], "XYZ").to_matrix()
+    r_spin = Euler((0.0, 0.0, math.radians(degrees)), "XYZ").to_matrix()
+    e = (r_base @ r_spin).to_euler("XYZ")
+    return (e.x, e.y, e.z)
+
+
 def _apply_tracks(
     ep: spec_mod.Episode,
     built: dict[str, dict[str, Any]],
@@ -178,20 +205,8 @@ def _apply_tracks(
                     root.scale = tuple(v)
                     root.keyframe_insert(data_path="scale", frame=f)
                 elif chan == "spin":
-                    # Turn about the part's OWN axis, which is the only thing a
-                    # screw can do and the one thing a raw Euler track cannot
-                    # express. Blender's XYZ order is R = Rz.Ry.Rx, so Z is
-                    # applied LAST: writing the spin into the .z slot rotates the
-                    # already-laid shaft about the world Z axis and the screw
-                    # sweeps round like a propeller. That bug shipped once.
-                    #
-                    # Here the spin is composed as R_base @ R_spin - a rotation
-                    # about local Z, applied before the part's own orientation -
-                    # which is what "turn the screw" means for any base rot.
-                    base = entry["spec"].get("rot") or [0.0, 0.0, 0.0]
-                    r_base = Euler([math.radians(x) for x in base], "XYZ").to_matrix()
-                    r_spin = Euler((0.0, 0.0, math.radians(v[2])), "XYZ").to_matrix()
-                    root.rotation_euler = (r_base @ r_spin).to_euler("XYZ")
+                    root.rotation_euler = spin_euler(
+                        entry["spec"].get("rot") or [0.0, 0.0, 0.0], v[2])
                     root.keyframe_insert(data_path="rotation_euler", frame=f)
             _smooth(root)
             n += 1

@@ -95,3 +95,87 @@ reach test, and the B2B work waits behind a YouTube cadence it does not need.
 
 **Reopens if** the sponsor relationship becomes the primary revenue line, at which point the
 optimisation target genuinely changes and this file should say so.
+
+---
+
+## D5 — Python stays. The gap was the guardrails, not the language.
+
+**Decided 2026-09-18**, after auditing the question properly rather than by preference.
+
+**Why it is barely a choice.** `bpy` is Python-only — Blender's public extension API *is* Python.
+**1,970 of 6,084 lines (32%) import `bpy` or `bmesh`** and cannot move without leaving Blender:
+`build.py`, `generators.py`, `passes.py`, `render.py`. The other 68% — argparse, TOML/JSON
+validation, HTTP, ffmpeg wrapping — could be anything, but splitting a one-person project into two
+toolchains to rewrite a CLI is what this repo's own principles exist to prevent. **Python is
+entailed by Blender; see D6.**
+
+Python is also not on the critical path. 26.86 s/frame is Cycles, which is C++. Scene build is
+60–90 s against a 6.7-hour render — 0.4%.
+
+**What the audit actually found.** Of H1–H23, roughly **three** would have been caught by a stricter
+compiler: H9's write-only `offset`, H13's two `BuildError` classes, and the shadowed `_depth_range`.
+The other twenty are missing call sites, missing comparisons, wrong semantics, a schema gap or
+unsourced facts. **No language prevents those**, which is the strongest argument against a rewrite
+rather than for one.
+
+Meanwhile ruff was configured in `pyproject.toml` and wired into nothing, with 28 findings waiting;
+its select list omitted `W`, so W605 — the invalid escape that raised a SyntaxWarning on every test
+run until H14 fixed it by hand — sat outside the project's own ruleset. There was no type checker at
+all. And the duplicate-definition bug had been answered by **hand-writing an AST walk in
+`tests/run.sh`**: a partial reimplementation of a type checker nobody was running.
+
+**Fixed 2026-09-18.** ruff and mypy pinned in `requirements-dev.txt`, both hard requirements of
+`tests/run.sh`, all 28 ruff and 8 mypy findings resolved rather than suppressed, and the hand-rolled
+check cut down to the one job no type checker does (see H13 — a class in two modules is legal).
+
+**Reopens if** Blender is replaced (D6). Not before, and not on taste.
+
+---
+
+## D6 — Blender, not Unreal. The engine question is the real one, and the answer is still Blender.
+
+**Decided 2026-09-18.** Follows directly from D5: if Python is entailed by Blender, the question
+worth asking is Blender vs Unreal.
+
+**On this machine it is not a choice.** Against Epic's own macOS requirements, on an M1 / 16 GB /
+12 GiB free:
+
+| UE5 feature | Requires | Here |
+|---|---|---|
+| **Nanite** | Apple Silicon **M2+** (Beta) | ✗ M1 |
+| **Lumen, hardware RT + MegaLights** | **M2+** (Experimental) | ✗ M1 |
+| Recommended memory | **32 GB** (16 is the minimum) | 16 GB |
+
+**The two features that are the argument for Unreal are the two this hardware cannot run.** Add disk:
+UE5 plus Xcode plus a derived-data cache is tens of gigabytes against 12 GiB free, where the entire
+current renderer is a **690 MB** pip install.
+
+**The pain it would relieve is relieved for free.** The only real operational problem is 94 h per
+7-minute long-form, and that is an unbenchmarked RTX 3080 (see D2), not an engine. Buying an engine
+to avoid running a benchmark is the wrong order.
+
+**The objection that survives better hardware.** The thesis is "a diffable spec, deterministic Python
+writes the scene graph, reproducible from `hash(spec) + toolchain pin`." The `.blend` is binary too,
+but it is *derived* — rebuilt from TOML every run, never hand-edited. Unreal's unit of work is the
+binary `.uasset` and the level, versioned with Perforce. And `bpy` on PyPI is genuinely exceptional:
+Blender ships as an importable library, which is why `doctor`, `validate` and every pure-function
+check run without an application. Unreal has no equivalent.
+
+Deepest of all: real-time rendering is temporally accumulated. TSR and Lumen carry history between
+frames, and "same spec, same frames" is exactly what an accumulator does not give. MRQ's Path Tracer
+is deterministic — and switching it on hands back the speed that was the reason to move. **You would
+migrate for speed, then disable the thing that made it fast to keep reproducibility.**
+
+**Where Unreal genuinely wins**, and it clusters on one product: Datasmith/BIM ingest (IFC, Revit,
+STEP, point clouds), interactive client-driven deliverables, and site-scale environments. All three
+describe the **Demiton B2B arm**, not the channel. D4 split those into two products sharing a
+toolchain; this is the first place that split has an engineering consequence — **they may not share
+one forever.**
+
+**The cheap hedge, deliberately not built.** The analogue of the control-pass portability argument is
+USD export: the spec is already the truth layer, so emitting USD alongside the `.blend` would make
+the *renderer* swappable the way `backend.py` made the model swappable. Nothing needs it. Recorded so
+the option is known rather than rediscovered under pressure.
+
+**Reopens if** the B2B arm needs BIM ingest or interactivity — as a *second* pipeline, not a
+replacement — or if the 3080 benchmark disappoints badly enough to change the arithmetic.

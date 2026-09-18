@@ -90,19 +90,37 @@ class PassProfile:
     def frame_count(self, seconds: float) -> int:
         """Frames this profile needs for a shot of this length.
 
-        Refuses rather than clamps at the top end. A silent clamp here once
-        rendered a 6 s shot as 81 frames at 16 fps - 5.06 s of picture - and
-        `_apply_tracks` played the whole normalised animation into that
-        shorter window, so the shot ran 18% fast with nothing to say so.
+        Refuses rather than clamps at BOTH ends, because the clamp is the bug
+        either way: `_apply_tracks` maps the shot's whole normalised animation
+        onto whatever frame count it is handed, so a clamp does not truncate
+        the shot, it re-times it.
+
+        * Over `max_frames`: a 6 s shot rendered as 81 frames at 16 fps - 5.06 s
+          of picture - and ran **18% fast** with nothing to say so.
+        * Under `min_frames`: a 2 s shot on `wan` (min 49) rendered as 49 frames
+          - 3.06 s of picture - and ran **35% slow**. Worse than the top-end
+          case, because `deliver --backend` then correctly refuses the clip for
+          being the wrong length: the money is spent and the clip is unusable.
+
+        A shot outside a backend's window is an authoring decision. Say so here,
+        before a pixel is rendered, rather than resolving it silently.
         """
         n = int(round(seconds * self.fps))
-        n = max(self.min_frames, n)
         if self.max_frames is not None and n > self.max_frames:
             raise PassError(
                 f"a {seconds}s shot needs {n} frames at {self.fps}fps, which "
-                f"exceeds this backend's {self.max_frames}-frame limit. "
-                "Shorten the shot, or split it into two shots - a silent "
-                "clamp here plays the shot fast instead of failing."
+                f"exceeds this backend's {self.max_frames}-frame limit "
+                f"({self.max_frames / self.fps:.2f}s). Shorten the shot, or "
+                "split it into two shots - a silent clamp here plays the shot "
+                "fast instead of failing."
+            )
+        if n < self.min_frames:
+            raise PassError(
+                f"a {seconds}s shot needs {n} frames at {self.fps}fps, which is "
+                f"below this backend's {self.min_frames}-frame minimum "
+                f"({self.min_frames / self.fps:.2f}s). Lengthen the shot, or "
+                "merge it into its neighbour - a silent pad here plays the shot "
+                "slow instead of failing, and you pay for the result."
             )
         return max(1, n)
 

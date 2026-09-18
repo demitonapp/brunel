@@ -1,0 +1,53 @@
+# H24 behaviour fixture. Two IDENTICAL 1 m cubes at different distances from the
+# camera. Under `ortho_scale` they must project to the same width; under
+# `lens_mm` the nearer one must be measurably bigger. That difference is the
+# entire reason an orthographic camera exists in this harness: S1's reveal
+# compares a 153.94 cm2 disc against a 75.40 cm2 ring, and a perspective lens
+# puts a thumb on the scale.
+[meta]
+id = "selftest_camera_ortho"
+title = "H24 - ortho projection"
+fps = 12
+width = 320
+height = 568
+samples = 4
+engine = "CYCLES"
+device = "CPU"
+units = "metric"
+
+[[material]]
+id = "iron"
+base_color = [0.2, 0.2, 0.2]
+
+[[part]]
+id = "near"
+gen = "box"
+material = "iron"
+loc = [0.0, -1.0, 0.0]
+[part.params]
+dims = [1.0, 0.02, 1.0]
+
+[[part]]
+id = "far"
+gen = "box"
+material = "iron"
+loc = [0.0, 3.0, 0.0]
+[part.params]
+dims = [1.0, 0.02, 1.0]
+
+[[camera]]
+id = "cam"
+ortho_scale = 4.0
+loc = [0.0, -8.0, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[light]]
+id = "key"
+type = "SUN"
+energy = 2.0
+
+[[shot]]
+id = "s01"
+name = "two equal cubes at different depths"
+camera = "cam"
+seconds = 1.0

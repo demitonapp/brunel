@@ -9,7 +9,7 @@
     "runtime_s": 30,
     "ledger_revision": 3,
     "narration_source": "docs/videos/s01-hydraulic-cylinder/script.md",
-    "spec_script_sha256": "f0509ea5001205462dbfb6da786122046caf5d9daf7b7b80a6255212f29fa86c"
+    "spec_script_sha256": "88825b04bc90f422dad5397c1ca9ff3956340d5e622e145261222e3854681ca4"
   },
   "sources": [
     {

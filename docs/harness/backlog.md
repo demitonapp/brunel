@@ -409,7 +409,7 @@ parts project to disjoint clusters, is a WARN pointing at a contact sheet — ne
 repo's own rule about checks that cry wolf applies, and this one would.
 **Recorded so it is not mistaken for a gap nobody noticed.**
 
-### H23 — For a Markdown script, the ledger hash covers the stage directions too
+### H23 — For a Markdown script, the ledger hash covered the stage directions too — FIXED
 
 `factgate.narration_text()` extracts `^narration = "..."` lines from a **TOML** spec — "the spec is
 the approved script, so the hash tracks the words". For any other suffix it returns
@@ -427,12 +427,26 @@ changed, re-approve the facts". Here it means "the file changed", so it fires on
 possibly affect a factual claim — and a gate that cries wolf is one people learn to re-stamp without
 reading. That is H6's lesson arriving from the other side.
 
-**Blocks:** nothing yet, but it will make the per-video public ledger (§2.5, the wedge) annoying
-enough to route around, which is the failure mode that matters.
-**Fix.** Extract the quoted narration from Markdown the same way TOML extracts it — the `> "..."`
-lines, in order — so the hash tracks the words in both formats. Three lines in `narration_text`.
-**Check.** Editing a non-narration line of a fixture script must NOT change the hash; editing a
-quoted line must.
+**Blocked:** nothing yet, but it would have made the per-video public ledger (§2.5, the wedge)
+annoying enough to route around, which is the failure mode that matters. It had already forced one
+re-stamp after a prose-only edit.
+**Fixed 2026-09-18.** `narration_text` routes `.md` through `_markdown_narration`, which extracts
+the spoken lines the way the TOML branch extracts `narration = "..."`.
+
+The unit had to be the blockquote **block**, not the line. A script holds two kinds of blockquote —
+narration, and editorial notes recording a revision or a staging decision — and the notes quote the
+old script too. `s01`'s own notes contain *"44% weaker"* and *"two annotated faces, one each side of
+the piston"*, both of which a per-line quote scrape would have folded into the hash, reintroducing
+the bug in a subtler form. A block counts only if it opens with a quote. That also survives a
+narration line wrapping across two `>` lines, which the per-line version would have split in half.
+
+**Check.** `tests/run.sh` asserts all three directions on an inline fixture: an editorial note's
+quote must not appear in the narration, rewording a note must not change it, and changing a spoken
+word must.
+
+**The S1 ledger was re-stamped, and `ledger_revision` was deliberately NOT bumped.** A revision means
+"the words changed, re-approve the facts". The words did not change — what is hashed did. Bumping it
+would claim a re-approval nobody performed.
 
 ### H23 — `GEN cylinder` has a published table to be checked against, and nowhere to put the check
 

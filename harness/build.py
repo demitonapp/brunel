@@ -189,6 +189,13 @@ def build_cameras(ep: spec_mod.Episode, collection: Any) -> dict[str, Any]:
         # means to a human framing a wide object in 9:16 what it means in 16:9.
         cam_data.sensor_fit = "HORIZONTAL"
         cam_data.sensor_width = 36.0
+        # H24. sensor_fit stays HORIZONTAL so ortho_scale means the same thing
+        # lens_mm does: the WIDTH the frame covers. Blender's default AUTO fit
+        # would silently reinterpret it as the height on a 9:16 frame, which is
+        # a 1.78x framing error that looks like a modelling mistake.
+        if c.get("ortho_scale"):
+            cam_data.type = "ORTHO"
+            cam_data.ortho_scale = float(c["ortho_scale"])
         obj = bpy.data.objects.new(c["id"], cam_data)
         collection.objects.link(obj)
         obj.location = (c["loc"][0], c["loc"][1], c["loc"][2])
