@@ -312,6 +312,15 @@ look_at = [-0.20, 0.0, 0.0]
 
 # H24. ortho_scale is the frame WIDTH in metres and is mutually exclusive with
 # lens_mm. Without it b03b/b03c argue for whichever figure is nearer the lens.
+# A drift, not a hold. check_motion fails a frozen shot - and it is right to,
+# because a shot that never changes is usually a track that was written and
+# never applied. These two ARE meant to be held, so they get the smallest move
+# that is still a move.
+#
+# It costs nothing, and only an ORTHOGRAPHIC camera makes that true: ortho_scale
+# fixes the frame width regardless of distance, so the camera can travel without
+# altering the size of either figure. Under a lens the same drift would change
+# the very areas the shot exists to compare.
 [[camera]]
 id = "cam_areas"
 ortho_scale = 0.36
@@ -388,6 +397,8 @@ id = "b03b"
 name = "The ring"
 camera = "cam_areas"
 seconds = 3.0
+move_from = [0.0, -1.20, 0.0]
+move_to = [0.022, -1.20, -0.012]
 narration = "Pulling, the rod is in the way. What is left is a ring."
 
 [[shot]]
@@ -395,6 +406,8 @@ id = "b03c"
 name = "The same size"
 camera = "cam_areas"
 seconds = 4.0
+move_from = [0.0, -1.20, 0.0]
+move_to = [-0.020, -1.20, 0.011]
 narration = "It does not look like half. It is. Gather that ring into a circle, and it is the same size as the rod that took the space."
 
 [[shot]]
@@ -403,3 +416,27 @@ name = "Three of them"
 camera = "cam_three"
 seconds = 7.0
 narration = "Which is why an excavator curls a bucket in hard, and pushes it back out weak. There are three of these on the arm, and none of them pull their own weight."
+
+# --- beat 4 strokes ------------------------------------------------------
+# One stroke each, staggered by the frames above so they do not pulse in
+# unison. The vector differs per cylinder because a location track is in
+# world space and each one sits at its own rot.
+
+[[track]]
+part = "b4_boom_rod"
+channel = "location"
+shots = ["b04"]
+frames = [0.0, 0.40, 0.62, 1.0]
+values = [[-0.780, 0.000, 0.600], [-0.474, 0.000, 0.749], [-0.474, 0.000, 0.749], [-0.780, 0.000, 0.600]]
+[[track]]
+part = "b4_stick_rod"
+channel = "location"
+shots = ["b04"]
+frames = [0.0, 0.40, 0.62, 1.0]
+values = [[0.100, 0.000, 0.000], [0.363, 0.000, 0.096], [0.363, 0.000, 0.096], [0.100, 0.000, 0.000]]
+[[track]]
+part = "b4_bucket_rod"
+channel = "location"
+shots = ["b04"]
+frames = [0.0, 0.40, 0.62, 1.0]
+values = [[0.860, 0.000, -0.560], [1.073, 0.000, -0.507], [1.073, 0.000, -0.507], [0.860, 0.000, -0.560]]
