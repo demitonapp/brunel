@@ -1,0 +1,73 @@
+{
+  "schema": "eval/README.md - Row schema",
+  "note": [
+    "Every number here is read off an artefact in this repo, and the field that names which one is `basis`. A field nobody measured is `null` with a `_unknown` entry saying so, never a plausible-looking figure - a ledger whose purpose is to make claims admissible cannot itself contain an estimate dressed as a measurement.",
+    "The first row is deliberately mostly null. That IS the first finding: of the eleven things the row schema asks for, the harness can currently produce four without a human, and it has never been asked to produce any of them."
+  ],
+  "rows": [
+    {
+      "episode": "ep01",
+      "title": "The Thames Tunnel - 8-shot documentary animatic",
+      "recorded_at": "2026-09-18",
+      "level_claimed": "L0",
+      "level_basis": "README calls it a low-fi animatic; no L1 checklist exists to claim against (see eval/headline.json)",
+
+      "delivered": {
+        "file": "renders/ep01/ep01.mp4",
+        "duration_s": 72.0,
+        "shots_total": 8,
+        "frames_total": 864,
+        "resolution": [384, 682],
+        "samples": 8,
+        "fps": 12,
+        "caption_cues": 32,
+        "basis": "ffprobe on the delivered file; renders/ep01/deliver.json; render-bench.json ep01 row",
+        "_caveat": "renders/ep01/manifest.json currently reports 3 shots and 480x854, because a later `render --shots` run overwrote it with a partial list. The delivered mp4 predates that and is 8 shots at 384x682. This is exactly the hazard harness/assemble.py now refuses on."
+      },
+
+      "gates": {
+        "factgate": "fail",
+        "licencegate": "blocked",
+        "canary": "none",
+        "basis": {
+          "factgate": "python -m harness.factgate spec/ep01/facts/ep01.facts.json -> FAIL: 18 facts, 5 failing check(s)",
+          "licencegate": "python -m harness.licencegate legal/licences.json -> BLOCKED, 1 failure: lic_placeholder_brunel_museum has licence 'unknown'",
+          "canary": "goldens/ep01/ does not exist. goldens/ad02/ is blessed (5 shots, 480x854, 8 spp)"
+        }
+      },
+
+      "soft_scores": {
+        "rubric_L0": null,
+        "accuracy_historical": null,
+        "_unknown": "Neither has ever been scored. qa/rubrics/L0.md exists and has not been run against ep01. Scoring is a human act by principle 3; the harness will not invent one."
+      },
+
+      "cost": {
+        "render_cpu_hours": 0.47,
+        "render_gpu_hours": 0,
+        "llm_usd": null,
+        "creator_hours": null,
+        "basis": "864 frames x 1.97 s/frame, the steady-state ep01 row in render-bench.json, measured over the full 864 frames at 384x682 / 8 spp on M1 CPU Cycles",
+        "_unknown": "llm_usd and creator_hours are not instrumented anywhere in the repo. There is no place a token count or a session length is written down, so no number can be recovered after the fact. These are the two fields the ledger most needs and is least able to produce."
+      },
+
+      "revisions": {
+        "shots_rebuilt": null,
+        "escape_hatches_used": null,
+        "_unknown": "Not tracked. Rule 2 of eval/README.md requires escape_hatches_used every episode specifically so an upward trend is visible rather than silent - and nothing in the harness counts one. The count for ep01 is unrecoverable; it can start at the next episode."
+      },
+
+      "benchmark_shot": {
+        "ssim_vs_last_quarter": null,
+        "lpips_vs_last_quarter": null,
+        "_unknown": "First row - there is no previous quarter to compare against. The mechanism now exists (harness/check.py `ssim`, `check_goldens`; `harness verify --bless`), so the NEXT row can carry a real number. LPIPS would need a dependency this repo does not have and is not planned."
+      },
+
+      "retro": [
+        "The ratchet had no pawl. Every check in the harness was a THRESHOLD check - is the frame black, is it flat, is depth in range - and not one COMPARED this render to the last known good one. Threshold checks catch catastrophes and are structurally blind to drift, which is the only thing a 'measurably better every time' claim actually turns on. Fixed 2026-09-18: goldens/, `check.ssim`, `check.check_goldens`, `verify --bless`, calibrated on two real double-renders of ad02 (1.000000 on every shot; a 5 cm camera move scores 0.827). Measured in the same session, against an assumption in ROADMAP.md: two clean runs are pixel-identical but their PNG files are not, so a file hash fails today, a pixel hash would work today, and neither survives a GPU render node - which is why the metric is SSIM.",
+        "The most expensive bug in the project - spin written into the .z Euler slot, which swung the screws like a propeller - had no numeric test, only a WARNING whose own thresholds overlap the correct behaviour (14.3-16.3 correct vs 18.1-19.5 buggy). It was testable in six lines the whole time: turning a screw must not move the axis it turns about. Now tests/spin_axis.py.",
+        "`PassProfile.frame_count` was fixed at one end only. The top-end clamp that played a 6 s shot 18% fast was made a refusal; the bottom-end clamp that plays a 2 s shot 35% SLOW on wan's 49-frame minimum survived, un-noticed, in the same function, under a docstring that said 'at the top end'. A fix that names the end it fixes should be read as naming the end it did not."
+      ]
+    }
+  ]
+}

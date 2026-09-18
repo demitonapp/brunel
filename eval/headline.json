@@ -1,0 +1,16 @@
+{
+  "quarter": "2026-Q1",
+  "declared_at": "2026-09-18",
+  "metric": "shots_passing_L1_checklist / shots_total",
+  "value": null,
+  "computable": false,
+  "why_not": [
+    "qa/rubrics/ holds L0.md only. There is no L1 checklist to score against, so the metric this quarter declares cannot be computed from anything in the repo.",
+    "Scoring it is a human act in any case - `automate generation, never adjudication` (README, principle 3). The harness can count the rows; it cannot award them."
+  ],
+  "note": [
+    "Rule 1 of eval/README.md: never change the headline metric mid-quarter, or it becomes a metric that follows the result. So this file records the declared metric as UNCOMPUTABLE rather than quietly swapping it for one that happens to be ready.",
+    "For information, and not as a substitute: the Q2 metric `canary_mean_ssim` IS now computable as of 2026-09-18 - `harness verify` compares each shot's storyboard still against goldens/<ep>/ and reports SSIM. goldens/ad02 is blessed; goldens/ep01 is not.",
+    "The action this file implies is one of two things, and it should be chosen deliberately rather than drifted into: write qa/rubrics/L1.md, or declare next quarter's metric to be the one the harness can already produce."
+  ]
+}
