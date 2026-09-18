@@ -61,13 +61,17 @@ bore    = 0.140      # m — ledger F002
 rod     = 0.100      # m — ledger F002
 stroke  = 1.30       # m
 extend  = 0.0        # 0..1, animatable — the whole of beat 1
-ends    = "welded"   # "welded" | "tie_rod"
-ports   = 2          # 2 = double-acting, 1 = single
-section = 0.0        # 0..1 cutaway sweep — real geometry, not opacity (ROADMAP L2)
+ends     = "welded"  # "welded" | "tie_rod"
+ports    = 2         # 2 = double-acting, 1 = single
+section  = 0.0       # 0..1 cutaway sweep — real geometry, not opacity (ROADMAP L2)
+segments = 64        # H21 — 24 is visibly faceted on a chrome barrel at 1080×1920
+smooth   = 30.0      # H21 — degrees, not a flag; keeps the end caps flat
 ```
 
 `section` is the only parameter that earns real work. Everything else is a few calls to the `_cyl`
-helper that `harness/generators.py` already has.
+helper that `harness/generators.py` already has — now that **H21** has made `segments` spec-settable
+and added per-part `smooth` shading, both of which this component needs and neither of which existed
+when this brief was first written.
 
 ## The arithmetic
 

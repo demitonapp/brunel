@@ -40,10 +40,17 @@ trying to beat.
 
 ## Status
 
-| id | video | brief | script | spec | rendered |
-|---|---|---|---|---|---|
-| s01 | Why a hydraulic cylinder pushes harder than it pulls | yes | yes | no | no |
-| s02–s08 | see `docs/strategy/slate.md` §3 | — | — | — | — |
+| id | video | facts | brief | script | spec | rendered |
+|---|---|---|---|---|---|---|
+| s01 | Why a hydraulic cylinder pushes harder than it pulls | **yes** | yes | yes | no | no |
+| s02–s08 | see `docs/strategy/slate.md` §3 | — | — | — | — | — |
+
+**`facts` is first in that table on purpose** — it is the first column because it is the first step,
+and s01 is the first video in this repo to have one. `spec/s01/facts/s01.facts.json` passes 9 of
+`factgate`'s 11 checks. The two it fails are honest and named: no source is archived
+(`archive.org` rate-limited during research), and no fact is human-approved — the gate does not let
+an agent sign off its own work. Neither is a sourcing gap; see
+`docs/research/hydraulic-cylinder-datasheets-2026-09-18.md` §8.
 
 Directories are created when a video starts, not when it is planned. The slate is the plan; empty
 stub folders are just rot with a filename.

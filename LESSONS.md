@@ -499,3 +499,52 @@ one or the other.
   for lessons nobody had just re-verified" - then done anyway, deliberately re-checking each
   "Check:" bullet against the current code rather than trusting it, which is what turned the
   batch pass from the trap it would have been into the same discipline this entry asks for.
+
+## 2026-09-18 - An unsourced number can be arithmetically perfect and still describe a part that does not exist
+
+- **Context:** S1's brief specified a 120 mm bore, 80 mm rod cylinder at 350 bar, derived 395.8 kN
+  extending and 219.9 kN retracting, and correctly marked all three inputs `SOURCE NEEDED`. The
+  arithmetic was checked and re-checked and was never wrong. When the datasheets were actually
+  pulled, 350 bar was confirmed verbatim from Caterpillar's own 320 spec sheet - and **120 x 80 does
+  not exist.** The Cat 320 boom cylinder ships in five bore/rod pairs and none of them is 120/80; the
+  120 mm one has an **85 mm rod**. A correct sum over invented inputs is indistinguishable, on the
+  page, from a correct sum over real ones. `SOURCE NEEDED` was doing the only work.
+- **The sourcing improved the video, which is the part worth remembering.** The unsourced number
+  made the point as "44% weaker" - a figure that sits between two manufacturer standards, which is
+  the exact shape of a number picked to sound impressive. The sourced answer is **half**: the
+  standard rod is bore / sqrt(2), so the rod covers half the piston and the annulus is half, and
+  Rexroth sells it as the phi = 2 series with the ratio printed in its own catalogue column.
+  Sourcing is not a compliance step applied to a finished script. It changed the script.
+- **Check:** every number in `docs/videos/s01-hydraulic-cylinder/` now carries a ledger key, and
+  `spec/s01/facts/s01.facts.json` carries bore and rod as F002 with two independent sources. The one
+  fact that rests on a weak source - that this specific cylinder is a Cat 320 boom cylinder, F003 -
+  is `status: unknown` with `treatment: omit`, so the script says "an excavator" and never names the
+  machine. The claim the evidence cannot carry is not made to the viewer.
+- **Where:** `docs/research/hydraulic-cylinder-datasheets-2026-09-18.md`,
+  `spec/s01/facts/s01.facts.json`, `docs/videos/s01-hydraulic-cylinder/{brief,script}.md`.
+- **ENFORCED BY:** `harness/factgate.py`, rule `every_fact_has_a_tier_1_to_3_source_or_declared_status`
+  - a fact with no TIER-1..3 support must declare an honest status, which is what forces F003 to say
+  `unknown` rather than quietly asserting a machine model. Verified this session: the gate passes 9
+  of 11 checks on the s01 ledger and names the two it fails.
+
+## 2026-09-18 - A rate-limited archive is a failing check, not a licence to invent a snapshot URL
+
+- **Context:** `factgate` requires an `archive_url` on every web source, because "a rotted citation
+  is indistinguishable from a fabricated one". While building the s01 ledger, `archive.org` returned
+  **HTTP 429** and kept returning it. Three sources therefore have no snapshot. The tempting move was
+  to write `https://web.archive.org/web/2026/<url>` for each - a URL of that shape is well-formed,
+  passes the rule, and reads as a citation. It is also a URL nobody has confirmed resolves, and a
+  well-formed link to a snapshot that does not exist is strictly worse than no link, because it
+  *looks* checked.
+- **Check:** the three sources carry no `archive_url`, `every_web_source_has_an_archive_url` **fails**,
+  and `--publish` stays blocked. The failure is recorded as the top row of the "Known gaps" table in
+  the research document, with the exact remaining action: submit five URLs to the Wayback Machine and
+  paste the snapshots back in. A gate failure that names its own fix is a working gate.
+- **A rule of shape only checks shape.** Rule 4 tests that the field is non-empty; it cannot test
+  that the URL resolves. Any `web.archive.org/web/<year>/...` string satisfies it. That is not an
+  argument for weakening the rule - it is the reason the field must never be filled in by hand
+  from a pattern rather than from a response.
+- **Where:** `spec/s01/facts/s01.facts.json` (sources S001-S003),
+  `docs/research/hydraulic-cylinder-datasheets-2026-09-18.md` §8.
+- **ENFORCED BY:** `harness/factgate.py`, rule `every_web_source_has_an_archive_url` - observed
+  failing on this ledger this session, which is the only evidence that a check works.

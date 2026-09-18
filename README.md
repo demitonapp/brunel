@@ -79,6 +79,7 @@ Honest, as of 2026-09-18.
 | **`spec/ep01`** — the 8-shot, 72 s documentary | renders end to end as a low-fi animatic |
 | **`spec/ad01`** — the 3-beat, 18 s marketing cut | validates and renders; storyboard now reads (see below); **not usable with `wan`** as written — its 6 s shots exceed the 81-frame limit (see the generative interface, below) |
 | **`spec/ad02`** — the 5-beat, 20 s marketing cut | validates and renders; the current, fuller replacement for `ad01` |
+| **`spec/s01`** — the 30 s hydraulic-cylinder Short | **fact ledger only.** Numbers sourced off manufacturer datasheets; 9/11 `factgate` checks pass. No `.toml` yet |
 | **`harness passes`** — the control-pass exporter | **works**: all five passes verified, depth confirmed linear and greyscale |
 | **`harness backends`** — the pluggable interface | **works**: local / cosmos / wan registered |
 | **Cosmos hosted API** | **does not exist** — see the evidence in [docs/strategy/spec.md](docs/strategy/spec.md) §8.6/8.7 and [docs/research](docs/research/video-api-geometric-control-comparison-2026-09-18.md). Self-host only. |

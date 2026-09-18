@@ -433,3 +433,29 @@ enough to route around, which is the failure mode that matters.
 lines, in order — so the hash tracks the words in both formats. Three lines in `narration_text`.
 **Check.** Editing a non-narration line of a fixture script must NOT change the hash; editing a
 quoted line must.
+
+### H23 — `GEN cylinder` has a published table to be checked against, and nowhere to put the check
+
+H21 made a cylinder *look* right. This is about making it *measure* right.
+
+S1's cylinder is the first component in this repo whose geometry has a **manufacturer's printed
+answer**. Bosch Rexroth RE 17331 publishes, for a 140 mm bore and 100 mm rod, a piston area of
+**153.94 cm²** and an annulus area of **75.40 cm²**. Derived independently from the geometry this
+session: 153.94 and 75.40, agreeing to 0.002 cm².
+
+Every other generator in `library/` is checked against a dimension (`shield` is 12×3 frames because a
+source says so). None is checked against a *derived quantity* a vendor also publishes. `screw` is the
+cautionary case — `library/README.md` rule 1 records it as `measured: false`, its pitch chosen to
+make the arithmetic work, and that was the honest answer available at the time.
+
+**Blocks:** nothing today; `GEN cylinder` does not exist yet. Recorded now because the check has to
+be written with the component, not retrofitted after a render looks plausible.
+
+**The check, precisely.** When `GEN cylinder` lands, `tests/run.sh` builds a 140 × 100 cylinder and
+asserts its derived piston and annulus areas match 153.94 cm² and 75.40 cm² within 0.01 cm². It fails
+if the generator ever computes an annulus from the bore radius instead of the bore *area*, which is
+the single most likely way to get this wrong and produces a number that still looks reasonable.
+
+**Why this is not H7's tautology.** A `[shot.mechanism]` block that restates three hand-written
+numbers proves nothing. This compares the generator's output against a figure printed by someone
+who does not know this repo exists.

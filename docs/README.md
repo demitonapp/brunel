@@ -37,6 +37,11 @@ Unchanged and untouched by the restructure. Every vendor claim, price and licenc
 source and a stated confidence. Cite it; do not summarise it into strategy documents and then let
 the two drift.
 
+The newest entry is the first one bound to a shipping deliverable rather than to a tooling decision:
+[`hydraulic-cylinder-datasheets-2026-09-18.md`](research/hydraulic-cylinder-datasheets-2026-09-18.md)
+is where every number in `spec/s01/facts/s01.facts.json` comes from. It is the worked example of the
+rule below — it became an assertion, and `factgate` evaluates it.
+
 ---
 
 ## The rule that matters
