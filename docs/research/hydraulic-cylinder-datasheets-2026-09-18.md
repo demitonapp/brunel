@@ -97,9 +97,13 @@ Nominal pressure **250 bar (25 MPa)**, piston Ø 40–320 mm, piston rod Ø 22�
 | slim | ≈ 1.46 | 0.56 | 0.685 — **31% weaker** |
 | **standard** | **≈ 2.0** | **0.707** | **0.50 — exactly half** |
 
-`INFERENCE:` 0.707 is 1/√2, so rod area = ½ × piston area, so annulus = ½ × piston area. The φ = 2
-designation is not an observation about these cylinders — it *is* the specification. Rexroth prints
-the ratio in its own column.
+`INFERENCE:` 0.707 is 1/√2, so rod area = ½ × piston area, so annulus = ½ × piston area.
+
+**Stated precisely, because the video depends on it.** Rexroth prints the area ratio A1/A3 in its own
+column — that much is `HIGH`. Calling it "the φ = 2 series" is *our* shorthand for that column, not a
+label observed on the document. And the standard series measures **1.96–2.08**, not 2.00, because the
+computed rod is rounded to a stock diameter: 140/√2 = 99.0 → 100 mm, giving 48.98%. The design intent
+is half; the realised cylinder is within a point of it. Narration says "half", never "exactly half".
 
 ---
 

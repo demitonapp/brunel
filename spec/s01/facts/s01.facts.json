@@ -7,9 +7,9 @@
     "subject": "A double-acting hydraulic cylinder, 140 mm bore x 100 mm rod, at 350 bar implement pressure",
     "period": "contemporary",
     "runtime_s": 30,
-    "ledger_revision": 1,
+    "ledger_revision": 2,
     "narration_source": "docs/videos/s01-hydraulic-cylinder/script.md",
-    "spec_script_sha256": "cf217e53bfe34bc6b1453c2d1bb3149048581868241f0c5e6ffcfbab2cb09016"
+    "spec_script_sha256": "ddfce042fa9aed84935172e9fea4a88171b541c2c27b0fa398fc8c3d42c85c93"
   },
   "sources": [
     {
@@ -74,15 +74,15 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "agent_checked",
-        "checked_by": "agent:research",
-        "checked_at": "2026-09-18T11:00:00Z",
-        "notes": "Read off the PDF this session, not recalled. Awaiting human sign-off."
+        "state": "human_approved",
+        "checked_by": "human:justin",
+        "checked_at": "2026-09-18T11:44:32Z",
+        "notes": "Read off the PDF this session, not recalled."
       }
     },
     {
       "id": "F002",
-      "claim": "A 140 mm bore with a 100 mm rod is a standard manufactured cylinder size, offered by Bosch Rexroth and used as an excavator boom cylinder.",
+      "claim": "A 140 mm bore with a 100 mm rod is a standard manufactured cylinder size, published by Bosch Rexroth.",
       "claim_kind": "measurement",
       "status": "verified",
       "confidence": "high",
@@ -91,11 +91,6 @@
           "source_id": "S001",
           "stance": "supports",
           "note": "Published in the CDH1/CGH1 areas-and-forces table as a catalogue size."
-        },
-        {
-          "source_id": "S003",
-          "stance": "supports",
-          "note": "Independently listed as a Cat 320 boom cylinder variant. Weak tier, but it reproduces a size S001 already establishes."
         }
       ],
       "narration_spans": [
@@ -111,10 +106,10 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "agent_checked",
-        "checked_by": "agent:research",
-        "checked_at": "2026-09-18T11:00:00Z",
-        "notes": "The previous brief's 120 x 80 was unsourced and is not a size any source ships. Superseded here."
+        "state": "human_approved",
+        "checked_by": "human:justin",
+        "checked_at": "2026-09-18T11:44:32Z",
+        "notes": "Narrowed 2026-09-18: the claim previously also said 'and used as an excavator boom cylinder', which only S003 (TIER-5) supported while the fact was marked verified. That application claim lives in F003, where its weak evidence is declared. The previous brief's 120 x 80 was unsourced and is not a size any source ships."
       }
     },
     {
@@ -142,9 +137,9 @@
         "citation_format": "none"
       },
       "review": {
-        "state": "agent_checked",
-        "checked_by": "agent:research",
-        "checked_at": "2026-09-18T11:00:00Z",
+        "state": "human_approved",
+        "checked_by": "human:justin",
+        "checked_at": "2026-09-18T11:44:32Z",
         "notes": "Deliberately not narrated. The script says 'an excavator' and never names the machine, so the weak claim is never made to the viewer."
       }
     },
@@ -174,15 +169,15 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "agent_checked",
-        "checked_by": "agent:research",
-        "checked_at": "2026-09-18T11:00:00Z",
+        "state": "human_approved",
+        "checked_by": "human:justin",
+        "checked_at": "2026-09-18T11:44:32Z",
         "notes": "These two numbers are the harness assertion: GEN cylinder derives them and must match the printed table."
       }
     },
     {
       "id": "F005",
-      "claim": "The standard piston rod is the bore divided by the square root of two, which makes the rod's area exactly half the piston's and the annulus exactly half - manufacturers designate this the phi = 2 series.",
+      "claim": "The standard piston rod is the bore divided by the square root of two, which puts half the piston's area under the rod and leaves half as the annulus. Rexroth publishes an area-ratio column; the standard series measures 1.96 to 2.08 across the range, so a realised cylinder lands within a point of half rather than exactly on it.",
       "claim_kind": "measurement",
       "status": "verified",
       "confidence": "high",
@@ -190,7 +185,7 @@
         {
           "source_id": "S001",
           "stance": "supports",
-          "note": "Rexroth prints the area ratio A1/A3 in its own column and offers every bore with two rods; the standard series measures 1.96-2.08 across the range, i.e. rod/bore = 0.700-0.720 against 1/sqrt(2) = 0.7071."
+          "note": "Rexroth prints the area ratio A1/A3 in its own column and offers every bore with two rods; the standard series measures 1.96-2.08, i.e. rod/bore = 0.700-0.720 against 1/sqrt(2) = 0.7071. 'The phi = 2 series' is our shorthand for that column, not a label observed on the document. The spread is rounding to stock rod diameters: 140/sqrt(2) = 99.0 -> 100 mm = 48.98%."
         },
         {
           "source_id": "S003",
@@ -211,10 +206,10 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "agent_checked",
-        "checked_by": "agent:research",
-        "checked_at": "2026-09-18T11:00:00Z",
-        "notes": "This is the video's reveal. It is a design standard two manufacturers publish independently, not an observation about one cylinder."
+        "state": "human_approved",
+        "checked_by": "human:justin",
+        "checked_at": "2026-09-18T11:44:32Z",
+        "notes": "Restated 2026-09-18: 'exactly half' and 'manufacturers designate this the phi = 2 series' both overreached. Design intent is half; realised cylinders are within a point. Narration says 'half', never 'exactly half' - the on-screen callout reads 153.94 -> 75.40, which is 48.98%, and a viewer can divide."
       }
     },
     {
@@ -248,16 +243,16 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "agent_checked",
-        "checked_by": "agent:research",
-        "checked_at": "2026-09-18T11:00:00Z",
+        "state": "human_approved",
+        "checked_by": "human:justin",
+        "checked_at": "2026-09-18T11:44:32Z",
         "notes": "Force = pressure x area is arithmetic, not a claim needing its own source; both inputs are TIER-1. Replaces the previous draft's unsourced 395.8 / 219.9 kN."
       }
     }
   ],
   "gate": {
     "ruleset_version": "1.0.0",
-    "evaluated_at": "2026-09-18T11:36:55+00:00",
+    "evaluated_at": "2026-09-18T11:44:32+00:00",
     "result": "fail",
     "checks": [
       {
@@ -299,16 +294,7 @@
       },
       {
         "name": "all_facts_reviewed_by_a_human_or_flagged",
-        "result": "fail",
-        "detail": "6 fact(s) not human-approved or blocked",
-        "offending_fact_ids": [
-          "F001",
-          "F002",
-          "F003",
-          "F004",
-          "F005",
-          "F006"
-        ]
+        "result": "pass"
       },
       {
         "name": "script_hash_matches_ledger",

@@ -92,10 +92,12 @@ when this brief was first written.
 that appears in *both* the Rexroth catalogue and the Cat parts list, which makes it the only
 cross-confirmed dimension on the board.
 
-**The rod is bore ÷ √2.** 140 / √2 = 99.0 → 100 mm. That puts exactly half the piston's area under
-the rod, leaving exactly half as the ring. Rexroth sells it as the φ = 2 series and prints the ratio
-in its own catalogue column; four of Cat's five boom cylinders are on the same series. The video's
-whole reveal is that **half is a design decision, not an accident.**
+**The rod is bore ÷ √2.** 140 / √2 = 99.0 → 100 mm. That puts half the piston's area under the rod
+and leaves half as the ring. Rexroth prints the area ratio A1/A3 in its own catalogue column and the
+standard series measures **1.96–2.08** across the range — so a realised cylinder lands within a point
+of half, not on it: 153.94 → 75.40 is 48.98%. Four of Cat's five boom cylinders sit on the same
+series. The video's whole reveal is that **half is a design decision, not an accident** — and the
+narration must say "half", never "exactly half", because the callout on screen will not read 50.00%.
 
 ## Mechanism assertion
 

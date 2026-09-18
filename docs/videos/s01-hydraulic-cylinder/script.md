@@ -69,7 +69,7 @@ Callout: bore area **153.94 cm²** → annulus **75.40 cm²**.
 **Then the turn, and this is the video.** Hold on the two areas, side by side, and let them read as
 the same size:
 
-> "And that ring is exactly half. Not roughly — the rod is sized so it covers half the piston."
+> "And that ring is half. Not a coincidence — the rod is sized so it covers half the piston."
 >
 > "Bore, divided by root two."
 
