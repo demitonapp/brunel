@@ -400,6 +400,102 @@ def detail(name: str) -> str:
 
 
 
+_add(Component(
+    name="cylinder_body", category=GEN, measured=True,
+    summary="The static half of a hydraulic cylinder: barrel, gland and end cap, optionally sectioned.",
+    params={
+        "bore": Param(0.140, "m", "piston diameter - the INSIDE of the barrel"),
+        "rod": Param(0.100, "m", "rod diameter; sets the gland's bore, not the barrel's"),
+        "wall": Param(0.015, "m", "barrel wall thickness"),
+        "length": Param(1.50, "m", "barrel length"),
+        "section": Param(False, "", "cut the -Y half away to expose the bore"),
+        "cap": Param(True, "", "close the blind end; false for an axial shot down the bore"),
+        "segments": Param(64, "", "segments around the circumference - 24 is visibly faceted"),
+    },
+    provenance=(
+        "Bosch Rexroth RE 17331 publishes 140 x 100 as a catalogue size with a piston area of "
+        "153.94 cm2 and an annulus of 75.40 cm2; the same pair is listed as a Cat 320 boom "
+        "cylinder. See docs/research/hydraulic-cylinder-datasheets-2026-09-18.md."
+    ),
+    example='''# rot = [90, 0, 0] lays the axis along Y - and takes the section face
+# with it, so the cut then faces -Z. Stage the camera against the cut.
+[[part]]
+id = "cyl_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+bore = 0.140
+rod = 0.100
+wall = 0.015
+length = 1.50
+section = true
+segments = 64''',
+))
+
+_add(Component(
+    name="cylinder_rod", category=GEN, measured=True,
+    summary="The moving half: piston and rod as ONE part, so a single track strokes both.",
+    params={
+        "bore": Param(0.140, "m", "piston diameter - the piston is a bore-diameter disc"),
+        "rod": Param(0.100, "m", "rod diameter"),
+        "length": Param(1.50, "m", "rod length"),
+        "piston": Param(0.06, "m", "piston thickness"),
+        "section": Param(False, "", "section the piston; the rod is never sectioned"),
+        "segments": Param(64, "", "segments around the circumference"),
+        "emit": Param("both", "", "both | piston | rod - split them when they need different materials",
+                      ("both", "piston", "rod")),
+    },
+    provenance=(
+        "Separate from cylinder_body because a [[track]] targets a PART ID: a rod sharing a part "
+        "with its barrel could never be stroked independently of it. There is deliberately no "
+        "`extend` parameter - the stroke is a track on this part's location."
+    ),
+    example='''[[part]]
+id = "cyl_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+bore = 0.140
+rod = 0.100
+length = 1.50
+section = true
+
+[[track]]
+part = "cyl_rod"
+channel = "location"
+frames = [0, 150]
+values = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.65]]''',
+))
+
+_add(Component(
+    name="area_disc", category=GEN, measured=True,
+    summary="A flat circular area figure facing -Y. inner = 0 gives a solid disc, otherwise a ring.",
+    params={
+        "outer": Param(0.140, "m", "outer DIAMETER, quoted like a bore"),
+        "inner": Param(0.0, "m", "inner diameter; 0 for a solid disc"),
+        "depth": Param(0.008, "m", "thickness of the figure"),
+        "segments": Param(96, "", "segments around the circumference"),
+    },
+    provenance=(
+        "S1 Beat 3. A 140/100 annulus does NOT read as half a 140 disc - measured on a storyboard "
+        "probe, it reads as about a third - so the reveal sets the ring's equal-area disc "
+        "(98.0 mm) beside the rod's circle (100.0 mm). Real geometry rather than a caption: a "
+        "dimension that lives in the edit is a dimension nothing can check."
+    ),
+    example='''# Beat 3b: the whole piston face, and the ring left when the rod is removed.
+[[part]]
+id = "area_ring"
+gen = "area_disc"
+material = "face"
+loc = [-0.087, 0.0, 0.0]
+[part.params]
+outer = 0.140
+inner = 0.100''',
+))
+
+
 # This catalogue duplicates spec.GENERATOR_PARAMS by hand, and it has already
 # drifted once: `screw.bar` existed in the spec vocabulary and was missing
 # here a day after `screw` was added, silently, with nothing to notice.

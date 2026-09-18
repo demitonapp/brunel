@@ -12,7 +12,7 @@ from typing import Any
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 # Real, cited dimensions. 1 BU = 1 m.
 THAMES_TUNNEL = {
@@ -105,6 +105,51 @@ def _place(obj: Any, loc: tuple[float, float, float],
     obj.location = loc
     obj.rotation_euler = tuple(math.radians(v) for v in rot_deg)
     return obj
+
+
+
+def _tube_bm(r_in: float, r_out: float, length: float, segments: int) -> Any:
+    """A hollow tube about Z, made by spinning its wall cross-section.
+
+    A spin rather than a Boolean difference of two cylinders: booleans need
+    object-level modifiers and an apply step, which means ops, a selection and
+    an order dependency. This is four verts and one bmesh call.
+    """
+    bm = bmesh.new()
+    z0, z1 = -length / 2.0, length / 2.0
+    corners = ((r_in, 0.0, z0), (r_out, 0.0, z0), (r_out, 0.0, z1), (r_in, 0.0, z1))
+    vs = [bm.verts.new(c) for c in corners]
+    edges = [bm.edges.new((vs[i], vs[(i + 1) % 4])) for i in range(4)]
+    bmesh.ops.spin(bm, geom=vs + edges, axis=(0.0, 0.0, 1.0), cent=(0.0, 0.0, 0.0),
+                   steps=segments, angle=2.0 * math.pi, use_merge=True)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def _solid_bm(radius: float, length: float, segments: int) -> Any:
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=segments,
+                          radius1=radius, radius2=radius, depth=length)
+    return bm
+
+
+def _section_bm(bm: Any) -> Any:
+    """Cut the -Y half away, exposing the interior to a camera on -Y.
+
+    Object space, like every generator here - the part's `rot` moves the cut
+    face with the geometry, so a part laid along Y with rot = [90, 0, 0] has its
+    section facing -Z. Stage the camera against the cut, not the other way up.
+    """
+    bmesh.ops.bisect_plane(
+        bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
+        plane_co=(0.0, 0.0, 0.0), plane_no=(0.0, 1.0, 0.0), clear_inner=True)
+    return bm
+
+
+def _shift_bm(bm: Any, vec: tuple[float, float, float]) -> Any:
+    bmesh.ops.translate(bm, verts=bm.verts, vec=vec)
+    return bm
 
 
 # --- generators ----------------------------------------------------------
@@ -455,6 +500,114 @@ def gen_timber(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
                    (0.0, 0.0, 0.0))]
 
 
+
+def gen_cylinder_body(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """The static half of a hydraulic cylinder: barrel, gland, end cap.
+
+    Axis along Z, like every other generator here; the part's `rot` lays it.
+    `section = true` removes the -Y half so a camera on -Y sees the bore, the
+    piston and the rod inside it - real geometry, not an opacity fade
+    (ROADMAP L2).
+
+    `cap = false` opens the blind end. An axial shot down the bore needs it
+    open; a shot of the outside does not.
+    """
+    bore = float(params.get("bore", 0.140))
+    wall = float(params.get("wall", 0.015))
+    length = float(params.get("length", 1.50))
+    segments = int(params.get("segments", 64))
+    section = bool(params.get("section", False))
+    cap = bool(params.get("cap", True))
+
+    r_in, r_out = bore / 2.0, bore / 2.0 + wall
+    gland_len = min(0.10, length * 0.1)
+
+    def finish(bm: Any) -> Any:
+        return _section_bm(bm) if section else bm
+
+    objs = [_link(f"{name}_barrel", finish(_tube_bm(r_in, r_out, length, segments)), collection)]
+    # The gland is the head the rod passes through. Its bore is the ROD, not the
+    # barrel's - that difference is what makes it read as a seal carrier rather
+    # than a collar, and it is the only part of the outside that says which end
+    # the rod comes out of.
+    rod = float(params.get("rod", 0.100))
+    objs.append(_link(
+        f"{name}_gland",
+        finish(_shift_bm(_tube_bm(rod / 2.0, r_out, gland_len, segments),
+                         (0.0, 0.0, length / 2.0 - gland_len / 2.0))),
+        collection))
+    if cap:
+        objs.append(_link(
+            f"{name}_cap",
+            finish(_shift_bm(_solid_bm(r_out, wall, segments),
+                             (0.0, 0.0, -length / 2.0 + wall / 2.0))),
+            collection))
+    return objs
+
+
+def gen_cylinder_rod(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """The moving half: piston and rod, as ONE part so a track drives both.
+
+    Separate from `cylinder_body` because a [[track]] targets a part id, so a
+    rod sharing a part with its barrel could never be stroked independently of
+    it. The stroke is a track on this part's `location`; there is no `extend`
+    parameter, and there should not be one.
+
+    The piston is a bore-diameter disc - the video's whole subject is its two
+    faces - and the rod is NEVER sectioned even when the piston is, because a
+    solid rod occupying the middle of the bore is the point being made.
+    """
+    bore = float(params.get("bore", 0.140))
+    rod = float(params.get("rod", 0.100))
+    length = float(params.get("length", 1.50))
+    piston_t = float(params.get("piston", 0.06))
+    segments = int(params.get("segments", 64))
+    section = bool(params.get("section", False))
+    emit = str(params.get("emit", "both"))
+
+    # A part carries ONE material, so a piston that must read differently from
+    # its rod - which is the whole of beat 3a - has to be its own part. `emit`
+    # splits them without forking the generator; a [[track]] takes a list of
+    # part ids, so one track still strokes both as a unit.
+    objs: list[Any] = []
+    if emit in ("both", "piston"):
+        piston = _solid_bm(bore / 2.0, piston_t, segments)
+        if section:
+            piston = _section_bm(piston)
+        objs.append(_link(f"{name}_piston", piston, collection))
+    if emit in ("both", "rod"):
+        objs.append(_link(
+            f"{name}_rod",
+            _shift_bm(_solid_bm(rod / 2.0, length, segments), (0.0, 0.0, length / 2.0)),
+            collection))
+    if not objs:
+        raise BuildError(f"{name}: emit={emit!r} produced no geometry; "
+                         f"expected 'both', 'piston' or 'rod'")
+    return objs
+
+
+def gen_area_disc(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """A flat circular area figure, facing -Y. `inner = 0` gives a solid disc.
+
+    This is Beat 3's reveal and it is deliberately a real object rather than a
+    caption: a dimension that lives in the edit is a dimension nothing can
+    check. `outer` and `inner` are DIAMETERS, matching how bore and rod are
+    quoted everywhere else in this repo and on the datasheets they came from.
+    """
+    outer = float(params.get("outer", 0.140))
+    inner = float(params.get("inner", 0.0))
+    depth = float(params.get("depth", 0.008))
+    segments = int(params.get("segments", 96))
+
+    if inner <= 0.0:
+        bm = _solid_bm(outer / 2.0, depth, segments)
+    else:
+        bm = _tube_bm(inner / 2.0, outer / 2.0, depth, segments)
+    bmesh.ops.rotate(bm, verts=bm.verts, cent=(0.0, 0.0, 0.0),
+                     matrix=Matrix.Rotation(math.radians(90.0), 3, "X"))
+    return [_link(name, bm, collection)]
+
+
 def gen_simple(gen: str, name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     if gen == "box":
         dims = params.get("dims", [1.0, 1.0, 1.0])
@@ -484,6 +637,9 @@ GENERATORS = {
     "timber": gen_timber,
     "screw": gen_screw,
     "lining": gen_lining,
+    "cylinder_body": gen_cylinder_body,
+    "cylinder_rod": gen_cylinder_rod,
+    "area_disc": gen_area_disc,
 }
 
 GENERATOR_NAMES = sorted(set(GENERATORS) | {"box", "cylinder", "sphere", "plane"})

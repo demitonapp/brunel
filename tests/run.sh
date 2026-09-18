@@ -77,6 +77,25 @@ check "an unknown spec key is refused"            fail tests/fixtures/unknown_ke
 check "smooth = true is refused; it is an angle"  fail tests/fixtures/smooth_not_an_angle.toml "expected an angle in DEGREES"
 check "a camera cannot be both persp and ortho" fail tests/fixtures/camera_ortho_and_lens.toml "either perspective or orthographic"
 
+echo "spin axis"
+# The numeric core of the windmilling-screw bug. `check_motion` measures it but
+# cannot adjudicate it (its own thresholds overlap); this asserts it.
+if $PY tests/spin_axis.py; then
+    echo "  pass  a spin turns the part about its own axis, for every base rotation"
+else
+    echo "  FAIL  spin axis"; fail=1
+fi
+
+echo "H25 - cylinder areas against the published table"
+# The first generator in this repo whose derived QUANTITIES a vendor also
+# prints. Catches an annulus computed from the bore radius instead of the bore
+# area - a mistake that still renders and still looks plausible.
+if $PY tests/h25_cylinder_areas.py; then
+    echo "  pass  a 140x100 cylinder matches Rexroth RE 17331 to 0.01 cm2"
+else
+    echo "  FAIL  cylinder areas disagree with the published table"; fail=1
+fi
+
 echo "H24 - orthographic projection"
 # Asserting camera.type == "ORTHO" would only prove an attribute was set. This
 # measures what the spec author is buying: that two equal objects at different
@@ -408,6 +427,130 @@ if $PY -m harness deliver spec/ad02/ad02.toml --out "$DTMP" \
     echo "  pass  a clean, correctly-timed clip set is delivered"
 else
     echo "  FAIL  a clean clip set was wrongly refused"; fail=1
+fi
+
+echo "edit order"
+# `assemble` used to glob the episode directory and sort the result, so the CUT
+# order was filename order and a leftover shot directory re-entered the video.
+# Both are silent, and both land in the deliverable.
+if $PY - <<'PY'
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, ".")
+from harness.assemble import AssembleError, _shot_dirs
+
+tmp = Path(tempfile.mkdtemp())
+
+
+def make(*names):
+    for n in names:
+        d = tmp / n
+        d.mkdir(exist_ok=True)
+        (d / "frame_0001.png").write_bytes(b"x")
+
+
+# Ids that do NOT sort the way the spec lists them - the whole point.
+order = ["s1", "s2", "s10"]
+make(*order)
+got = [d.name for d in _shot_dirs(tmp, order)]
+if got != order:
+    print(f"edit order came out {got}, spec order is {order} - the cut is wrong")
+    sys.exit(1)
+if sorted(order) == order:
+    print("fixture is not exercising anything: these ids already sort correctly")
+    sys.exit(1)
+
+# A leftover directory from a renamed or deleted shot must NOT be cut in.
+make("s_old")
+try:
+    _shot_dirs(tmp, order)
+    print("a frame directory that is not a shot in the spec was cut into the video")
+    sys.exit(1)
+except AssembleError as exc:
+    assert "s_old" in str(exc), exc
+
+# A declared shot with no frames must refuse, not quietly ship a short video.
+try:
+    _shot_dirs(tmp, ["s1", "s2", "s10", "s99"])
+    print("a shot with no rendered frames was silently dropped from the cut")
+    sys.exit(1)
+except AssembleError as exc:
+    assert "s99" in str(exc), exc
+PY
+then
+    echo "  pass  the cut follows the spec's shot order, not the filesystem's"
+    echo "  pass  a leftover or missing shot directory is refused, not cut in"
+else
+    echo "  FAIL  edit order"; fail=1
+fi
+
+echo "canary"
+# The ONLY comparison check in the harness - every other one is a threshold and
+# so cannot see drift. Proven here on synthetic frames: identical must score
+# 1.0, and a real regression must land below the floor. Calibrated against two
+# actual double-renders of ad02; see GOLDEN_SSIM_MIN in harness/check.py.
+if $PY - <<'PY'
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, ".")
+from harness import check
+
+ff = shutil.which("ffmpeg")
+tmp = Path(tempfile.mkdtemp())
+try:
+    golden = tmp / "ad02" / "c01.png"
+    golden.parent.mkdir(parents=True)
+    same = tmp / "same.png"
+    drift = tmp / "drift.png"
+    subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "testsrc=s=128x128",
+                    "-frames:v", "1", str(golden)], check=True)
+    shutil.copy2(golden, same)
+    # A real picture change: the same pattern, cropped and rescaled. SSIM on
+    # ad02's smallest TRUE regression (a 5 cm camera move) measured 0.827, so a
+    # synthetic change has to be at least that visible to be a fair proxy.
+    subprocess.run([ff, "-v", "error", "-i", str(golden),
+                    "-vf", "crop=120:120:8:8,scale=128:128",
+                    "-frames:v", "1", str(drift)], check=True)
+
+    identical = check.ssim(same, golden)
+    if identical < 0.9999:
+        print(f"two identical frames scored {identical} - the canary cannot "
+              f"recognise an unchanged render")
+        sys.exit(1)
+    changed = check.ssim(drift, golden)
+    if changed >= check.GOLDEN_SSIM_MIN:
+        print(f"a visibly changed frame scored {changed}, at or above the "
+              f"{check.GOLDEN_SSIM_MIN} floor - the canary cannot fire")
+        sys.exit(1)
+
+    # And through the check the CLI actually calls, not just the metric.
+    if check.check_goldens({"c01": same}, tmp, "ad02"):
+        print("an unchanged frame was reported as a regression")
+        sys.exit(1)
+    found = check.check_goldens({"c01": drift}, tmp, "ad02")
+    if not [p for p in found if not p.startswith("WARN:")]:
+        print(f"a changed frame was NOT reported as a regression: {found}")
+        sys.exit(1)
+    # A shot with no golden warns; it must never fail, or the first run of a new
+    # spec is red for having no history yet.
+    unblessed = check.check_goldens({"c99": same}, tmp, "ad02")
+    if not all(p.startswith("WARN:") for p in unblessed):
+        print(f"a shot with no canary was treated as a failure: {unblessed}")
+        sys.exit(1)
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+PY
+then
+    echo "  pass  the canary scores 1.0 on an unchanged frame and fires on a changed one"
+    echo "  pass  a shot with no canary warns, it does not fail"
+else
+    echo "  FAIL  the canary is wrong in one direction or the other"; fail=1
 fi
 
 echo "output checks"

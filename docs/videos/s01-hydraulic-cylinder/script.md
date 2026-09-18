@@ -65,8 +65,13 @@ lifts out of the middle and moves aside. What is left is a ring.
 
 > "Pulling, the rod is in the way. What's left is a ring."
 
-**3c — the turn, 19.0–23.0 s.** The ring gathers itself into a solid circle and settles beside the
+**3c — the turn, 19.0–23.0 s.** **Cut** to the ring re-formed as a solid circle, sitting beside the
 rod's circle. **They are the same size.**
+
+*A cut, not a morph.* `CHANNELS` is `{location, rotation, scale, spin}` — the harness has no shape
+interpolation, so the ring cannot be animated into a disc. Two parts, each visible in one shot: the
+annulus in 3b, the equal-area disc in 3c. The reveal is the **comparison**, not the transformation,
+and a hard cut between two held frames states it more plainly than a tween would.
 
 > "It doesn't look like half. It is."
 >
@@ -97,14 +102,21 @@ look_at = [0.0, 0.0, 0.0]
 
 ## Beat 4 — the so-what, and the hook into S2 (23.0–30.0 s, 210 frames)
 
-**Picture.** Pull back for the first and only time: the same cylinder, now on an excavator boom.
-One curl in, one push out.
+**Picture.** Pull back for the first and only time — to **three cylinders alone**, no machine. Boom,
+stick and bucket sizes, arranged in the attitude they sit in on an arm, each stroking once. Nothing
+else in frame.
 
 > "Which is why an excavator curls a bucket in hard — and pushes it back out weak."
 >
 > "There are three of these on the arm, and none of them pull their own weight."
 
-Last frame holds on the three cylinders, unlabelled. That is S2.
+Last frame holds on the three, unlabelled. That is S2.
+
+**No excavator is modelled, deliberately.** The original staging put the cylinder on a boom, which
+means a boom, a stick and a bucket — the whole kinematic chain, which is **S2's entire subject** and
+geometry this video's brief never budgeted. Three bare cylinders carry the same line: the narration
+supplies the machine, and the frame supplies the mechanism. It also makes the last frame a stronger
+hook, because three unexplained cylinders is a question and an excavator is an answer.
 
 **The machine is never named.** Ledger `F003` — that this exact cylinder is a Cat 320 boom cylinder —
 rests on a trade parts listing, not a Caterpillar document, and carries `status: unknown`. Its

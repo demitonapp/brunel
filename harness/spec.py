@@ -37,6 +37,7 @@ GENERATORS = {
     "box", "cylinder", "sphere", "plane",
     "shield", "brick_wall", "crew", "ring",
     "boat", "dock", "train", "arch", "timber", "screw", "lining",
+    "cylinder_body", "cylinder_rod", "area_disc",
 }
 # Allowed generator parameters. This lives here, not in generators.py, so that
 # `validate` works on a machine with no Blender; build.py asserts the two agree.
@@ -60,6 +61,12 @@ GENERATOR_PARAMS = {
     "timber": {"dims"},
     "screw": {"radius", "depth", "pitch", "turns", "foot", "bar"},
     "lining": {"radius", "thickness", "length", "segments"},
+    # S1's hydraulic cylinder. Two generators, not one: a [[track]] targets a
+    # part id, so the rod must be its own part to be stroked independently of
+    # the barrel. There is deliberately no `extend` - the stroke is a track.
+    "cylinder_body": {"bore", "rod", "wall", "length", "section", "cap", "segments"},
+    "cylinder_rod": {"bore", "rod", "length", "piston", "section", "segments", "emit"},
+    "area_disc": {"outer", "inner", "depth", "segments"},
 }
 # Every part may carry this regardless of generator.
 UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}

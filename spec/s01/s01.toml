@@ -1,0 +1,405 @@
+# s01 - "Why a hydraulic cylinder pushes harder than it pulls"
+#
+# Brief:  docs/videos/s01-hydraulic-cylinder/brief.md
+# Script: docs/videos/s01-hydraulic-cylinder/script.md
+# Facts:  spec/s01/facts/s01.facts.json   (140 x 100 at 350 bar, all sourced)
+#
+# Three things in this file were decided by a storyboard probe, not by taste.
+#
+#   1. The cylinder lies along X (rot = [0, 90, 0]) and the camera sits off-axis
+#      and high. That is what makes a 9:1 object read diagonally in a 0.56:1
+#      frame. Staged level it is a band across a fifth of the frame; the spec
+#      has no camera roll, and it does not need one, because moving the camera
+#      does the same job.
+#
+#   2. `section = true` cuts the -Y half away. Rotation about Y preserves Y, so
+#      rot = [0, 90, 0] lays the barrel along X AND leaves the cut facing -Y,
+#      which is where every camera in this cut stands.
+#
+#   3. Beat 3 does NOT show the piston's faces in the section. A side-on section
+#      shows a face edge-on, as a line - it can never read as an area. The areas
+#      are their own flat figures, shot orthographically, because an area
+#      comparison under a perspective lens argues for whichever figure is nearer
+#      (H24). And the ring alone does not read as half: measured on the probe it
+#      reads as about a third, which is why b03c sets the ring's equal-area disc
+#      (98.0 mm) beside the rod's circle (100.0 mm) instead of asserting it.
+
+[meta]
+id = "s01"
+title = "Why a hydraulic cylinder pushes harder than it pulls"
+fps = 30
+width = 1080
+height = 1920
+samples = 32
+engine = "CYCLES"
+device = "CPU"
+units = "metric"
+
+# --- materials -----------------------------------------------------------
+# Probe finding: steel at base_color 0.045 is black under AgX, and chrome at
+# roughness 0.075 blows to white. Both are corrected here.
+
+[[material]]
+id = "steel"
+base_color = [0.20, 0.215, 0.235]
+roughness = 0.42
+metallic = 1.0
+
+[[material]]
+id = "chrome"
+base_color = [0.66, 0.675, 0.70]
+roughness = 0.30
+metallic = 1.0
+
+[[material]]
+id = "face"
+base_color = [0.80, 0.58, 0.20]
+roughness = 0.32
+metallic = 0.6
+
+[[material]]
+id = "rodface"
+base_color = [0.42, 0.52, 0.64]
+roughness = 0.30
+metallic = 0.8
+
+# --- the hero cylinder: beats 1, 2, 3a -----------------------------------
+
+# Solid for the hook. The cut-away is beat 3's reveal, and a sectioned barrel
+# in b01 gives it away twelve seconds early - so this is two parts, each
+# visible in its own shots, not one part with a section flag.
+[[part]]
+id = "cyl_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [0.0, 0.0, 0.0]
+rot = [0.0, 90.0, 0.0]
+shots = ["b01", "b02"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+wall = 0.015
+length = 1.50
+section = false
+segments = 64
+
+[[part]]
+id = "cyl_barrel_cut"
+gen = "cylinder_body"
+material = "steel"
+loc = [0.0, 0.0, 0.0]
+rot = [0.0, 90.0, 0.0]
+shots = ["b03a"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+wall = 0.015
+length = 1.50
+section = true
+segments = 64
+
+[[part]]
+id = "cyl_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [-0.35, 0.0, 0.0]
+rot = [0.0, 90.0, 0.0]
+shots = ["b01", "b02", "b03a"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+length = 1.50
+section = true
+segments = 64
+emit = "rod"
+
+# The piston is its own part ONLY so it can carry its own material. In the
+# first storyboard it inherited the rod's chrome and vanished against it, in
+# the one shot whose whole subject is the piston's two faces.
+[[part]]
+id = "cyl_piston"
+gen = "cylinder_rod"
+material = "face"
+loc = [-0.35, 0.0, 0.0]
+rot = [0.0, 90.0, 0.0]
+shots = ["b01", "b02", "b03a"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+piston = 0.06
+section = true
+segments = 64
+emit = "piston"
+
+# The stroke. There is no `extend` parameter - a [[track]] targets a part id,
+# which is the whole reason the rod is its own part.
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["b01"]
+frames = [0.0, 0.45, 0.55, 1.0]
+values = [[-0.35, 0.0, 0.0], [0.20, 0.0, 0.0], [0.20, 0.0, 0.0], [-0.35, 0.0, 0.0]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["b02"]
+frames = [0.0, 0.40, 0.60, 1.0]
+values = [[-0.35, 0.0, 0.0], [0.20, 0.0, 0.0], [0.20, 0.0, 0.0], [-0.35, 0.0, 0.0]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["b03a"]
+frames = [0.0, 1.0]
+values = [[-0.35, 0.0, 0.0], [-0.10, 0.0, 0.0]]
+
+# --- beat 3b: the whole face, and the ring left when the rod comes out ----
+
+# THE RING - 140 outer, 100 inner. The first storyboard had a solid 140 disc
+# here by mistake, so b03b showed two solid circles and said nothing: the shot
+# whose narration is "what is left is a ring" had no ring in it.
+[[part]]
+id = "area_ring"
+gen = "area_disc"
+material = "face"
+loc = [-0.087, 0.0, 0.0]
+shots = ["b03b"]
+[part.params]
+outer = 0.140
+inner = 0.100
+
+[[part]]
+id = "area_plug"
+gen = "area_disc"
+material = "rodface"
+loc = [0.087, 0.0, 0.0]
+shots = ["b03b", "b03c"]
+[part.params]
+outer = 0.100
+inner = 0.0
+
+# --- beat 3c: the ring, re-formed. A CUT, not a morph - the harness has no
+# shape interpolation, and the reveal is the comparison, not the tween.
+
+[[part]]
+id = "area_eq"
+gen = "area_disc"
+material = "face"
+loc = [-0.087, 0.0, 0.0]
+shots = ["b03c"]
+# 98.0 mm: the 75.40 cm2 annulus re-formed as a solid disc. Against the rod's
+# 100.0 mm circle beside it, that is the video's whole claim, shown to scale.
+[part.params]
+outer = 0.098
+inner = 0.0
+
+# --- beat 4: three cylinders, no machine ---------------------------------
+# Boom, stick and bucket sizes in the attitude they sit in on an arm. No
+# excavator is modelled: that is S2's subject and this brief never budgeted it.
+
+[[part]]
+id = "b4_boom_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [-0.78, 0.0,  0.60]
+rot = [0.0, 64.0, 0.0]
+shots = ["b04"]
+smooth = 30.0
+[part.params]
+bore = 0.14
+rod = 0.1
+wall = 0.014
+length = 1.5
+section = false
+segments = 48
+
+[[part]]
+id = "b4_boom_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [-0.78, 0.0,  0.60]
+rot = [0.0, 64.0, 0.0]
+shots = ["b04"]
+smooth = 30.0
+[part.params]
+bore = 0.14
+rod = 0.1
+length = 1.5
+piston = 0.05
+section = false
+segments = 48
+
+[[part]]
+id = "b4_stick_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [ 0.10, 0.0,  0.00]
+rot = [0.0, 70.0, 0.0]
+shots = ["b04"]
+smooth = 30.0
+[part.params]
+bore = 0.12
+rod = 0.085
+wall = 0.014
+length = 1.2
+section = false
+segments = 48
+
+[[part]]
+id = "b4_stick_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [ 0.10, 0.0,  0.00]
+rot = [0.0, 70.0, 0.0]
+shots = ["b04"]
+smooth = 30.0
+[part.params]
+bore = 0.12
+rod = 0.085
+length = 1.2
+piston = 0.05
+section = false
+segments = 48
+
+[[part]]
+id = "b4_bucket_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [ 0.86, 0.0, -0.56]
+rot = [0.0, 76.0, 0.0]
+shots = ["b04"]
+smooth = 30.0
+[part.params]
+bore = 0.1
+rod = 0.07
+wall = 0.014
+length = 0.9
+section = false
+segments = 48
+
+[[part]]
+id = "b4_bucket_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [ 0.86, 0.0, -0.56]
+rot = [0.0, 76.0, 0.0]
+shots = ["b04"]
+smooth = 30.0
+[part.params]
+bore = 0.1
+rod = 0.07
+length = 0.9
+piston = 0.05
+section = false
+segments = 48
+
+[[camera]]
+id = "cam_hero"
+lens_mm = 50.0
+loc = [1.14, -2.42, 1.21]
+look_at = [0.10, 0.0, 0.0]
+
+[[camera]]
+id = "cam_section"
+lens_mm = 85.0
+loc = [0.82, -2.02, 0.93]
+look_at = [-0.20, 0.0, 0.0]
+
+# H24. ortho_scale is the frame WIDTH in metres and is mutually exclusive with
+# lens_mm. Without it b03b/b03c argue for whichever figure is nearer the lens.
+[[camera]]
+id = "cam_areas"
+ortho_scale = 0.36
+loc = [0.0, -1.20, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[camera]]
+id = "cam_three"
+lens_mm = 42.0
+loc = [1.72, -3.44, 1.62]
+look_at = [0.0, 0.0, 0.10]
+
+# --- lights ---------------------------------------------------------------
+# Probe finding: 420 W at ~2 m blew the frame out under AgX. These are the
+# values that measured correctly, and `section_fill` exists because nothing
+# else reaches the inside of the cut.
+
+[[light]]
+id = "key"
+type = "AREA"
+energy = 150.0
+loc = [1.60, -2.00, 2.20]
+look_at = [0.0, 0.0, 0.0]
+
+[[light]]
+id = "fill"
+type = "AREA"
+energy = 55.0
+loc = [-2.40, -1.60, 0.50]
+look_at = [0.0, 0.0, 0.0]
+
+[[light]]
+id = "section_fill"
+type = "AREA"
+energy = 38.0
+loc = [-0.35, -0.85, 0.28]
+look_at = [-0.35, 0.05, 0.0]
+shots = ["b03a"]
+
+[[light]]
+id = "rim"
+type = "AREA"
+energy = 70.0
+loc = [-0.60, 1.90, 1.10]
+look_at = [0.0, 0.0, 0.0]
+
+# --- shots ----------------------------------------------------------------
+# 5 + 7 + 4 + 3 + 4 + 7 = 30 s. Narration is copied from script.md; the script
+# is the approved text and this file is downstream of it.
+
+[[shot]]
+id = "b01"
+name = "The hook"
+camera = "cam_hero"
+seconds = 5.0
+narration = "This cylinder pushes with fifty-five tonnes of force. Pulling, it manages twenty-seven."
+
+[[shot]]
+id = "b02"
+name = "The withhold"
+camera = "cam_hero"
+seconds = 7.0
+narration = "Same oil. Same pump. Same pressure, both directions. So where does half the force go?"
+
+[[shot]]
+id = "b03a"
+name = "The section"
+camera = "cam_section"
+seconds = 4.0
+narration = "Force is pressure times area, and the two faces are not the same size. Pushing, the oil gets the whole piston."
+
+[[shot]]
+id = "b03b"
+name = "The ring"
+camera = "cam_areas"
+seconds = 3.0
+narration = "Pulling, the rod is in the way. What is left is a ring."
+
+[[shot]]
+id = "b03c"
+name = "The same size"
+camera = "cam_areas"
+seconds = 4.0
+narration = "It does not look like half. It is. Gather that ring into a circle, and it is the same size as the rod that took the space."
+
+[[shot]]
+id = "b04"
+name = "Three of them"
+camera = "cam_three"
+seconds = 7.0
+narration = "Which is why an excavator curls a bucket in hard, and pushes it back out weak. There are three of these on the arm, and none of them pull their own weight."
