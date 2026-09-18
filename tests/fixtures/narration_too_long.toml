@@ -1,0 +1,41 @@
+# POSITIVE CONTROL. Same scene, camera outside the crate. MUST pass.
+[meta]
+id = "selftest_pace"
+title = "Negative test - narration cannot fit the shot"
+fps = 12
+width = 320
+height = 568
+samples = 4
+engine = "CYCLES"
+device = "CPU"
+units = "metric"
+
+[[material]]
+id = "iron"
+base_color = [0.2, 0.2, 0.2]
+
+[[part]]
+id = "crate"
+gen = "box"
+material = "iron"
+loc = [0.0, 0.0, 0.0]
+[part.params]
+dims = [4.0, 4.0, 4.0]
+
+[[camera]]
+id = "cam_outside"
+lens_mm = 50.0
+loc = [0.0, -12.0, 2.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[light]]
+id = "key"
+type = "SUN"
+energy = 2.0
+
+[[shot]]
+id = "s01"
+name = "camera is clear"
+camera = "cam_outside"
+seconds = 4.0
+narration = "Force is pressure times area, and the two faces are not the same size. Pushing, the oil gets the whole piston."

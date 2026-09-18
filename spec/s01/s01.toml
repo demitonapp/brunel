@@ -63,6 +63,41 @@ base_color = [0.42, 0.52, 0.64]
 roughness = 0.30
 metallic = 0.8
 
+# --- callouts -------------------------------------------------------------
+# The brief: "the numbers are rendered as 3D-tracked callouts in the scene, not
+# as caption text - a dimension that lives in the edit is a dimension nothing
+# can check." The first cut shipped without them, so the one number the brief
+# said the viewer would repeat never appeared on screen at all.
+#
+# Positions are fixed and the SHOTS decide which is visible, so h01 carries the
+# push figure alone (upper left), h02 the pull figure alone (lower right), and
+# h03 shows both at once against one unchanged object - which is the whole
+# "same oil, same pressure" point, made in a single frame instead of seven
+# seconds of withholding.
+
+[[part]]
+id = "callout_push"
+gen = "label"
+material = "face"
+loc = [-0.40, -0.45, 0.60]
+shots = ["h01", "h03"]
+[part.params]
+text = "55 t"
+size = 0.20
+extrude = 0.006
+
+[[part]]
+id = "callout_pull"
+gen = "label"
+material = "rodface"
+loc = [0.42, -0.45, -0.60]
+shots = ["h02", "h03"]
+[part.params]
+text = "27 t"
+size = 0.20
+extrude = 0.006
+
+
 # --- the hero cylinder: beats 1, 2, 3a -----------------------------------
 
 # Solid for the hook. The cut-away is beat 3's reveal, and a sectioned barrel
@@ -73,8 +108,8 @@ id = "cyl_barrel"
 gen = "cylinder_body"
 material = "steel"
 loc = [0.0, 0.0, 0.0]
-rot = [0.0, 90.0, 0.0]
-shots = ["b01", "b02"]
+rot = [0.0, 34.0, 0.0]
+shots = ["h01", "h02", "h03"]
 smooth = 30.0
 [part.params]
 bore = 0.140
@@ -89,8 +124,8 @@ id = "cyl_barrel_cut"
 gen = "cylinder_body"
 material = "steel"
 loc = [0.0, 0.0, 0.0]
-rot = [0.0, 90.0, 0.0]
-shots = ["b03a"]
+rot = [0.0, 34.0, 0.0]
+shots = ["h04"]
 smooth = 30.0
 [part.params]
 bore = 0.140
@@ -104,9 +139,9 @@ segments = 64
 id = "cyl_rod"
 gen = "cylinder_rod"
 material = "chrome"
-loc = [-0.35, 0.0, 0.0]
-rot = [0.0, 90.0, 0.0]
-shots = ["b01", "b02", "b03a"]
+loc = [-0.196, 0.0, -0.290]
+rot = [0.0, 34.0, 0.0]
+shots = ["h01", "h02", "h03", "h04"]
 smooth = 30.0
 [part.params]
 bore = 0.140
@@ -126,9 +161,9 @@ emit = "rod"
 id = "cyl_piston"
 gen = "cylinder_rod"
 material = "face"
-loc = [-0.35, 0.0, 0.0]
-rot = [0.0, 90.0, 0.0]
-shots = ["b01", "b02", "b03a"]
+loc = [-0.196, 0.0, -0.290]
+rot = [0.0, 34.0, 0.0]
+shots = ["h01", "h02", "h03", "h04"]
 smooth = 30.0
 [part.params]
 bore = 0.140
@@ -140,26 +175,35 @@ emit = "piston"
 
 # The stroke. There is no `extend` parameter - a [[track]] targets a part id,
 # which is the whole reason the rod is its own part.
+# The stroke. h01 drives out, h02 draws back, h03 holds at full extension so
+# the two numbers can sit against one unmoving object, h04 creeps for life.
 [[track]]
 part = ["cyl_rod", "cyl_piston"]
 channel = "location"
-shots = ["b01"]
-frames = [0.0, 0.45, 0.55, 1.0]
-values = [[-0.35, 0.0, 0.0], [0.15, 0.0, 0.0], [0.15, 0.0, 0.0], [-0.35, 0.0, 0.0]]
+shots = ["h01"]
+frames = [0.0, 0.72, 1.0]
+values = [[-0.196, 0.0, -0.290], [0.084, 0.0, 0.124], [0.084, 0.0, 0.124]]
 
 [[track]]
 part = ["cyl_rod", "cyl_piston"]
 channel = "location"
-shots = ["b02"]
-frames = [0.0, 0.40, 0.60, 1.0]
-values = [[-0.35, 0.0, 0.0], [0.15, 0.0, 0.0], [0.15, 0.0, 0.0], [-0.35, 0.0, 0.0]]
+shots = ["h02"]
+frames = [0.0, 0.70, 1.0]
+values = [[0.084, 0.0, 0.124], [-0.196, 0.0, -0.290], [-0.196, 0.0, -0.290]]
 
 [[track]]
 part = ["cyl_rod", "cyl_piston"]
 channel = "location"
-shots = ["b03a"]
+shots = ["h03"]
 frames = [0.0, 1.0]
-values = [[-0.35, 0.0, 0.0], [-0.10, 0.0, 0.0]]
+values = [[-0.190, 0.0, -0.282], [-0.145, 0.0, -0.216]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["h04"]
+frames = [0.0, 1.0]
+values = [[-0.212, 0.0, -0.315], [-0.045, 0.0, -0.066]]
 
 # --- beat 3b: the whole face, and the ring left when the rod comes out ----
 
@@ -170,8 +214,8 @@ values = [[-0.35, 0.0, 0.0], [-0.10, 0.0, 0.0]]
 id = "area_ring"
 gen = "area_disc"
 material = "face"
-loc = [-0.087, 0.0, 0.0]
-shots = ["b03b"]
+loc = [-0.058, 0.0, 0.0]
+shots = ["h05"]
 [part.params]
 outer = 0.140
 inner = 0.100
@@ -180,8 +224,8 @@ inner = 0.100
 id = "area_plug"
 gen = "area_disc"
 material = "rodface"
-loc = [0.087, 0.0, 0.0]
-shots = ["b03b", "b03c"]
+loc = [0.058, 0.0, 0.0]
+shots = ["h05", "h06"]
 [part.params]
 outer = 0.100
 inner = 0.0
@@ -193,8 +237,8 @@ inner = 0.0
 id = "area_eq"
 gen = "area_disc"
 material = "face"
-loc = [-0.087, 0.0, 0.0]
-shots = ["b03c"]
+loc = [-0.058, 0.0, 0.0]
+shots = ["h06"]
 # 98.0 mm: the 75.40 cm2 annulus re-formed as a solid disc. Against the rod's
 # 100.0 mm circle beside it, that is the video's whole claim, shown to scale.
 [part.params]
@@ -211,7 +255,7 @@ gen = "cylinder_body"
 material = "steel"
 loc = [-0.78, 0.0,  0.60]
 rot = [0.0, 64.0, 0.0]
-shots = ["b04"]
+shots = ["h07"]
 smooth = 30.0
 [part.params]
 bore = 0.14
@@ -227,7 +271,7 @@ gen = "cylinder_rod"
 material = "chrome"
 loc = [-0.78, 0.0,  0.60]
 rot = [0.0, 64.0, 0.0]
-shots = ["b04"]
+shots = ["h07"]
 smooth = 30.0
 [part.params]
 bore = 0.14
@@ -244,7 +288,7 @@ gen = "cylinder_body"
 material = "steel"
 loc = [ 0.10, 0.0,  0.00]
 rot = [0.0, 70.0, 0.0]
-shots = ["b04"]
+shots = ["h07"]
 smooth = 30.0
 [part.params]
 bore = 0.12
@@ -260,7 +304,7 @@ gen = "cylinder_rod"
 material = "chrome"
 loc = [ 0.10, 0.0,  0.00]
 rot = [0.0, 70.0, 0.0]
-shots = ["b04"]
+shots = ["h07"]
 smooth = 30.0
 [part.params]
 bore = 0.12
@@ -277,7 +321,7 @@ gen = "cylinder_body"
 material = "steel"
 loc = [ 0.86, 0.0, -0.56]
 rot = [0.0, 76.0, 0.0]
-shots = ["b04"]
+shots = ["h07"]
 smooth = 30.0
 [part.params]
 bore = 0.1
@@ -293,7 +337,7 @@ gen = "cylinder_rod"
 material = "chrome"
 loc = [ 0.86, 0.0, -0.56]
 rot = [0.0, 76.0, 0.0]
-shots = ["b04"]
+shots = ["h07"]
 smooth = 30.0
 [part.params]
 bore = 0.1
@@ -306,14 +350,14 @@ segments = 48
 
 [[camera]]
 id = "cam_hero"
-lens_mm = 50.0
-loc = [1.35, -2.90, 1.45]
-look_at = [0.10, 0.0, 0.0]
+lens_mm = 58.0
+loc = [0.42, -1.52, 0.18]
+look_at = [0.0, 0.0, 0.0]
 
 [[camera]]
 id = "cam_section"
-lens_mm = 85.0
-loc = [0.82, -2.02, 0.93]
+lens_mm = 105.0
+loc = [0.46, -1.02, 0.30]
 look_at = [-0.20, 0.0, 0.0]
 
 # H24. ortho_scale is the frame WIDTH in metres and is mutually exclusive with
@@ -329,14 +373,14 @@ look_at = [-0.20, 0.0, 0.0]
 # the very areas the shot exists to compare.
 [[camera]]
 id = "cam_areas"
-ortho_scale = 0.36
+ortho_scale = 0.25
 loc = [0.0, -1.20, 0.0]
 look_at = [0.0, 0.0, 0.0]
 
 [[camera]]
 id = "cam_three"
-lens_mm = 42.0
-loc = [1.88, -3.76, 1.77]
+lens_mm = 62.0
+loc = [1.10, -2.20, 1.04]
 look_at = [0.0, 0.0, 0.10]
 
 # --- lights ---------------------------------------------------------------
@@ -364,7 +408,7 @@ type = "AREA"
 energy = 38.0
 loc = [-0.35, -0.85, 0.28]
 look_at = [-0.35, 0.05, 0.0]
-shots = ["b03a"]
+shots = ["h04"]
 
 [[light]]
 id = "rim"
@@ -378,50 +422,57 @@ look_at = [0.0, 0.0, 0.0]
 # is the approved text and this file is downstream of it.
 
 [[shot]]
-id = "b01"
-name = "The hook"
+id = "h01"
+name = "The conclusion, stated"
 camera = "cam_hero"
-seconds = 5.0
-narration = "This cylinder pushes with fifty-five tonnes of force. Pulling, it manages twenty-seven."
-
-[[shot]]
-id = "b02"
-name = "The withhold"
-camera = "cam_hero"
-seconds = 7.0
-narration = "Same oil. Same pump. Same pressure, both directions. So where does half the force go?"
-
-[[shot]]
-id = "b03a"
-name = "The section"
-camera = "cam_section"
 seconds = 4.0
-narration = "Force is pressure times area, and the two faces are not the same size. Pushing, the oil gets the whole piston."
+narration = "A hydraulic cylinder pushes twice as hard as it pulls."
 
 [[shot]]
-id = "b03b"
+id = "h02"
+name = "The other number"
+camera = "cam_hero"
+seconds = 3.0
+narration = "Fifty-five tonnes pushing. Twenty-seven pulling."
+
+[[shot]]
+id = "h03"
+name = "Same oil, same pressure"
+camera = "cam_hero"
+seconds = 2.5
+narration = "Same oil. Same pump. Same pressure."
+
+[[shot]]
+id = "h04"
+name = "Inside"
+camera = "cam_section"
+seconds = 4.5
+narration = "Force is pressure times area. The faces are not the same size."
+
+[[shot]]
+id = "h05"
 name = "The ring"
 camera = "cam_areas"
-seconds = 3.0
-move_from = [0.0, -1.20, 0.0]
-move_to = [0.022, -1.20, -0.012]
-narration = "Pulling, the rod is in the way. What is left is a ring."
-
-[[shot]]
-id = "b03c"
-name = "The same size"
-camera = "cam_areas"
 seconds = 4.0
 move_from = [0.0, -1.20, 0.0]
-move_to = [-0.020, -1.20, 0.011]
-narration = "It does not look like half. It is. Gather that ring into a circle, and it is the same size as the rod that took the space."
+move_to = [0.018, -1.20, -0.010]
+narration = "The rod is in the way. What is left is a ring."
 
 [[shot]]
-id = "b04"
+id = "h06"
+name = "The same size"
+camera = "cam_areas"
+seconds = 5.0
+move_from = [0.0, -1.20, 0.0]
+move_to = [-0.016, -1.20, 0.009]
+narration = "It does not look like half. Gather it up: the same size."
+
+[[shot]]
+id = "h07"
 name = "Three of them"
 camera = "cam_three"
 seconds = 7.0
-narration = "Which is why an excavator curls a bucket in hard, and pushes it back out weak. There are three of these on the arm, and none of them pull their own weight."
+narration = "That is why an excavator curls in hard and pushes out weak. Three on the arm. None pull their weight."
 
 # --- beat 4 strokes ------------------------------------------------------
 # One stroke each, staggered by the frames above so they do not pulse in
@@ -431,18 +482,18 @@ narration = "Which is why an excavator curls a bucket in hard, and pushes it bac
 [[track]]
 part = "b4_boom_rod"
 channel = "location"
-shots = ["b04"]
+shots = ["h07"]
 frames = [0.0, 0.30, 0.44, 0.80]
 values = [[-0.780, 0.000, 0.600], [-0.313, 0.000, 0.828], [-0.313, 0.000, 0.828], [-0.780, 0.000, 0.600]]
 [[track]]
 part = "b4_stick_rod"
 channel = "location"
-shots = ["b04"]
+shots = ["h07"]
 frames = [0.10, 0.42, 0.56, 0.92]
 values = [[0.100, 0.000, 0.000], [0.513, 0.000, 0.150], [0.513, 0.000, 0.150], [0.100, 0.000, 0.000]]
 [[track]]
 part = "b4_bucket_rod"
 channel = "location"
-shots = ["b04"]
+shots = ["h07"]
 frames = [0.22, 0.54, 0.68, 1.0]
 values = [[0.860, 0.000, -0.560], [1.190, 0.000, -0.478], [1.190, 0.000, -0.478], [0.860, 0.000, -0.560]]

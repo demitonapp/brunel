@@ -608,6 +608,44 @@ def gen_area_disc(name: str, params: dict[str, Any], collection: Any) -> list[An
     return [_link(name, bm, collection)]
 
 
+
+def gen_label(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """A block of text as real, measurable geometry, facing -Y.
+
+    S1's brief: "the numbers are rendered as 3D-tracked callouts in the scene,
+    not as caption text - a dimension that lives in the edit is a dimension
+    nothing can check." The first cut shipped with none, and the one number the
+    brief said the viewer would repeat never appeared on screen.
+
+    The font curve is converted to a mesh immediately. A curve object would
+    carry no vertices, and every assertion in build.py - bounds, the camera
+    containment check, the dimension checks - reads vertices.
+    """
+    text = str(params.get("text", ""))
+    size = float(params.get("size", 0.12))
+    extrude = float(params.get("extrude", 0.004))
+
+    cu = bpy.data.curves.new(f"{name}_font", type="FONT")
+    cu.body = text
+    cu.size = size
+    cu.extrude = extrude
+    cu.align_x = "CENTER"
+    cu.align_y = "CENTER"
+    tmp = bpy.data.objects.new(f"{name}_font", cu)
+    collection.objects.link(tmp)
+
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(tmp.evaluated_get(dg))
+    bpy.data.objects.remove(tmp, do_unlink=True)
+    bpy.data.curves.remove(cu)
+    # Bake the facing into the mesh, as every other generator here does, so the
+    # part's own `rot` composes on top instead of fighting it.
+    me.transform(Matrix.Rotation(math.radians(90.0), 4, "X"))
+
+    obj = bpy.data.objects.new(name, me)
+    collection.objects.link(obj)
+    return [obj]
+
 def gen_simple(gen: str, name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     if gen == "box":
         dims = params.get("dims", [1.0, 1.0, 1.0])
@@ -640,6 +678,7 @@ GENERATORS = {
     "cylinder_body": gen_cylinder_body,
     "cylinder_rod": gen_cylinder_rod,
     "area_disc": gen_area_disc,
+    "label": gen_label,
 }
 
 GENERATOR_NAMES = sorted(set(GENERATORS) | {"box", "cylinder", "sphere", "plane"})

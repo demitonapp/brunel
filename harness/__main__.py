@@ -808,6 +808,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if len(shot_frames) >= 3:
             problems += check.check_motion(shot_frames, label=shot_dir.name)
             print(f"  motion       {len(shot_frames)} frame(s)  ({shot_dir.name})")
+        if shot_frames:
+            problems += check.check_coverage(shot_frames, label=shot_dir.name)
 
     for depth_dir in sorted(ep_dir.glob("*/depth/*")):
         frames = sorted(depth_dir.glob("frame_*.png"))

@@ -7,9 +7,9 @@
     "subject": "A double-acting hydraulic cylinder, 140 mm bore x 100 mm rod, at 350 bar implement pressure",
     "period": "contemporary",
     "runtime_s": 30,
-    "ledger_revision": 3,
+    "ledger_revision": 4,
     "narration_source": "docs/videos/s01-hydraulic-cylinder/script.md",
-    "spec_script_sha256": "88825b04bc90f422dad5397c1ca9ff3956340d5e622e145261222e3854681ca4"
+    "spec_script_sha256": "8da52123883b7673c326823e25893b7bec7e42415360e5aef1f0298ac0710fbf"
   },
   "sources": [
     {
@@ -74,10 +74,10 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "human_approved",
-        "checked_by": "human:justin",
-        "checked_at": "2026-09-18T11:44:32Z",
-        "notes": "Read off the PDF this session, not recalled."
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T22:42:29Z",
+        "notes": "Read off the PDF this session, not recalled. RETURNED TO agent_checked 2026-09-19: the Tier 1 re-edit rewrote the narration (120 words -> 77, and the running order changed). No fact moved; the wording that was signed off did."
       }
     },
     {
@@ -106,10 +106,10 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "human_approved",
-        "checked_by": "human:justin",
-        "checked_at": "2026-09-18T11:44:32Z",
-        "notes": "Narrowed 2026-09-18: the claim previously also said 'and used as an excavator boom cylinder', which only S003 (TIER-5) supported while the fact was marked verified. That application claim lives in F003, where its weak evidence is declared. The previous brief's 120 x 80 was unsourced and is not a size any source ships."
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T22:42:29Z",
+        "notes": "Narrowed 2026-09-18: the claim previously also said 'and used as an excavator boom cylinder', which only S003 (TIER-5) supported while the fact was marked verified. That application claim lives in F003, where its weak evidence is declared. The previous brief's 120 x 80 was unsourced and is not a size any source ships. RETURNED TO agent_checked 2026-09-19: the Tier 1 re-edit rewrote the narration (120 words -> 77, and the running order changed). No fact moved; the wording that was signed off did."
       }
     },
     {
@@ -137,10 +137,10 @@
         "citation_format": "none"
       },
       "review": {
-        "state": "human_approved",
-        "checked_by": "human:justin",
-        "checked_at": "2026-09-18T11:44:32Z",
-        "notes": "Deliberately not narrated. The script says 'an excavator' and never names the machine, so the weak claim is never made to the viewer."
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T22:42:29Z",
+        "notes": "Deliberately not narrated. The script says 'an excavator' and never names the machine, so the weak claim is never made to the viewer. RETURNED TO agent_checked 2026-09-19: the Tier 1 re-edit rewrote the narration (120 words -> 77, and the running order changed). No fact moved; the wording that was signed off did."
       }
     },
     {
@@ -171,8 +171,8 @@
       "review": {
         "state": "agent_checked",
         "checked_by": "agent:research",
-        "checked_at": "2026-09-18T12:05:23Z",
-        "notes": "Claim widened 2026-09-18 to carry the rod area, 78.54 cm2, because the restaged Beat 3 puts that number on screen and the previous claim did not cover it - the script hash check caught it. S001 already publishes it in the A2 column, so this is a claim gap, not a sourcing gap. RETURNED TO agent_checked: the human approved a narrower claim and must see the wider one."
+        "checked_at": "2026-09-18T22:42:29Z",
+        "notes": "Claim widened 2026-09-18 to carry the rod area, 78.54 cm2, because the restaged Beat 3 puts that number on screen and the previous claim did not cover it - the script hash check caught it. S001 already publishes it in the A2 column, so this is a claim gap, not a sourcing gap. RETURNED TO agent_checked 2026-09-19: the Tier 1 re-edit rewrote the narration (120 words -> 77, and the running order changed). No fact moved; the wording that was signed off did."
       }
     },
     {
@@ -206,10 +206,10 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "human_approved",
-        "checked_by": "human:justin",
-        "checked_at": "2026-09-18T11:44:32Z",
-        "notes": "Restated 2026-09-18: 'exactly half' and 'manufacturers designate this the phi = 2 series' both overreached. Design intent is half; realised cylinders are within a point. Narration says 'half', never 'exactly half' - the on-screen callout reads 153.94 -> 75.40, which is 48.98%, and a viewer can divide."
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T22:42:29Z",
+        "notes": "Restated 2026-09-18: 'exactly half' and 'manufacturers designate this the phi = 2 series' both overreached. Design intent is half; realised cylinders are within a point. Narration says 'half', never 'exactly half' - the on-screen callout reads 153.94 -> 75.40, which is 48.98%, and a viewer can divide. RETURNED TO agent_checked 2026-09-19: the Tier 1 re-edit rewrote the narration (120 words -> 77, and the running order changed). No fact moved; the wording that was signed off did."
       }
     },
     {
@@ -243,16 +243,16 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "human_approved",
-        "checked_by": "human:justin",
-        "checked_at": "2026-09-18T11:44:32Z",
-        "notes": "Force = pressure x area is arithmetic, not a claim needing its own source; both inputs are TIER-1. Replaces the previous draft's unsourced 395.8 / 219.9 kN."
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T22:42:29Z",
+        "notes": "Force = pressure x area is arithmetic, not a claim needing its own source; both inputs are TIER-1. Replaces the previous draft's unsourced 395.8 / 219.9 kN. RETURNED TO agent_checked 2026-09-19: the Tier 1 re-edit rewrote the narration (120 words -> 77, and the running order changed). No fact moved; the wording that was signed off did."
       }
     }
   ],
   "gate": {
     "ruleset_version": "1.0.0",
-    "evaluated_at": "2026-09-18T12:05:23+00:00",
+    "evaluated_at": "2026-09-18T22:42:42+00:00",
     "result": "fail",
     "checks": [
       {
@@ -295,9 +295,14 @@
       {
         "name": "all_facts_reviewed_by_a_human_or_flagged",
         "result": "fail",
-        "detail": "1 fact(s) not human-approved or blocked",
+        "detail": "6 fact(s) not human-approved or blocked",
         "offending_fact_ids": [
-          "F004"
+          "F001",
+          "F002",
+          "F003",
+          "F004",
+          "F005",
+          "F006"
         ]
       },
       {

@@ -37,7 +37,7 @@ GENERATORS = {
     "box", "cylinder", "sphere", "plane",
     "shield", "brick_wall", "crew", "ring",
     "boat", "dock", "train", "arch", "timber", "screw", "lining",
-    "cylinder_body", "cylinder_rod", "area_disc",
+    "cylinder_body", "cylinder_rod", "area_disc", "label",
 }
 # Allowed generator parameters. This lives here, not in generators.py, so that
 # `validate` works on a machine with no Blender; build.py asserts the two agree.
@@ -67,6 +67,7 @@ GENERATOR_PARAMS = {
     "cylinder_body": {"bore", "rod", "wall", "length", "section", "cap", "segments"},
     "cylinder_rod": {"bore", "rod", "length", "piston", "section", "segments", "emit"},
     "area_disc": {"outer", "inner", "depth", "segments"},
+    "label": {"text", "size", "extrude"},
 }
 # Every part may carry this regardless of generator.
 UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}
@@ -390,6 +391,27 @@ def load(path: str | Path) -> Episode:
                 raise SpecError(f"{where}.mechanism: needs {sorted(need)}, "
                                 f"missing {sorted(missing)}")
             s["mechanism"] = {k: float(v) for k, v in mech.items()}
+        # An unsayable script is a video that cannot exist as specified, and this
+        # is free to detect: `voice` only discovers it AFTER the render. S1's
+        # draft 2 rendered 900 frames over 3.5 hours and then delivered with no
+        # voiceover because one 4-second shot carried 7.08s of speech. The rate
+        # and the tempo ceiling come from audio.py so there is one source of
+        # truth rather than two that drift.
+        narration = s.get("narration")
+        if narration:
+            from .audio import DEFAULT_RATE, MAX_TEMPO
+            n_words = len(str(narration).split())
+            spoken = n_words / DEFAULT_RATE * 60.0
+            ceiling = float(s["seconds"]) * MAX_TEMPO
+            if spoken > ceiling:
+                raise SpecError(
+                    f"{where}: narration is {n_words} words - about {spoken:.2f}s of "
+                    f"speech at {DEFAULT_RATE} wpm - in a {float(s['seconds']):.2f}s shot. "
+                    f"Even at the {MAX_TEMPO}x tempo ceiling that does not fit. "
+                    f"Lengthen the shot to at least {spoken / MAX_TEMPO:.2f}s, or cut "
+                    f"to {int(ceiling * DEFAULT_RATE / 60)} words."
+                )
+
         shots.append(s)
 
     if not shots:

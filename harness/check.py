@@ -326,6 +326,62 @@ def check_motion(frames: Sequence[Path], *, max_step: float = MOTION_MAX_STEP,
     return problems
 
 
+# S1's first cut staged a 12:1 object as a landscape product shot letterboxed
+# into 9:16 and measured 1.9-2.4% subject coverage - 98% empty background - and
+# every check in this file passed it. Storyboard asks "is there a picture";
+# nothing asked "is the picture big enough to see on a phone".
+COVERAGE_FLOOR = 5.0        # percent of frame that is not flat background
+COVERAGE_TARGET = 20.0      # below this is a warning, not a failure
+
+
+def subject_coverage(path: Path, *, size: int = 96, tolerance: int = 12) -> float:
+    """Percentage of the frame that differs from the modal background value.
+
+    Crude on purpose: the modal luminance of a rendered frame on a flat backdrop
+    IS the backdrop, and anything far from it is subject. It cannot tell a
+    subject from a gradient, which is why the thresholds below are a floor and a
+    warning rather than a gate.
+    """
+    raw = subprocess.run(
+        [_ffmpeg(), "-v", "error", "-i", str(path),
+         "-vf", f"scale={size}:{int(size * 16 / 9)}", "-pix_fmt", "gray",
+         "-f", "rawvideo", "-"],
+        capture_output=True,
+    ).stdout
+    if not raw:
+        raise CheckError(f"ffmpeg produced no pixels for {path}")
+    counts: dict[int, int] = {}
+    for v in raw:
+        counts[v] = counts.get(v, 0) + 1
+    bg = max(counts, key=lambda k: counts[k])
+    return sum(1 for v in raw if abs(v - bg) > tolerance) / len(raw) * 100.0
+
+
+def check_coverage(frames: Sequence[Path], *, label: str | None = None) -> list[str]:
+    """Is the subject big enough to read at thumb size?
+
+    This is NOT the "subject overflows the frame" check H22 rejected. That one
+    fires on legitimate tight close-ups and would cry wolf. This is a floor: a
+    shot whose subject occupies 2% of a 1080x1920 frame is not a close-up, it is
+    a landscape composition that has been letterboxed, and there is no shot for
+    which that is the intent.
+    """
+    if not frames:
+        return []
+    name = label or frames[0].parent.name
+    sampled = list(frames)[:: max(1, len(frames) // 5)] or [frames[0]]
+    cov = sum(subject_coverage(f) for f in sampled) / len(sampled)
+    if cov < COVERAGE_FLOOR:
+        return [f"{name}: subject fills {cov:.1f}% of frame - at this size it is "
+                f"invisible at thumb scale. The composition is landscape in a "
+                f"portrait frame; move the camera in or stand the subject on the "
+                f"frame's long axis."]
+    if cov < COVERAGE_TARGET:
+        return [f"WARN: {name}: subject fills {cov:.1f}% of frame (target "
+                f"{COVERAGE_TARGET:.0f}%+). Readable, but small for a Short."]
+    return []
+
+
 def check_clip(path: Path) -> list[str]:
     """A finished clip must not be crushed to black.
 
@@ -419,7 +475,8 @@ def check_goldens(
 
 __all__ = [
     "CheckError", "grey_stats", "is_greyscale",
-    "check_storyboard", "check_depth_pass", "check_clip",
+    "check_storyboard", "check_depth_pass", "check_clip", "check_coverage",
+    "subject_coverage",
     "ssim", "check_goldens", "golden_path",
     "BLACK_MEAN", "MIN_SPREAD", "DEPTH_MEAN_MIN", "DEPTH_MEAN_MAX", "DEPTH_SPREAD_MIN",
     "GOLDEN_SSIM_MIN",

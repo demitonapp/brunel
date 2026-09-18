@@ -75,6 +75,7 @@ check "camera inside geometry is rejected"        fail tests/fixtures/camera_ins
 check "camera clear of geometry is accepted"      pass tests/fixtures/camera_clear.toml  "is INSIDE part"
 check "an unknown spec key is refused"            fail tests/fixtures/unknown_key.toml   "unknown key"
 check "smooth = true is refused; it is an angle"  fail tests/fixtures/smooth_not_an_angle.toml "expected an angle in DEGREES"
+check "narration that cannot be spoken is refused" fail tests/fixtures/narration_too_long.toml "does not fit"
 check "a camera cannot be both persp and ortho" fail tests/fixtures/camera_ortho_and_lens.toml "either perspective or orthographic"
 
 echo "spin axis"
@@ -84,6 +85,40 @@ if $PY tests/spin_axis.py; then
     echo "  pass  a spin turns the part about its own axis, for every base rotation"
 else
     echo "  FAIL  spin axis"; fail=1
+fi
+
+echo "subject coverage"
+# S1's first cut measured 1.9% subject coverage - 98% empty background - and
+# every check in this file passed it. A FLOOR, not the ceiling H22 rejected:
+# no deliberate shot puts its subject at 2% of a 1080x1920 frame.
+if $PY - <<'PYEOF'
+import shutil, subprocess, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, ".")
+from harness import check
+tmp = Path(tempfile.mkdtemp()); ff = shutil.which("ffmpeg")
+try:
+    tiny, big = tmp / "tiny.png", tmp / "big.png"
+    # a 20x20 white mark on a 1080x1920 field is ~0.02% of frame
+    subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "color=c=0x2b2f36:s=1080x1920",
+                    "-f", "lavfi", "-i", "color=c=white:s=20x20",
+                    "-filter_complex", "overlay=500:900", "-frames:v", "1", str(tiny)], check=True)
+    subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "color=c=0x2b2f36:s=1080x1920",
+                    "-f", "lavfi", "-i", "color=c=white:s=700x900",
+                    "-filter_complex", "overlay=190:500", "-frames:v", "1", str(big)], check=True)
+    t = check.check_coverage([tiny], label="tiny")
+    b = check.check_coverage([big], label="big")
+    if not t or "invisible at thumb scale" not in t[0]:
+        print(f"a 0.02%-coverage frame was NOT reported: {t}"); sys.exit(1)
+    if b:
+        print(f"a well-filled frame was wrongly reported: {b}"); sys.exit(1)
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+PYEOF
+then
+    echo "  pass  an almost-empty frame is reported, a filled one is not"
+else
+    echo "  FAIL  subject coverage"; fail=1
 fi
 
 echo "H27 - verify runs the motion check"

@@ -496,6 +496,30 @@ inner = 0.100''',
 ))
 
 
+_add(Component(
+    name="label", category=GEN, measured=False,
+    summary="Text as real geometry, facing -Y. For in-scene numeric callouts, not caption text.",
+    params={
+        "text": Param("55 t", "", "the string to set"),
+        "size": Param(0.12, "m", "cap height in metres - it is geometry, so it has a size"),
+        "extrude": Param(0.004, "m", "depth, so the type catches a highlight and reads as an object"),
+    },
+    provenance=(
+        "measured: false - a label has no cited dimension of its own; what it SAYS must come from "
+        "the fact ledger. S1's brief: a dimension that lives in the edit is a dimension nothing can "
+        "check, so the numbers are in the scene where the assertion layer can see them."
+    ),
+    example='''[[part]]
+id = "callout_push"
+gen = "label"
+material = "face"
+loc = [0.0, -0.9, 0.62]
+[part.params]
+text = "55 t"
+size = 0.22''',
+))
+
+
 # This catalogue duplicates spec.GENERATOR_PARAMS by hand, and it has already
 # drifted once: `screw.bar` existed in the spec vocabulary and was missing
 # here a day after `screw` was added, silently, with nothing to notice.
