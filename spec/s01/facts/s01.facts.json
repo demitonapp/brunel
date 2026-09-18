@@ -7,9 +7,9 @@
     "subject": "A double-acting hydraulic cylinder, 140 mm bore x 100 mm rod, at 350 bar implement pressure",
     "period": "contemporary",
     "runtime_s": 30,
-    "ledger_revision": 2,
+    "ledger_revision": 3,
     "narration_source": "docs/videos/s01-hydraulic-cylinder/script.md",
-    "spec_script_sha256": "ddfce042fa9aed84935172e9fea4a88171b541c2c27b0fa398fc8c3d42c85c93"
+    "spec_script_sha256": "f0509ea5001205462dbfb6da786122046caf5d9daf7b7b80a6255212f29fa86c"
   },
   "sources": [
     {
@@ -145,7 +145,7 @@
     },
     {
       "id": "F004",
-      "claim": "For a 140 mm bore and 100 mm rod, the piston area is 153.94 cm2 and the annulus area is 75.40 cm2.",
+      "claim": "For a 140 mm bore and 100 mm rod, the piston area is 153.94 cm2, the rod area is 78.54 cm2 and the annulus area is 75.40 cm2.",
       "claim_kind": "measurement",
       "status": "verified",
       "confidence": "high",
@@ -153,7 +153,7 @@
         {
           "source_id": "S001",
           "stance": "supports",
-          "note": "Both figures are printed by the manufacturer. Independently derived from the geometry this session as 153.94 and 75.40 - agreement to 0.002 cm2."
+          "note": "All three figures are printed by the manufacturer in the A1, A2 and A3 columns. Independently derived from the geometry this session as 153.94 / 78.54 / 75.40 - agreement to 0.002 cm2."
         }
       ],
       "narration_spans": [
@@ -169,10 +169,10 @@
         "depiction_risk": "measured"
       },
       "review": {
-        "state": "human_approved",
-        "checked_by": "human:justin",
-        "checked_at": "2026-09-18T11:44:32Z",
-        "notes": "These two numbers are the harness assertion: GEN cylinder derives them and must match the printed table."
+        "state": "agent_checked",
+        "checked_by": "agent:research",
+        "checked_at": "2026-09-18T12:05:23Z",
+        "notes": "Claim widened 2026-09-18 to carry the rod area, 78.54 cm2, because the restaged Beat 3 puts that number on screen and the previous claim did not cover it - the script hash check caught it. S001 already publishes it in the A2 column, so this is a claim gap, not a sourcing gap. RETURNED TO agent_checked: the human approved a narrower claim and must see the wider one."
       }
     },
     {
@@ -252,7 +252,7 @@
   ],
   "gate": {
     "ruleset_version": "1.0.0",
-    "evaluated_at": "2026-09-18T11:44:32+00:00",
+    "evaluated_at": "2026-09-18T12:05:23+00:00",
     "result": "fail",
     "checks": [
       {
@@ -294,7 +294,11 @@
       },
       {
         "name": "all_facts_reviewed_by_a_human_or_flagged",
-        "result": "pass"
+        "result": "fail",
+        "detail": "1 fact(s) not human-approved or blocked",
+        "offending_fact_ids": [
+          "F004"
+        ]
       },
       {
         "name": "script_hash_matches_ledger",

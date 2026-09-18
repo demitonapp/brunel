@@ -103,7 +103,7 @@ un-excavated clay must be **roof and invert, never a wall between camera and sub
 ```bash
 cd brunel
 uv venv --python 3.13
-uv pip install -r requirements.txt      # bpy==5.2.2
+uv pip install -r requirements.txt -r requirements-dev.txt   # bpy==5.2.2, ruff, mypy
 python -m harness doctor                # verify the toolchain lock
 ```
 
@@ -369,6 +369,10 @@ renders/          gitignored output
 
 - Python **3.13** exactly (bpy 5.2.2 requires it)
 - `ffmpeg` (present: 8.0.1) — now also required for the `edge` and `vis` passes
+- `ruff` and `mypy` — HARD dependencies of `tests/run.sh`, for the same reason as `jsonschema`
+  below. `requirements-dev.txt` pins both. mypy is what catches a top-level definition shadowed
+  by a later one — the defect that once made two rounds of careful fixes change nothing, because
+  Python takes the last definition. `tests/fixtures/shadowed_def.py` exists to prove it fires.
 - `jsonschema` — a HARD dependency of the fact gate. A gate that silently skips schema validation
   when a library is missing is not a gate.
 - Optional: a Windows box with an NVIDIA GPU for final frames

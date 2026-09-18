@@ -459,3 +459,26 @@ the single most likely way to get this wrong and produces a number that still lo
 **Why this is not H7's tautology.** A `[shot.mechanism]` block that restates three hand-written
 numbers proves nothing. This compares the generator's output against a figure printed by someone
 who does not know this repo exists.
+
+### H24 — The spec cannot express an orthographic camera, and S1's reveal needs one
+
+`CAMERA_KEYS` is `{id, lens_mm, loc, look_at}`. Every camera this harness can build is a perspective
+camera, because every shot so far wanted one.
+
+S1's Beat 3 compares two areas — a 153.94 cm² disc against a 75.40 cm² ring — and **an area
+comparison under a perspective lens is not a comparison.** The nearer figure is larger on screen by
+construction, so the shot argues for whichever side the lens favours. The probe rendered the reveal
+orthographically (`scratchpad/probe/areas_02.png`) and it only reads because of that.
+
+**Blocks:** `spec/s01/s01.toml` shots 3b and 3c. Not a nice-to-have — the video's one number is a
+ratio of two areas, and a perspective camera puts a thumb on the scale.
+
+**Fix.** `ortho` and `ortho_scale` in `CAMERA_KEYS`, defaulting to absent, mapping to
+`camera.type = "ORTHO"` and `camera.ortho_scale`. `lens_mm` and `ortho_scale` are mutually exclusive
+and the validator should say so rather than silently ignoring one — a spec that sets `lens_mm` on an
+ortho camera is a spec whose author expects a perspective shot.
+
+**Check.** `tests/run.sh`: a camera declaring both `lens_mm` and `ortho_scale` is refused; and an
+ortho render of two equal-area figures at different distances measures them within a pixel or two of
+the same width, where the perspective render does not. That second one is the check that actually
+tests the reason the feature exists.

@@ -140,7 +140,7 @@ def build_parts(
 
     # Second pass: part-to-part parenting.
     bpy.context.view_layer.update()
-    for pid, entry in built.items():
+    for _pid, entry in built.items():
         parent_id = entry["spec"].get("parent")
         if not parent_id:
             continue

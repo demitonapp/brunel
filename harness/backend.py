@@ -44,7 +44,7 @@ import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .passes import PassProfile
 
@@ -472,7 +472,11 @@ class WanVaceBackend(VideoBackend):
                 status_url,
                 headers={"Authorization": f"Key {self.key}", "Accept": "application/json"},
             )
-            def _once() -> dict[str, Any]:
+            def _once(req: urllib.request.Request = req) -> dict[str, Any]:
+                # `req` is bound as a default so the closure captures THIS
+                # iteration's request. It is called immediately today, so the
+                # late-binding bug is latent rather than live - which is the
+                # kind that surfaces the day someone defers the call.
                 with urllib.request.urlopen(req, timeout=60) as resp:
                     return json.loads(resp.read().decode("utf-8"))
 
@@ -621,7 +625,7 @@ def build_bundles(
     for shot_rec in passes_manifest.get("shots", []):
         sid = shot_rec["shot"]
         prompt = prompts.get(sid, "")
-        for ci, count in enumerate(shot_rec.get("chunks", [])):
+        for ci, _count in enumerate(shot_rec.get("chunks", [])):
             tag = f"c{ci:02d}" if len(shot_rec["chunks"]) > 1 else "c00"
             videos: dict[str, Path] = {}
             for pass_name, chunks in (shot_rec.get("passes") or {}).items():

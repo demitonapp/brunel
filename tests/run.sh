@@ -31,6 +31,45 @@ check() {  # check <description> <expected: pass|fail> <spec> <pattern>
     fi
 }
 
+echo "static checks"
+# HARD requirements, not optional extras. A suite that skips its own static
+# checks when a tool is missing is the thing requirements.txt argues against
+# for jsonschema and the fact gate.
+#   uv pip install -r requirements.txt -r requirements-dev.txt
+for tool in ruff mypy; do
+    if [ ! -x ".venv/bin/$tool" ]; then
+        echo "  FAIL  $tool is not installed - see requirements-dev.txt"; fail=1
+    fi
+done
+
+if [ -x ".venv/bin/ruff" ]; then
+    if .venv/bin/ruff check harness/ tests/ --quiet --output-format=concise; then
+        echo "  pass  ruff"
+    else
+        echo "  FAIL  ruff"; fail=1
+    fi
+fi
+
+if [ -x ".venv/bin/mypy" ]; then
+    # Capture, then grep. `set -o pipefail` is on, so `mypy | grep -q` returns
+    # MYPY's exit status, not grep's - which silently inverts any test whose
+    # subject is a command that is SUPPOSED to fail.
+    MYPY_OUT="$(.venv/bin/mypy 2>&1)"
+    if printf '%s' "$MYPY_OUT" | tail -1 | grep -q "^Success"; then
+        echo "  pass  mypy"
+    else
+        printf '%s\n' "$MYPY_OUT" | tail -5
+        echo "  FAIL  mypy"; fail=1
+    fi
+    # The replacement for half of the old hygiene test. Prove it fires.
+    REDEF_OUT="$(.venv/bin/mypy --no-error-summary tests/fixtures/shadowed_def.py 2>&1)"
+    if printf '%s' "$REDEF_OUT" | grep -q "no-redef"; then
+        echo "  pass  a shadowed top-level definition is caught by mypy"
+    else
+        echo "  FAIL  mypy did not catch a shadowed definition"; fail=1
+    fi
+fi
+
 echo "harness assertion self-tests"
 check "camera inside geometry is rejected"        fail tests/fixtures/camera_inside.toml "is INSIDE part"
 check "camera clear of geometry is accepted"      pass tests/fixtures/camera_clear.toml  "is INSIDE part"
@@ -113,38 +152,36 @@ for cmd in doctor validate build render assemble captions voice pipeline deliver
 done
 
 echo "harness hygiene"
+# This used to do two jobs. The first - "no top-level definition is shadowed
+# within a file" - was a hand-written reimplementation of a type checker. It is
+# now mypy's `no-redef`, proven to fire on tests/fixtures/shadowed_def.py above.
+#
+# The second job survives, because NO type checker flags it: a class defined in
+# two modules is two different classes with the same name, which is legal and is
+# exactly how `generators.BuildError` and `build.BuildError` diverged until
+# `cmd_build` caught the wrong one and printed a traceback instead of
+# "build FAILED". ruff, mypy and pyright all pass that code.
 if $PY - <<'PY'
 import ast, pathlib, sys
 bad = []
 across: dict[str, str] = {}
 for path in sorted(pathlib.Path("harness").glob("*.py")):
     tree = ast.parse(path.read_text(), filename=str(path))
-    seen = {}
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if node.name in seen:
-                bad.append(f"{path}:{node.lineno}: {node.name} redefined "
-                           f"(first at line {seen[node.name]}) - Python takes the LAST one")
-            seen[node.name] = node.lineno
-            # A class defined in two files is two DIFFERENT classes with the
-            # same name - `except BuildError` in one module silently misses
-            # the one raised by the other. This is how `generators.BuildError`
-            # and `build.BuildError` diverged: the within-file check above
-            # never sees a cross-file duplicate.
-            if isinstance(node, ast.ClassDef):
-                prior = across.get(node.name)
-                if prior and prior != str(path):
-                    bad.append(f"{path}:{node.lineno}: class {node.name} is ALSO "
-                               f"defined in {prior} - two classes, one name")
-                across[node.name] = str(path)
+        if isinstance(node, ast.ClassDef):
+            prior = across.get(node.name)
+            if prior and prior != str(path):
+                bad.append(f"{path}:{node.lineno}: class {node.name} is ALSO "
+                           f"defined in {prior} - two classes, one name")
+            across[node.name] = str(path)
 if bad:
-    print("\n".join(bad))
+    print(chr(10).join(bad))
     sys.exit(1)
 PY
 then
-    echo "  pass  no shadowed top-level definitions in harness/, no class defined twice"
+    echo "  pass  no class is defined in two harness/ modules"
 else
-    echo "  FAIL  a top-level definition is shadowed, or a class exists in two files"; fail=1
+    echo "  FAIL  a class exists in two files - two types, one name"; fail=1
 fi
 
 echo "pure-function self-tests"

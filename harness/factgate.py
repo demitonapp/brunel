@@ -53,11 +53,11 @@ class GateError(Exception):
 
 
 def _now() -> str:
-    return _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat()
+    return _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat()
 
 
 def _has_quote(src: dict[str, Any]) -> bool:
-    q = src.get("quote")
+    q = src.get("quote") or ""
     return bool(q) and not PLACEHOLDER.search(q)
 
 
@@ -101,11 +101,11 @@ def validate_schema(ledger: dict[str, Any]) -> list[str]:
     """Schema errors, or a hard error if the validator itself is missing."""
     try:
         import jsonschema
-    except ImportError:
+    except ImportError as exc:
         raise GateError(
             "jsonschema is not installed. Refusing to run: a gate that silently skips "
             "schema validation is not a gate. Install it with `uv pip install jsonschema`."
-        )
+        ) from exc
     try:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     except OSError as exc:

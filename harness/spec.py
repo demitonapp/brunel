@@ -119,7 +119,7 @@ class Episode:
                 out.append(t)
         return out
 
-    def with_overrides(self, *, fast: bool = False, shots: list[str] | None = None) -> "Episode":
+    def with_overrides(self, *, fast: bool = False, shots: list[str] | None = None) -> Episode:
         """Return a copy with preview overrides applied.
 
         ``fast`` CAPS quality, it does not force it: a spec already smaller than
@@ -438,8 +438,8 @@ def load(path: str | Path) -> Episode:
         applies_to = t["shots"] or sorted(shot_ids)
         for sid in applies_to:
             for n in names:
-                key = (sid, n, t["channel"])
-                prior = owner.get(key)
+                track_key = (sid, n, t["channel"])
+                prior = owner.get(track_key)
                 if prior is not None:
                     raise SpecError(
                         f"track[{prior}] and track[{i}] both drive part {n!r} "
@@ -448,7 +448,7 @@ def load(path: str | Path) -> Episode:
                         f"every shot its part is visible in, not just the one "
                         f"it was written for."
                     )
-                owner[key] = i
+                owner[track_key] = i
 
     ep = Episode(
         meta=meta, parts=parts, cameras=cameras, lights=lights,
@@ -458,7 +458,7 @@ def load(path: str | Path) -> Episode:
     return ep
 
 
-def _mechanism_actuals(ep: "Episode", shot: dict[str, Any]) -> tuple[float | None, float | None]:
+def _mechanism_actuals(ep: Episode, shot: dict[str, Any]) -> tuple[float | None, float | None]:
     """What the tracks that actually apply to this shot command.
 
     `turns` is the net rotation of every `spin` track over the shot, in whole
@@ -474,12 +474,12 @@ def _mechanism_actuals(ep: "Episode", shot: dict[str, Any]) -> tuple[float | Non
             turns = delta if turns is None else turns + delta
         elif t["channel"] == "location" and t.get("mode") == "offset":
             a, b = t["values"][0], t["values"][-1]
-            delta = sum((x - y) ** 2 for x, y in zip(b, a)) ** 0.5
+            delta = sum((x - y) ** 2 for x, y in zip(b, a, strict=True)) ** 0.5
             advance = delta if advance is None else advance + delta
     return turns, advance
 
 
-def _check_mechanisms(ep: "Episode") -> None:
+def _check_mechanisms(ep: Episode) -> None:
     """`turns x pitch == advance`, checked against what the TRACKS do.
 
     The original version of this check compared three numbers hand-written in

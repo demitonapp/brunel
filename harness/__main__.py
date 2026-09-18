@@ -12,11 +12,17 @@ import json
 import shutil
 import subprocess
 import sys
-from typing import Any
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from . import __version__
 from .spec import SpecError, load
+
+if TYPE_CHECKING:
+    # Annotation-only. A runtime import here would pull backend.py in for
+    # every `harness doctor`, and the point of the lazy imports below is
+    # that the cheap commands stay cheap.
+    from .backend import PassBundle
 
 
 def _parse_shots(value: str | None) -> list[str] | None:
@@ -450,7 +456,7 @@ def cmd_passes(args: argparse.Namespace) -> int:
         from . import check
         problems: list[str] = []
         for shot_rec in result["shots"]:
-            for tag, rec in (shot_rec["passes"].get("depth") or {}).items():
+            for _tag, rec in (shot_rec["passes"].get("depth") or {}).items():
                 frames = sorted(Path(rec["dir"]).glob("frame_*.png"))
                 problems += [_tag_problem(shot_rec["shot"], p)
                              for p in check.check_depth_pass(frames)]
@@ -522,7 +528,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     if args.dry_run:
         # Verify the whole setup without spending anything. An API you cannot
         # smoke-test before paying is an API you will pay to debug.
-        print(f"  dry run - nothing will be submitted\n")
+        print("  dry run - nothing will be submitted\n")
         print(f"  backend   {backend.name}")
         print(f"  note      {backend.note}")
         print(f"  profile   {backend.profile.width}x{backend.profile.height} "

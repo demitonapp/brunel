@@ -55,17 +55,30 @@ end-cap treatment; both are parameters. Telescopic is genuinely different geomet
 unslated — nothing through Phase 2 uses it. `library/README.md` rule 2: parameterise, never fork.
 
 ```toml
-[[object]]
-gen     = "cylinder"
-bore    = 0.140      # m — ledger F002
-rod     = 0.100      # m — ledger F002
-stroke  = 1.30       # m
-extend  = 0.0        # 0..1, animatable — the whole of beat 1
-ends     = "welded"  # "welded" | "tie_rod"
-ports    = 2         # 2 = double-acting, 1 = single
+# Two parts, not one. A [[track]] targets a PART ID, so a rod inside the same
+# part as its barrel cannot be animated separately from it. The stroke is a
+# track on `cyl_rod`, which needs no generator support at all.
+[[part]]
+id  = "cyl_barrel"
+gen = "cylinder_body"
+[part.params]
+bore     = 0.140     # m — ledger F002
+stroke   = 1.30      # m
 section  = 0.0       # 0..1 cutaway sweep — real geometry, not opacity (ROADMAP L2)
 segments = 64        # H21 — 24 is visibly faceted on a chrome barrel at 1080×1920
 smooth   = 30.0      # H21 — degrees, not a flag; keeps the end caps flat
+
+[[part]]
+id  = "cyl_rod"
+gen = "cylinder_rod"
+[part.params]
+rod    = 0.100       # m — ledger F002
+bore   = 0.140       # the piston is a bore-diameter disc on the end of the rod
+stroke = 1.30
+
+[[track]]              # the stroke. Beat 1 is this track and nothing else.
+part    = "cyl_rod"
+channel = "location"
 ```
 
 `section` is the only parameter that earns real work. Everything else is a few calls to the `_cyl`
@@ -99,25 +112,22 @@ of half, not on it: 153.94 → 75.40 is 48.98%. Four of Cat's five boom cylinder
 series. The video's whole reveal is that **half is a design decision, not an accident** — and the
 narration must say "half", never "exactly half", because the callout on screen will not read 50.00%.
 
-## Mechanism assertion
+## Mechanism assertion — and why there is no `[shot.mechanism]` block
 
-The spec declares it and the harness checks it — but not by restating the inputs (H7 calls that a
-tautology). The check that earns its place is against **the manufacturer's published areas**:
+**There must not be one.** `MECHANISM_KEYS` is `{turns, pitch, advance, tolerance}`: the block exists
+so `_check_mechanisms` can reconcile declared arithmetic against the **actual animation tracks** — a
+jack that turns six times and advances nothing. The cylinder has no equivalent. Bore and rod fully
+determine both areas; there is no independent track that could disagree with them. A block restating
+them is exactly the tautology H7 names, and the validator would reject the keys anyway.
 
-```toml
-[shot.mechanism]
-bore = 0.140
-rod  = 0.100
-pressure = 35.0e6
-# Rexroth RE 17331 publishes A1 = 153.94 cm2 and A3 = 75.40 cm2 for this pair.
-# GEN cylinder derives both from the modelled geometry; they must agree.
-published_bore_area_cm2    = 153.94
-published_annulus_area_cm2 = 75.40
-tolerance_cm2 = 0.01
-```
+The check that earns its place compares the generator's output against **a number printed by someone
+who does not know this repo exists.** Rexroth RE 17331 publishes, for 140 × 100, a piston area of
+**153.94 cm²** and an annulus of **75.40 cm²**. Measured this session: derived 153.94 / 75.40 —
+agreement to 0.002 cm². That assertion lives in `tests/run.sh`, specified in **H23**.
 
-Measured this session: derived 153.94 / 75.40 against published 153.94 / 75.40 — agreement to
-0.002 cm². A generator whose output can be compared against a printed table should be.
+It fails if the generator ever computes the annulus from the bore *radius* instead of the bore
+*area* — the most likely way to get this wrong, and one that still produces a plausible-looking
+number.
 
 ## Gate status
 

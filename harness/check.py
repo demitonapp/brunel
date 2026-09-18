@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 # --- thresholds, each traced to the observation that set it ---------------
 
@@ -161,7 +162,7 @@ def check_depth_pass(frames: Sequence[Path]) -> list[str]:
     """
     problems: list[str] = []
     if not frames:
-        return [f"no frames found to check"]
+        return ["no frames found to check"]
 
     greyscale, worst = is_greyscale(frames[0])
     if not greyscale:
@@ -218,7 +219,7 @@ def frame_diff(a: Path, b: Path, *, size: int = 48) -> float:
     ga, gb = grey(a), grey(b)
     if len(ga) != len(gb) or not ga:
         raise CheckError(f"cannot compare {a.name} and {b.name}")
-    return sum(abs(x - y) for x, y in zip(ga, gb)) / len(ga)
+    return sum(abs(x - y) for x, y in zip(ga, gb, strict=True)) / len(ga)
 
 
 #: Calibrated from measurement, and honest about its limit.

@@ -548,3 +548,49 @@ one or the other.
   `docs/research/hydraulic-cylinder-datasheets-2026-09-18.md` §8.
 - **ENFORCED BY:** `harness/factgate.py`, rule `every_web_source_has_an_archive_url` - observed
   failing on this ledger this session, which is the only evidence that a check works.
+
+## 2026-09-18 - An annulus does not look like its area, and no amount of correct arithmetic fixes that
+
+- **Context:** S1's whole reveal is that a cylinder's retract face is half its extend face. The
+  numbers are sourced, published and cross-checked: 153.94 cm2 against 75.40 cm2, a ratio of 0.490.
+  A storyboard probe rendered the two figures front-on and to scale before the generator was
+  written, and **the ring reads as about a third of the disc, not a half**
+  (`scratchpad/probe/areas_01.png`). Human area perception is poor for annuli and biased low. The
+  script asked the viewer to see a fact that the picture does not show.
+- **The fix was available because the geometry is real.** The piece removed - the rod's circle,
+  78.54 cm2 - and the piece left - the ring, 75.40 cm2 - are near enough the same size. So Beat 3
+  now gathers the ring into a solid circle and sets it beside the rod's circle: 98.0 mm against
+  100.0 mm, visibly equal. The halving is demonstrated instead of asserted, and the 4% it is off by
+  is exactly the gap between 49% and 50%, which is the reason the narration says "half" and never
+  "exactly half".
+- **This is the storyboard rule paying out on an editorial claim, not a staging one.** "Storyboard
+  before you render" has so far caught cameras in the wrong place. Here it caught **a true sentence
+  that the frame does not support** - which no render check can ever find, because the frame is
+  correct, well-lit, and wrong only as an argument.
+- **Where:** `docs/videos/s01-hydraulic-cylinder/script.md` Beat 3 (restaged, with the superseded
+  staging kept above it), open question 3 (answered "no").
+- **ENFORCED BY:** nothing automatic, and it cannot be - `check_storyboard` correctly passes the
+  frame that fails. The enforcement is procedural and is now written into the script: Beat 3 carries
+  the probe frames by path, so the next person to restage it has to look at the evidence that the
+  obvious version does not work. `docs/videos/README.md` already requires facts before script; this
+  adds that a claim about what the viewer will SEE is not settled until a frame exists.
+
+## 2026-09-18 - A camera inside geometry does not error, it hangs
+
+- **Context:** An axial probe put the camera 0.071 m from the cylinder axis. The barrel wall spans
+  0.070-0.085 m, so the camera sat **inside the wall** - a closed, metallic, double-sided shell.
+  Cycles did not warn, did not error and did not render. It bounced rays inside the shell until the
+  job was killed at several minutes for a frame its neighbours rendered in 23 seconds.
+- **This is the sibling of the repo's oldest failure.** "Every camera must sit inside the bore
+  radius" was learned from cameras placed OUTSIDE the tunnel, which rendered black. The same class
+  of fault placed inside solid geometry does not render black - it does not render at all, and the
+  symptom is a slow machine rather than a bad frame.
+- **Check:** none written. `camera_inside_ok` already exists in `UNIVERSAL_PART_PARAMS`, which is
+  the hook: a camera whose position falls within a part's bounds, where that part has not declared
+  `camera_inside_ok`, is a build-time refusal and costs one point-in-bounds test per camera per
+  shot. Recorded here rather than in the backlog as a fix, because the probe was throwaway script
+  and not the harness - but the harness has the same hole.
+- **Where:** `scratchpad/probe/section_probe.py` (throwaway), `harness/spec.py`
+  (`UNIVERSAL_PART_PARAMS`).
+- **ENFORCED BY:** nothing yet. Stated plainly so this is not mistaken for a solved problem: the
+  harness can still be handed a camera inside a part, and it will hang rather than complain.

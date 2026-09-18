@@ -10,5 +10,20 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# W is not optional. W605 (invalid escape sequence) is exactly the defect that
+# raised a SyntaxWarning on every test run until it was fixed by hand - and it
+# sat outside this select list the whole time.
+select = ["E", "W", "F", "I", "UP", "B"]
 ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["harness"]
+# bpy, bmesh and mathutils populate `bpy.data`, `bpy.ops` and `bpy.context` at
+# runtime; the shipped stubs do not describe them. Following them produces
+# hundreds of attribute errors about a library we do not control, which is the
+# fastest way to make a check unreadable and then ignored.
+[[tool.mypy.overrides]]
+module = ["bpy.*", "bpy", "bmesh.*", "bmesh", "mathutils.*", "mathutils", "jsonschema.*"]
+ignore_missing_imports = true
+follow_imports = "skip"

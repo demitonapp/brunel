@@ -46,34 +46,42 @@ gesturing at a fraction — it is the answer, stated early, and the viewer does 
 
 ## Beat 3 — the reveal (12.0–23.0 s, 330 frames)
 
-**Picture.** **Explode, don't section.** The harness has no boolean, bisect or knife — and does not
-need one here. Pull the two faces apart and show them whole: a full disc for the extend side, an
-annulus for the retract side, the rod passing through the hole. `ROADMAP.md` L2 asks for a modelled
-exploded state in real geometry, and two faces side by side read the area difference more directly
-than a cut solid does.
+> **Restaged 2026-09-18 after a storyboard probe.** The original staging — "two annotated faces, one
+> each side of the piston" — **cannot work**, and the probe proved it in two steps. A side-on section
+> shows a piston face *edge-on*, as a line, so it can never read as an area. And when the two areas
+> are shown properly, front-on and to scale, **a 140/100 annulus does not look like half a 140 disc.**
+> It reads as about a third. The arithmetic is right and the eye disagrees. Frames:
+> `scratchpad/probe/v4_beat3.png` (faces edge-on) and `areas_01.png` (the ring reading as a third).
 
-Geometry, with no new generator: the full face is a thin `cylinder`; the annulus is a `ring` with
-`thickness = bore_r − rod_r = 0.020 m` and a thin `height` — `ring`'s thickness is radial, so it is
-an annular face already. Both carry `smooth = 30` and a raised `segments`, which is why those two
-spec keys exist (see `docs/harness/backlog.md` H21).
+**3a — the section, 12.0–16.0 s.** Three-quarter, the barrel cut away, rod and piston inside. This
+beat is context, not the reveal: it establishes that the rod occupies the middle of the bore.
 
 > "Force is pressure times area — and the two faces aren't the same size."
 >
 > "Pushing, the oil gets the whole piston."
+
+**3b — front on, orthographic, 16.0–19.0 s.** Cut to the piston face square on. The rod's circle
+lifts out of the middle and moves aside. What is left is a ring.
+
+> "Pulling, the rod is in the way. What's left is a ring."
+
+**3c — the turn, 19.0–23.0 s.** The ring gathers itself into a solid circle and settles beside the
+rod's circle. **They are the same size.**
+
+> "It doesn't look like half. It is."
 >
-> "Pulling, the rod is already sitting in the middle of it. That area is gone. What's left is a
-> ring."
+> "Gather that ring into a circle, and it's the same size as the rod that took the space."
 
-Callout: bore area **153.94 cm²** → annulus **75.40 cm²**.
+Callout: bore **153.94 cm²** → ring **75.40 cm²** · rod **78.54 cm²**.
 
-**Then the turn, and this is the video.** Hold on the two areas, side by side, and let them read as
-the same size:
+**Why this is the honest version and not a trick.** The two pieces genuinely are near-equal: 75.40
+against 78.54 cm², a 4% difference, because the rod is a stock 100 mm rather than the 98.99 mm that
+bore/√2 asks for. That 4% *is* the gap between 49% and 50%, and it is the reason the narration says
+"half" and never "exactly half". Re-formed as a solid disc the ring is 98.0 mm across against the
+rod's 100.0 mm — the same size to the eye, and the small difference is real rather than hidden.
 
-> "And that ring is half. Not a coincidence — the rod is sized so it covers half the piston."
->
-> "Bore, divided by root two."
-
-Callout: **140 ÷ √2 = 99 → 100 mm**.
+**The camera must be orthographic for 3b and 3c.** An area comparison under a perspective lens is
+not a comparison; the nearer figure wins. See **H24** — the spec cannot express this yet.
 
 `ledger: s01.F004` — published areas · `s01.F005` — the √2 rod series · `s01.F002` — bore and rod
 

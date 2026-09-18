@@ -49,9 +49,10 @@ import json
 import shutil
 import subprocess
 import time
-from dataclasses import dataclass, field
+from collections.abc import Collection, Iterable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from . import build as build_mod
 from . import spec as spec_mod
@@ -199,7 +200,7 @@ def _depth_range(
         return (0.1, 100.0)
 
     loc, target = cam["loc"], cam["look_at"]
-    dist = sum((a - b) ** 2 for a, b in zip(loc, target)) ** 0.5 or 1.0
+    dist = sum((a - b) ** 2 for a, b in zip(loc, target, strict=True)) ** 0.5 or 1.0
 
     # An explicit range in the shot wins. The heuristic below is a default.
     if shot.get("depth_range"):
@@ -298,7 +299,9 @@ def _swap_material(
     return saved, added_slot
 
 
-def _restore_material(saved: dict[str, list[Any]], added_slot: set[str] = frozenset()) -> None:
+def _restore_material(
+    saved: dict[str, list[Any]], added_slot: Collection[str] = frozenset()
+) -> None:
     import bpy
 
     for name, mats in saved.items():
@@ -309,7 +312,11 @@ def _restore_material(saved: dict[str, list[Any]], added_slot: set[str] = frozen
             if obj.data.materials:
                 obj.data.materials.pop()
             continue
-        for slot, mat in zip(obj.material_slots, mats):
+        # strict=False, deliberately. A restore runs as cleanup, and raising
+        # part-way through would leave every object after this one still
+        # swapped to a pass material - a worse fault than a partial restore,
+        # and one that would silently contaminate the next shot's render.
+        for slot, mat in zip(obj.material_slots, mats, strict=False):
             slot.material = mat
 
 

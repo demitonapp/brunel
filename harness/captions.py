@@ -11,11 +11,10 @@ central band.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
-
-import shutil
 
 FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
 
@@ -63,7 +62,6 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
     * **Never end a chunk on a function word.** "forward an" is not a phrase; if
       the packer would land there, it gives back the word that caused it.
     """
-    import re
 
     words = text.split()
     chunks: list[str] = []

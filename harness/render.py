@@ -162,10 +162,13 @@ def _apply_tracks(
             # and forgetting one leaves a piece behind, which is exactly the bug
             # class this removes.
             base = entry["spec"].get("loc") or [0.0, 0.0, 0.0]
-            for frac, v in zip(t["frames"], t["values"]):
+            # strict=True: spec.py already refuses a track whose frames and
+            # values differ in length, so this asserts that invariant at the
+            # point of use rather than silently dropping a keyframe.
+            for frac, v in zip(t["frames"], t["values"], strict=True):
                 f = 1 + round(frac * span)
                 if chan == "location":
-                    got = [b + d for b, d in zip(base, v)] if offset else list(v)
+                    got = [b + d for b, d in zip(base, v, strict=True)] if offset else list(v)
                     root.location = tuple(got)
                     root.keyframe_insert(data_path="location", frame=f)
                 elif chan == "rotation":
