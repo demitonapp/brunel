@@ -81,7 +81,15 @@ bore/√2 asks for. That 4% *is* the gap between 49% and 50%, and it is the reas
 rod's 100.0 mm — the same size to the eye, and the small difference is real rather than hidden.
 
 **The camera must be orthographic for 3b and 3c.** An area comparison under a perspective lens is
-not a comparison; the nearer figure wins. See **H24** — the spec cannot express this yet.
+not a comparison; the nearer figure wins. **H24 is built**, so the spec can now say so:
+
+```toml
+[[camera]]
+id = "cam_areas"
+ortho_scale = 0.62      # the frame width in metres. Mutually exclusive with lens_mm.
+loc = [0.0, -1.2, 0.0]
+look_at = [0.0, 0.0, 0.0]
+```
 
 `ledger: s01.F004` — published areas · `s01.F005` — the √2 rod series · `s01.F002` — bore and rod
 

@@ -448,9 +448,60 @@ word must.
 "the words changed, re-approve the facts". The words did not change — what is hashed did. Bumping it
 would claim a re-approval nobody performed.
 
-### H23 — `GEN cylinder` has a published table to be checked against, and nowhere to put the check
+### H24 — The spec cannot express an orthographic camera, and S1's reveal needs one — FIXED
+
+`CAMERA_KEYS` is `{id, lens_mm, loc, look_at}`. Every camera this harness can build is a perspective
+camera, because every shot so far wanted one.
+
+S1's Beat 3 compares two areas — a 153.94 cm² disc against a 75.40 cm² ring — and **an area
+comparison under a perspective lens is not a comparison.** The nearer figure is larger on screen by
+construction, so the shot argues for whichever side the lens favours. The probe rendered the reveal
+orthographically (`scratchpad/probe/areas_02.png`) and it only reads because of that.
+
+**Blocks:** `spec/s01/s01.toml` shots 3b and 3c. Not a nice-to-have — the video's one number is a
+ratio of two areas, and a perspective camera puts a thumb on the scale.
+
+**Fix.** `ortho` and `ortho_scale` in `CAMERA_KEYS`, defaulting to absent, mapping to
+`camera.type = "ORTHO"` and `camera.ortho_scale`. `lens_mm` and `ortho_scale` are mutually exclusive
+and the validator should say so rather than silently ignoring one — a spec that sets `lens_mm` on an
+ortho camera is a spec whose author expects a perspective shot.
+
+**Check.** `tests/run.sh`: a camera declaring both `lens_mm` and `ortho_scale` is refused; and an
+ortho render of two equal-area figures at different distances measures them within a pixel or two of
+the same width, where the perspective render does not. That second one is the check that actually
+tests the reason the feature exists.
+
+**Fix, 2026-09-18.** `ortho_scale` added to `CAMERA_KEYS` — the frame width in metres, matching what
+`lens_mm` means to a spec author. `lens_mm` and `ortho_scale` together are a **hard refusal**, not a
+silent precedence rule: a spec that sets both has an author expecting one of them to do something,
+and picking one quietly makes the frame disagree with the file for no visible reason. The conflict is
+tested against the raw dict, because `lens_mm` is defaulted immediately afterwards and every camera
+then looks like it asked for a lens.
+
+`sensor_fit` stays `HORIZONTAL` for ortho cameras. Blender's default `AUTO` would reinterpret
+`ortho_scale` as the frame *height* on a 9:16 frame — a 1.78x framing error that looks like a
+modelling mistake rather than a camera one.
+
+**Checks.** `tests/run.sh`: a camera declaring both `lens_mm` and `ortho_scale` is refused
+(`tests/fixtures/camera_ortho_and_lens.toml`). And `tests/h24_projection.py` measures the projection
+rather than the attribute: two identical cubes at different distances must project to the same width
+under `ortho_scale` (measured 1.0000) and visibly different widths under `lens_mm` (measured 1.5722).
+Asserting `camera.type == "ORTHO"` would only prove an attribute was set; this tests the thing the
+spec author is buying.
+
+**Both guards were observed firing** before being trusted: flipping the ortho fixture to `lens_mm`
+fails it, and moving the perspective fixture's cubes nearly co-planar fails it too — the second guard
+exists because a control that stops demonstrating the problem makes the ortho result prove nothing.
+
+**Each fixture is measured in its own process, deliberately.** Building both in one `bpy` session
+returned 2.77778 for near *and* far under perspective — a confidently wrong number, identical for
+both, with nothing raised. Stale evaluated geometry between two builds in one session is the same
+silent-failure shape this file keeps recording.
+### H25 — `GEN cylinder` has a published table to be checked against, and nowhere to put the check
 
 H21 made a cylinder *look* right. This is about making it *measure* right.
+
+> Numbered H25, not H23. This was filed as H23 on 2026-09-18 and a different H23 — the Markdown-script hash fix — was added the same day by concurrent work that could not see it. Commit `2e5a328` says "Fix H23" and means that one, so this is the entry that moves.
 
 S1's cylinder is the first component in this repo whose geometry has a **manufacturer's printed
 answer**. Bosch Rexroth RE 17331 publishes, for a 140 mm bore and 100 mm rod, a piston area of
@@ -474,25 +525,3 @@ the single most likely way to get this wrong and produces a number that still lo
 numbers proves nothing. This compares the generator's output against a figure printed by someone
 who does not know this repo exists.
 
-### H24 — The spec cannot express an orthographic camera, and S1's reveal needs one
-
-`CAMERA_KEYS` is `{id, lens_mm, loc, look_at}`. Every camera this harness can build is a perspective
-camera, because every shot so far wanted one.
-
-S1's Beat 3 compares two areas — a 153.94 cm² disc against a 75.40 cm² ring — and **an area
-comparison under a perspective lens is not a comparison.** The nearer figure is larger on screen by
-construction, so the shot argues for whichever side the lens favours. The probe rendered the reveal
-orthographically (`scratchpad/probe/areas_02.png`) and it only reads because of that.
-
-**Blocks:** `spec/s01/s01.toml` shots 3b and 3c. Not a nice-to-have — the video's one number is a
-ratio of two areas, and a perspective camera puts a thumb on the scale.
-
-**Fix.** `ortho` and `ortho_scale` in `CAMERA_KEYS`, defaulting to absent, mapping to
-`camera.type = "ORTHO"` and `camera.ortho_scale`. `lens_mm` and `ortho_scale` are mutually exclusive
-and the validator should say so rather than silently ignoring one — a spec that sets `lens_mm` on an
-ortho camera is a spec whose author expects a perspective shot.
-
-**Check.** `tests/run.sh`: a camera declaring both `lens_mm` and `ortho_scale` is refused; and an
-ortho render of two equal-area figures at different distances measures them within a pixel or two of
-the same width, where the perspective render does not. That second one is the check that actually
-tests the reason the feature exists.

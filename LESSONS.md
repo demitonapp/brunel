@@ -585,12 +585,20 @@ one or the other.
   radius" was learned from cameras placed OUTSIDE the tunnel, which rendered black. The same class
   of fault placed inside solid geometry does not render black - it does not render at all, and the
   symptom is a slow machine rather than a bad frame.
-- **Check:** none written. `camera_inside_ok` already exists in `UNIVERSAL_PART_PARAMS`, which is
-  the hook: a camera whose position falls within a part's bounds, where that part has not declared
-  `camera_inside_ok`, is a build-time refusal and costs one point-in-bounds test per camera per
-  shot. Recorded here rather than in the backlog as a fix, because the probe was throwaway script
-  and not the harness - but the harness has the same hole.
-- **Where:** `scratchpad/probe/section_probe.py` (throwaway), `harness/spec.py`
-  (`UNIVERSAL_PART_PARAMS`).
-- **ENFORCED BY:** nothing yet. Stated plainly so this is not mistaken for a solved problem: the
-  harness can still be handed a camera inside a part, and it will hang rather than complain.
+- **CORRECTION, same day.** This entry first said no check existed and the harness had the same
+  hole. **That was wrong, and wrong in the worst direction** - it told a future reader a guard was
+  missing when it is there and tested. `build._assert_cameras_clear` refuses a camera whose position
+  falls inside any part's bounds unless that part sets `camera_inside_ok`, and `tests/run.sh` proves
+  it fires (`tests/fixtures/camera_inside.toml`, "camera inside geometry is rejected") and does not
+  over-fire (`camera_clear.toml`). It was written after a camera inside the flood-water box rendered
+  s07 black.
+- **So the actual lesson is smaller and sharper:** the probe hung **because it was a throwaway script
+  that bypassed the harness.** The guard exists; nothing outside `harness build` runs it. Scratch
+  scripts get none of the repo's accumulated protections, which is an argument for probing through
+  the harness wherever a fixture can carry the question, and for not trusting a scratch render's
+  silence.
+- **Where:** `scratchpad/probe/section_probe.py` (throwaway, bypassed the check),
+  `harness/build.py` (`_assert_cameras_clear`), `tests/run.sh`.
+- **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`) and `tests/run.sh` ("camera inside
+  geometry is rejected" / "camera clear of geometry is accepted") - both re-read this session rather
+  than assumed, which is how the original claim in this entry was found to be false.
