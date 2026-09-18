@@ -44,11 +44,16 @@ Not a percentage. Not a figure that needs defending. **Half** — and on purpose
 | | |
 |---|---|
 | Reuses | nothing — `library/` is empty and this is where it starts |
-| Adds to `library/` | `GEN cylinder` — parametric bore, rod, stroke; a section state; two port stubs |
-| Downstream | S2 (×3 as the excavator's boom/stick/bucket), S5 (TBM thrust rams), L1, L2 |
+| Adds to `library/` | **four** components, not one — see below |
+**Four components, built:** `cylinder_body` (barrel, gland, cap, optional section),
+`cylinder_rod` (piston and rod, `emit` splits them so they can carry different materials),
+`area_disc` (a flat area figure, solid or annular) and `label` (text as real geometry, for the
+in-scene callouts this brief has always demanded). All four are catalogued in `harness/library.py`
+and S2, S5, L1 and L2 compose them rather than re-deriving them.
 
-The cylinder generator is the single most reused component on the whole slate. Build it
-parametrically or build it three more times.
+**This video also reuses `crew`**, which already existed and was already measured at 1.70 m. Draft 2
+ran thirty seconds without ever saying how big any of this is; the figure is the scale witness, and
+the scene assertion checks its height, so it is evidence rather than decoration.
 
 **One generator, not five.** Single-acting is one port instead of two; tie-rod versus welded is an
 end-cap treatment; both are parameters. Telescopic is genuinely different geometry and is genuinely
@@ -131,9 +136,16 @@ number.
 
 ## Gate status
 
-`factgate` **blocks `--publish`**, and for exactly one reason: **no source is archived.**
-`archive.org` rate-limited (HTTP 429) during the research session, so
-`every_web_source_has_an_archive_url` fails. Five URLs need a Wayback snapshot and the snapshot URLs
-pasted into the ledger. Nothing else is outstanding.
+`factgate` **blocks `--publish`** for two reasons, both honest and neither a sourcing gap:
+
+1. **No source is archived.** `archive.org` rate-limited (HTTP 429) during research, so
+   `every_web_source_has_an_archive_url` fails. Three URLs need a Wayback snapshot.
+2. **The six facts are `agent_checked`, not `human_approved`.** They were approved once, against
+   draft 2's wording; the Tier 1 and Tier 2 re-edits rewrote the narration, so the ledger is at
+   revision 4 and the sign-off is against words that no longer exist. **No fact moved** — bore, rod,
+   pressure and both forces are untouched.
+
+And separately, **H26**: `deliver --publish` reads a global `legal/licences.json` that is ep01's and
+blocks on ep01's unresolved engravings. s01 uses no third-party asset at all.
 
 The `SOURCE NEEDED` markers are gone. The numbers came off documents.

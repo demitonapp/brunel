@@ -1,28 +1,21 @@
 # s01 - "Why a hydraulic cylinder pushes harder than it pulls"
 #
-# Brief:  docs/videos/s01-hydraulic-cylinder/brief.md
-# Script: docs/videos/s01-hydraulic-cylinder/script.md
-# Facts:  spec/s01/facts/s01.facts.json   (140 x 100 at 350 bar, all sourced)
+# Draft 3. Brief: brief.md  Script: script.md  Critique: critique.md
+# Facts: facts/s01.facts.json - 140 x 100 at 350 bar, every input cited.
 #
-# Three things in this file were decided by a storyboard probe, not by taste.
+# Draft 2 rendered, verified and shipped 30 seconds whose subject occupied
+# 1.9-2.4% of the frame, opened on a wide establishing shot, withheld for
+# seven seconds and carried 240 wpm that `voice` refused. critique.md has the
+# analysis. Four things in this file come from it and are not preference:
 #
-#   1. The cylinder lies along X (rot = [0, 90, 0]) and the camera sits off-axis
-#      and high. That is what makes a 9:1 object read diagonally in a 0.56:1
-#      frame. Staged level it is a band across a fifth of the frame; the spec
-#      has no camera roll, and it does not need one, because moving the camera
-#      does the same job.
-#
-#   2. `section = true` cuts the -Y half away. Rotation about Y preserves Y, so
-#      rot = [0, 90, 0] lays the barrel along X AND leaves the cut facing -Y,
-#      which is where every camera in this cut stands.
-#
-#   3. Beat 3 does NOT show the piston's faces in the section. A side-on section
-#      shows a face edge-on, as a line - it can never read as an area. The areas
-#      are their own flat figures, shot orthographically, because an area
-#      comparison under a perspective lens argues for whichever figure is nearer
-#      (H24). And the ring alone does not read as half: measured on the probe it
-#      reads as about a third, which is why b03c sets the ring's equal-area disc
-#      (98.0 mm) beside the rod's circle (100.0 mm) instead of asserting it.
+#   1. The cylinder is STOOD UP on the frame's long axis (rot y = 34). A 12:1
+#      object lying near-horizontal cannot fill a 9:16 frame at any distance.
+#   2. Fourteen shots, none over 3 s. Draft 2 ran six shots at 5.0 s average,
+#      which is documentary pacing in a swipe feed.
+#   3. The conclusion is stated in the first line, not withheld. 50-60% of all
+#      drop-off happens in the first three seconds.
+#   4. The numbers are `label` geometry in the scene. Draft 2 had none at all,
+#      so the one number the brief says the viewer will repeat never appeared.
 
 [meta]
 id = "s01"
@@ -34,10 +27,12 @@ samples = 32
 engine = "CYCLES"
 device = "CPU"
 units = "metric"
+# 62 is the documentary default and 3.2% of frame height. A Short wants 5%.
+caption_size = 96
 
-# --- materials -----------------------------------------------------------
-# Probe finding: steel at base_color 0.045 is black under AgX, and chrome at
-# roughness 0.075 blows to white. Both are corrected here.
+# --- materials ------------------------------------------------------------
+# Draft 2 was one grey. Four families, four hues, so the eye can parse the
+# frame before it parses the mechanism.
 
 [[material]]
 id = "steel"
@@ -63,57 +58,49 @@ base_color = [0.42, 0.52, 0.64]
 roughness = 0.30
 metallic = 0.8
 
-# --- callouts -------------------------------------------------------------
-# The brief: "the numbers are rendered as 3D-tracked callouts in the scene, not
-# as caption text - a dimension that lives in the edit is a dimension nothing
-# can check." The first cut shipped without them, so the one number the brief
-# said the viewer would repeat never appeared on screen at all.
-#
-# Positions are fixed and the SHOTS decide which is visible, so h01 carries the
-# push figure alone (upper left), h02 the pull figure alone (lower right), and
-# h03 shows both at once against one unchanged object - which is the whole
-# "same oil, same pressure" point, made in a single frame instead of seven
-# seconds of withholding.
+[[material]]
+id = "load"
+base_color = [0.52, 0.26, 0.13]
+roughness = 0.85
+metallic = 0.0
 
+[[material]]
+id = "hiviz"
+base_color = [0.72, 0.42, 0.06]
+roughness = 0.80
+metallic = 0.0
+
+[[material]]
+id = "backdrop"
+base_color = [0.055, 0.062, 0.078]
+roughness = 1.0
+metallic = 0.0
+
+# --- backdrop -------------------------------------------------------------
+# A lit surface behind the subject instead of the flat world colour. It is the
+# cheapest depth available: a rim light grazing it puts a gradient behind the
+# object so the silhouette separates instead of floating in a void.
 [[part]]
-id = "callout_push"
-gen = "label"
-material = "face"
-loc = [-0.40, -0.45, 0.60]
-shots = ["h01", "h03"]
+id = "backdrop"
+gen = "plane"
+material = "backdrop"
+loc = [0.0, 3.4, 0.0]
+rot = [90.0, 0.0, 0.0]
 [part.params]
-text = "55 t"
-size = 0.20
-extrude = 0.006
+size = 26.0
 
-[[part]]
-id = "callout_pull"
-gen = "label"
-material = "rodface"
-loc = [0.42, -0.45, -0.60]
-shots = ["h02", "h03"]
-[part.params]
-text = "27 t"
-size = 0.20
-extrude = 0.006
-
-
-# --- the hero cylinder: beats 1, 2, 3a -----------------------------------
-
-# Solid for the hook. The cut-away is beat 3's reveal, and a sectioned barrel
-# in b01 gives it away twelve seconds early - so this is two parts, each
-# visible in its own shots, not one part with a section flag.
+# --- the hero cylinder ----------------------------------------------------
 [[part]]
 id = "cyl_barrel"
 gen = "cylinder_body"
 material = "steel"
 loc = [0.0, 0.0, 0.0]
 rot = [0.0, 34.0, 0.0]
-shots = ["h01", "h02", "h03"]
+shots = ["c01", "c02", "c03", "c04", "c05"]
 smooth = 30.0
 [part.params]
-bore = 0.140
-rod = 0.100
+bore = 0.14
+rod = 0.1
 wall = 0.015
 length = 1.50
 section = false
@@ -125,11 +112,11 @@ gen = "cylinder_body"
 material = "steel"
 loc = [0.0, 0.0, 0.0]
 rot = [0.0, 34.0, 0.0]
-shots = ["h04"]
+shots = ["c08", "c09"]
 smooth = 30.0
 [part.params]
-bore = 0.140
-rod = 0.100
+bore = 0.14
+rod = 0.1
 wall = 0.015
 length = 1.50
 section = true
@@ -141,81 +128,174 @@ gen = "cylinder_rod"
 material = "chrome"
 loc = [-0.196, 0.0, -0.290]
 rot = [0.0, 34.0, 0.0]
-shots = ["h01", "h02", "h03", "h04"]
+shots = ["c01", "c02", "c03", "c04", "c05", "c08", "c09"]
 smooth = 30.0
 [part.params]
-bore = 0.140
-rod = 0.100
-# 1.20, not the barrel's 1.50. The rod's only visible FEATURE is its tip, and
-# at 1.50 the tip sat off-frame through the whole stroke - so the extension
-# changed no pixel at all and check_motion correctly called the shot frozen.
-length = 1.20
+bore = 0.14
+rod = 0.1
+length = 1.2
 section = true
 segments = 64
 emit = "rod"
 
-# The piston is its own part ONLY so it can carry its own material. In the
-# first storyboard it inherited the rod's chrome and vanished against it, in
-# the one shot whose whole subject is the piston's two faces.
 [[part]]
 id = "cyl_piston"
 gen = "cylinder_rod"
 material = "face"
 loc = [-0.196, 0.0, -0.290]
 rot = [0.0, 34.0, 0.0]
-shots = ["h01", "h02", "h03", "h04"]
+shots = ["c01", "c02", "c03", "c04", "c05", "c08", "c09"]
 smooth = 30.0
 [part.params]
-bore = 0.140
-rod = 0.100
+bore = 0.14
+rod = 0.1
 piston = 0.06
 section = true
 segments = 64
 emit = "piston"
 
-# The stroke. There is no `extend` parameter - a [[track]] targets a part id,
-# which is the whole reason the rod is its own part.
-# The stroke. h01 drives out, h02 draws back, h03 holds at full extension so
-# the two numbers can sit against one unmoving object, h04 creeps for life.
-[[track]]
-part = ["cyl_rod", "cyl_piston"]
-channel = "location"
-shots = ["h01"]
-frames = [0.0, 0.72, 1.0]
-values = [[-0.196, 0.0, -0.290], [0.084, 0.0, 0.124], [0.084, 0.0, 0.124]]
+# --- callouts -------------------------------------------------------------
+[[part]]
+id = "callout_push"
+gen = "label"
+material = "face"
+loc = [-0.31, -0.16, 0.50]
+shots = ["c01", "c02", "c04"]
+[part.params]
+text = "55 t"
+size = 0.19
+extrude = 0.006
 
-[[track]]
-part = ["cyl_rod", "cyl_piston"]
-channel = "location"
-shots = ["h02"]
-frames = [0.0, 0.70, 1.0]
-values = [[0.084, 0.0, 0.124], [-0.196, 0.0, -0.290], [-0.196, 0.0, -0.290]]
+[[part]]
+id = "callout_pull"
+gen = "label"
+material = "rodface"
+loc = [0.33, -0.16, -0.50]
+shots = ["c03", "c04"]
+[part.params]
+text = "27 t"
+size = 0.19
+extrude = 0.006
 
-[[track]]
-part = ["cyl_rod", "cyl_piston"]
-channel = "location"
-shots = ["h03"]
-frames = [0.0, 1.0]
-values = [[-0.190, 0.0, -0.282], [-0.145, 0.0, -0.216]]
+# --- scale witness --------------------------------------------------------
+# Thirty seconds of draft 2 never said how big any of this is. `crew` is 1.70 m
+# and the scene assertion checks that number, so the figure is evidence, not
+# decoration.
+[[part]]
+id = "witness"
+gen = "crew"
+material = "hiviz"
+loc = [-1.25, 0.15, -0.95]
+shots = ["c05"]
+[part.params]
+height = 1.70
+pose = "stand"
+facing = 0.0
 
-[[track]]
-part = ["cyl_rod", "cyl_piston"]
-channel = "location"
-shots = ["h04"]
-frames = [0.0, 1.0]
-values = [[-0.212, 0.0, -0.315], [-0.045, 0.0, -0.066]]
+# --- the load demonstration ----------------------------------------------
+# Draft 2 explained the mechanism and never showed a consequence. These two
+# shots are the consequence, staged identically so the CUT does the comparing:
+# the same cylinder at the same pressure lifts a block pushing, and half a
+# block pulling.
+#
+# The pull rig is mounted INVERTED - cap up, rod down - because a cylinder
+# pulls by retracting, so the only way to lift with it is to hang the load
+# underneath. Getting that backwards would be a machine that cannot exist.
 
-# --- beat 3b: the whole face, and the ring left when the rod comes out ----
+[[part]]
+id = "push_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [0.0, 0.0, -0.75]
+shots = ["c06"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+wall = 0.015
+length = 1.10
+segments = 48
 
-# THE RING - 140 outer, 100 inner. The first storyboard had a solid 140 disc
-# here by mistake, so b03b showed two solid circles and said nothing: the shot
-# whose narration is "what is left is a ring" had no ring in it.
+[[part]]
+id = "push_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [0.0, 0.0, -1.05]
+shots = ["c06"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+length = 0.95
+segments = 48
+emit = "rod"
+
+[[part]]
+id = "push_load"
+gen = "box"
+material = "load"
+loc = [0.0, 0.0, 0.20]
+shots = ["c06"]
+[part.params]
+dims = [0.62, 0.62, 0.62]
+
+[[part]]
+id = "pull_barrel"
+gen = "cylinder_body"
+material = "steel"
+loc = [0.0, 0.0, 0.75]
+rot = [180.0, 0.0, 0.0]
+shots = ["c07"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+wall = 0.015
+length = 1.10
+segments = 48
+
+[[part]]
+id = "pull_rod"
+gen = "cylinder_rod"
+material = "chrome"
+loc = [0.0, 0.0, 1.05]
+rot = [180.0, 0.0, 0.0]
+shots = ["c07"]
+smooth = 30.0
+[part.params]
+bore = 0.140
+rod = 0.100
+length = 0.95
+segments = 48
+emit = "rod"
+
+# half the volume of push_load: 0.62^3 = 0.238 m3, 0.62 x 0.62 x 0.31 = 0.119
+[[part]]
+id = "pull_load"
+gen = "box"
+material = "load"
+loc = [0.0, 0.0, -0.36]
+shots = ["c07"]
+[part.params]
+dims = [0.62, 0.62, 0.31]
+
+# --- the area figures ----------------------------------------------------
+[[part]]
+id = "area_whole"
+gen = "area_disc"
+material = "face"
+loc = [0.0, 0.0, 0.0]
+shots = ["c10"]
+[part.params]
+outer = 0.140
+inner = 0.0
+
 [[part]]
 id = "area_ring"
 gen = "area_disc"
 material = "face"
 loc = [-0.058, 0.0, 0.0]
-shots = ["h05"]
+shots = ["c11", "c12"]
 [part.params]
 outer = 0.140
 inner = 0.100
@@ -225,152 +305,254 @@ id = "area_plug"
 gen = "area_disc"
 material = "rodface"
 loc = [0.058, 0.0, 0.0]
-shots = ["h05", "h06"]
+shots = ["c11", "c12", "c13"]
 [part.params]
 outer = 0.100
 inner = 0.0
 
-# --- beat 3c: the ring, re-formed. A CUT, not a morph - the harness has no
-# shape interpolation, and the reveal is the comparison, not the tween.
-
+# 98.0 mm: the 75.40 cm2 annulus re-formed as a solid disc, against the rod's
+# 100.0 mm circle beside it. Measured on a probe: the RING does not read as
+# half - it reads as about a third - so it is re-formed rather than asserted.
 [[part]]
 id = "area_eq"
 gen = "area_disc"
 material = "face"
 loc = [-0.058, 0.0, 0.0]
-shots = ["h06"]
-# 98.0 mm: the 75.40 cm2 annulus re-formed as a solid disc. Against the rod's
-# 100.0 mm circle beside it, that is the video's whole claim, shown to scale.
+shots = ["c13"]
 [part.params]
 outer = 0.098
 inner = 0.0
 
-# --- beat 4: three cylinders, no machine ---------------------------------
-# Boom, stick and bucket sizes in the attitude they sit in on an arm. No
-# excavator is modelled: that is S2's subject and this brief never budgeted it.
-
 [[part]]
-id = "b4_boom_barrel"
+id = "arm_boom_barrel"
 gen = "cylinder_body"
 material = "steel"
 loc = [-0.78, 0.0,  0.60]
 rot = [0.0, 64.0, 0.0]
-shots = ["h07"]
+shots = ["c14"]
 smooth = 30.0
 [part.params]
 bore = 0.14
 rod = 0.1
 wall = 0.014
-length = 1.5
-section = false
+length = 1.50
 segments = 48
 
 [[part]]
-id = "b4_boom_rod"
+id = "arm_boom_rod"
 gen = "cylinder_rod"
 material = "chrome"
 loc = [-0.78, 0.0,  0.60]
 rot = [0.0, 64.0, 0.0]
-shots = ["h07"]
+shots = ["c14"]
 smooth = 30.0
 [part.params]
 bore = 0.14
 rod = 0.1
-# rod, not barrel: at barrel length the tip sat off frame
 length = 1.15
 piston = 0.05
-section = false
 segments = 48
 
 [[part]]
-id = "b4_stick_barrel"
+id = "arm_stick_barrel"
 gen = "cylinder_body"
 material = "steel"
 loc = [ 0.10, 0.0,  0.00]
 rot = [0.0, 70.0, 0.0]
-shots = ["h07"]
+shots = ["c14"]
 smooth = 30.0
 [part.params]
 bore = 0.12
 rod = 0.085
 wall = 0.014
-length = 1.2
-section = false
+length = 1.27
 segments = 48
 
 [[part]]
-id = "b4_stick_rod"
+id = "arm_stick_rod"
 gen = "cylinder_rod"
 material = "chrome"
 loc = [ 0.10, 0.0,  0.00]
 rot = [0.0, 70.0, 0.0]
-shots = ["h07"]
+shots = ["c14"]
 smooth = 30.0
 [part.params]
 bore = 0.12
 rod = 0.085
-# rod, not barrel: at barrel length the tip sat off frame
 length = 0.92
 piston = 0.05
-section = false
 segments = 48
 
 [[part]]
-id = "b4_bucket_barrel"
+id = "arm_bucket_barrel"
 gen = "cylinder_body"
 material = "steel"
 loc = [ 0.86, 0.0, -0.56]
 rot = [0.0, 76.0, 0.0]
-shots = ["h07"]
+shots = ["c14"]
 smooth = 30.0
 [part.params]
 bore = 0.1
 rod = 0.07
 wall = 0.014
-length = 0.9
-section = false
+length = 1.05
 segments = 48
 
 [[part]]
-id = "b4_bucket_rod"
+id = "arm_bucket_rod"
 gen = "cylinder_rod"
 material = "chrome"
 loc = [ 0.86, 0.0, -0.56]
 rot = [0.0, 76.0, 0.0]
-shots = ["h07"]
+shots = ["c14"]
 smooth = 30.0
 [part.params]
 bore = 0.1
 rod = 0.07
-# rod, not barrel: at barrel length the tip sat off frame
-length = 0.70
+length = 0.7
 piston = 0.05
-section = false
 segments = 48
+
+# --- tracks ---------------------------------------------------------------
+# A [[track]] targets a PART ID, which is why rod and piston are separate parts
+# (they need different materials) driven here as one unit. The stroke vector is
+# the cylinder's OWN axis: a location track is in world space, and the hero sits
+# at rot y = 34.0, so local +Z maps to (sin, 0, cos).
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c01"]
+frames = [0.0, 0.74, 1.0]
+values = [[-0.196, 0.0, -0.290], [0.084, 0.0, 0.124], [0.084, 0.0, 0.124]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c02"]
+frames = [0.0, 1.0]
+values = [[0.084, 0.0, 0.124], [0.011, 0.0, 0.017]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c03"]
+frames = [0.0, 1.0]
+values = [[0.011, 0.0, 0.017], [-0.168, 0.0, -0.249]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c04"]
+frames = [0.0, 1.0]
+values = [[-0.168, 0.0, -0.249], [-0.112, 0.0, -0.166]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c05"]
+frames = [0.0, 1.0]
+values = [[-0.134, 0.0, -0.199], [0.056, 0.0, 0.083]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c08"]
+frames = [0.0, 1.0]
+values = [[-0.224, 0.0, -0.332], [-0.034, 0.0, -0.050]]
+
+[[track]]
+part = ["cyl_rod", "cyl_piston"]
+channel = "location"
+shots = ["c09"]
+frames = [0.0, 1.0]
+values = [[-0.190, 0.0, -0.282], [-0.056, 0.0, -0.083]]
+
+# the load rigs. rod and block move together - the block is ON the rod.
+[[track]]
+part = "push_rod"
+channel = "location"
+shots = ["c06"]
+frames = [0.0, 0.18, 0.85, 1.0]
+values = [[0.0, 0.0, -1.05], [0.0, 0.0, -1.05], [0.0, 0.0, -0.58], [0.0, 0.0, -0.58]]
+
+[[track]]
+part = "push_load"
+channel = "location"
+shots = ["c06"]
+frames = [0.0, 0.18, 0.85, 1.0]
+values = [[0.0, 0.0, 0.20], [0.0, 0.0, 0.20], [0.0, 0.0, 0.67], [0.0, 0.0, 0.67]]
+
+[[track]]
+part = "pull_rod"
+channel = "location"
+shots = ["c07"]
+frames = [0.0, 0.18, 0.85, 1.0]
+values = [[0.0, 0.0, 1.05], [0.0, 0.0, 1.05], [0.0, 0.0, 1.52], [0.0, 0.0, 1.52]]
+
+[[track]]
+part = "pull_load"
+channel = "location"
+shots = ["c07"]
+frames = [0.0, 0.18, 0.85, 1.0]
+values = [[0.0, 0.0, -0.36], [0.0, 0.0, -0.36], [0.0, 0.0, 0.11], [0.0, 0.0, 0.11]]
+
+[[track]]
+part = "arm_boom_rod"
+channel = "location"
+shots = ["c14"]
+frames = [0.0, 0.30, 0.44, 0.80]
+values = [[-0.780, 0.000, 0.600], [-0.313, 0.000, 0.828], [-0.313, 0.000, 0.828], [-0.780, 0.000, 0.600]]
+[[track]]
+part = "arm_stick_rod"
+channel = "location"
+shots = ["c14"]
+frames = [0.10, 0.42, 0.56, 0.92]
+values = [[0.100, 0.000, 0.000], [0.513, 0.000, 0.150], [0.513, 0.000, 0.150], [0.100, 0.000, 0.000]]
+[[track]]
+part = "arm_bucket_rod"
+channel = "location"
+shots = ["c14"]
+frames = [0.22, 0.54, 0.68, 1.0]
+values = [[0.860, 0.000, -0.560], [1.190, 0.000, -0.478], [1.190, 0.000, -0.478], [0.860, 0.000, -0.560]]
+
+# --- cameras --------------------------------------------------------------
+# Every one of these is a measured composition, not a taste call: draft 2's
+# subject filled 1.9-2.4% of frame and `check_coverage` now refuses anything
+# under 5% and warns under 20%.
 
 [[camera]]
 id = "cam_hero"
 lens_mm = 58.0
-loc = [0.42, -1.52, 0.18]
+loc = [0.57, -2.06, 0.24]
 look_at = [0.0, 0.0, 0.0]
+
+[[camera]]
+id = "cam_scale"
+lens_mm = 40.0
+loc = [0.30, -3.10, 0.20]
+look_at = [-0.55, 0.0, -0.20]
+
+[[camera]]
+id = "cam_load"
+lens_mm = 50.0
+loc = [1.05, -2.35, 0.30]
+look_at = [0.0, 0.0, 0.05]
 
 [[camera]]
 id = "cam_section"
 lens_mm = 105.0
 loc = [0.46, -1.02, 0.30]
-look_at = [-0.20, 0.0, 0.0]
+look_at = [0.0, 0.0, 0.0]
+
+[[camera]]
+id = "cam_piston"
+lens_mm = 150.0
+loc = [0.34, -0.72, 0.16]
+look_at = [-0.02, 0.0, -0.06]
 
 # H24. ortho_scale is the frame WIDTH in metres and is mutually exclusive with
-# lens_mm. Without it b03b/b03c argue for whichever figure is nearer the lens.
-# A drift, not a hold. check_motion fails a frozen shot - and it is right to,
-# because a shot that never changes is usually a track that was written and
-# never applied. These two ARE meant to be held, so they get the smallest move
-# that is still a move.
-#
-# It costs nothing, and only an ORTHOGRAPHIC camera makes that true: ortho_scale
-# fixes the frame width regardless of distance, so the camera can travel without
-# altering the size of either figure. Under a lens the same drift would change
-# the very areas the shot exists to compare.
+# lens_mm. Without it c10-c13 argue for whichever figure is nearer the lens.
 [[camera]]
 id = "cam_areas"
 ortho_scale = 0.25
@@ -381,119 +563,157 @@ look_at = [0.0, 0.0, 0.0]
 id = "cam_three"
 lens_mm = 62.0
 loc = [1.10, -2.20, 1.04]
-look_at = [0.0, 0.0, 0.10]
+look_at = [0.0, 0.0, 0.0]
 
 # --- lights ---------------------------------------------------------------
-# Probe finding: 420 W at ~2 m blew the frame out under AgX. These are the
-# values that measured correctly, and `section_fill` exists because nothing
-# else reaches the inside of the cut.
+# Draft 2 lit everything one temperature and the frame read as a single grey.
+# Cool key, warm kicker, and a rim grazing the backdrop for separation.
 
 [[light]]
 id = "key"
 type = "AREA"
 energy = 150.0
+color = [0.86, 0.92, 1.0]
 loc = [1.60, -2.00, 2.20]
 look_at = [0.0, 0.0, 0.0]
 
 [[light]]
 id = "fill"
 type = "AREA"
-energy = 55.0
+energy = 45.0
+color = [0.62, 0.72, 0.95]
 loc = [-2.40, -1.60, 0.50]
 look_at = [0.0, 0.0, 0.0]
 
 [[light]]
-id = "section_fill"
+id = "kicker"
 type = "AREA"
-energy = 38.0
-loc = [-0.35, -0.85, 0.28]
-look_at = [-0.35, 0.05, 0.0]
-shots = ["h04"]
-
-[[light]]
-id = "rim"
-type = "AREA"
-energy = 70.0
-loc = [-0.60, 1.90, 1.10]
+energy = 120.0
+color = [1.0, 0.74, 0.42]
+loc = [-1.70, 1.30, 1.10]
 look_at = [0.0, 0.0, 0.0]
 
+[[light]]
+id = "backwash"
+type = "AREA"
+energy = 260.0
+color = [0.34, 0.46, 0.72]
+loc = [0.0, 2.10, 2.40]
+look_at = [0.0, 3.30, -0.60]
+
+[[light]]
+id = "section_fill"
+type = "AREA"
+energy = 34.0
+loc = [-0.30, -0.80, 0.24]
+look_at = [-0.20, 0.10, 0.0]
+shots = ["c08", "c09"]
+
 # --- shots ----------------------------------------------------------------
-# 5 + 7 + 4 + 3 + 4 + 7 = 30 s. Narration is copied from script.md; the script
-# is the approved text and this file is downstream of it.
+# 14 shots, none over 3 s. 73 words at 146 wpm; `validate` now refuses a shot
+# whose narration cannot be spoken inside its own duration.
 
 [[shot]]
-id = "h01"
-name = "The conclusion, stated"
+id = "c01"
+name = "The conclusion"
 camera = "cam_hero"
-seconds = 4.0
+seconds = 3.0
 narration = "A hydraulic cylinder pushes twice as hard as it pulls."
 
 [[shot]]
-id = "h02"
-name = "The other number"
+id = "c02"
+name = "Pushing"
 camera = "cam_hero"
-seconds = 3.0
-narration = "Fifty-five tonnes pushing. Twenty-seven pulling."
+seconds = 1.8
+narration = "Fifty-five tonnes pushing."
 
 [[shot]]
-id = "h03"
-name = "Same oil, same pressure"
+id = "c03"
+name = "Pulling"
 camera = "cam_hero"
-seconds = 2.5
-narration = "Same oil. Same pump. Same pressure."
+seconds = 1.8
+narration = "Twenty-seven pulling."
 
 [[shot]]
-id = "h04"
+id = "c04"
+name = "Same pressure"
+camera = "cam_hero"
+seconds = 2.0
+narration = "Same oil. Same pressure."
+
+[[shot]]
+id = "c05"
+name = "How big"
+camera = "cam_scale"
+seconds = 2.0
+
+[[shot]]
+id = "c06"
+name = "Push lifts this"
+camera = "cam_load"
+seconds = 2.2
+narration = "Push, and it lifts this."
+
+[[shot]]
+id = "c07"
+name = "Pull lifts half"
+camera = "cam_load"
+seconds = 2.2
+narration = "Pull, and only this."
+
+[[shot]]
+id = "c08"
 name = "Inside"
 camera = "cam_section"
-seconds = 4.5
-narration = "Force is pressure times area. The faces are not the same size."
+seconds = 2.2
+narration = "Force is pressure times area."
 
 [[shot]]
-id = "h05"
-name = "The ring"
+id = "c09"
+name = "Two faces"
+camera = "cam_piston"
+seconds = 2.0
+narration = "The faces are not the same size."
+
+[[shot]]
+id = "c10"
+name = "The whole piston"
 camera = "cam_areas"
-seconds = 4.0
+seconds = 1.8
 move_from = [0.0, -1.20, 0.0]
-move_to = [0.018, -1.20, -0.010]
-narration = "The rod is in the way. What is left is a ring."
+move_to = [0.012, -1.20, -0.007]
+narration = "Pushing, the whole piston."
 
 [[shot]]
-id = "h06"
+id = "c11"
+name = "The rod is in the way"
+camera = "cam_areas"
+seconds = 2.0
+move_from = [0.0, -1.20, 0.0]
+move_to = [0.014, -1.20, -0.008]
+narration = "Pulling, the rod is in the way."
+
+[[shot]]
+id = "c12"
+name = "A ring"
+camera = "cam_areas"
+seconds = 2.1
+move_from = [0.010, -1.20, -0.006]
+move_to = [-0.008, -1.20, 0.005]
+narration = "What is left is a ring."
+
+[[shot]]
+id = "c13"
 name = "The same size"
 camera = "cam_areas"
-seconds = 5.0
+seconds = 2.5
 move_from = [0.0, -1.20, 0.0]
-move_to = [-0.016, -1.20, 0.009]
-narration = "It does not look like half. Gather it up: the same size."
+move_to = [-0.014, -1.20, 0.008]
+narration = "It does not look like half. It is."
 
 [[shot]]
-id = "h07"
+id = "c14"
 name = "Three of them"
 camera = "cam_three"
-seconds = 7.0
-narration = "That is why an excavator curls in hard and pushes out weak. Three on the arm. None pull their weight."
-
-# --- beat 4 strokes ------------------------------------------------------
-# One stroke each, staggered by the frames above so they do not pulse in
-# unison. The vector differs per cylinder because a location track is in
-# world space and each one sits at its own rot.
-
-[[track]]
-part = "b4_boom_rod"
-channel = "location"
-shots = ["h07"]
-frames = [0.0, 0.30, 0.44, 0.80]
-values = [[-0.780, 0.000, 0.600], [-0.313, 0.000, 0.828], [-0.313, 0.000, 0.828], [-0.780, 0.000, 0.600]]
-[[track]]
-part = "b4_stick_rod"
-channel = "location"
-shots = ["h07"]
-frames = [0.10, 0.42, 0.56, 0.92]
-values = [[0.100, 0.000, 0.000], [0.513, 0.000, 0.150], [0.513, 0.000, 0.150], [0.100, 0.000, 0.000]]
-[[track]]
-part = "b4_bucket_rod"
-channel = "location"
-shots = ["h07"]
-frames = [0.22, 0.54, 0.68, 1.0]
-values = [[0.860, 0.000, -0.560], [1.190, 0.000, -0.478], [1.190, 0.000, -0.478], [0.860, 0.000, -0.560]]
+seconds = 2.4
+narration = "Three on the arm. None pull their weight."

@@ -19,108 +19,117 @@
 
 ## The shape of the re-edit
 
+**Draft 4 — Tiers 1–3.** Fourteen shots, none over 3 s. Draft 2 ran six shots at 5.0 s average,
+which is documentary pacing in a swipe feed.
+
 **State the conclusion first.** The comparator this slot was chosen against —
-[@KnowArt, 432k likes](https://www.youtube.com/shorts/gjCfbgKbAbc) — opens with
-*"hydraulic cylinders can push harder than they can pull"*. Title, first line and thumbnail are one
-sentence. Draft 2 opened with a number about an object the viewer could not yet identify.
+[@KnowArt, 432k likes](https://www.youtube.com/shorts/gjCfbgKbAbc) — opens with *"hydraulic
+cylinders can push harder than they can pull"*. Title, first line and thumbnail are one sentence.
 
-**Seven shots, not six, and none longer than 7 s.** The seven-second withhold is gone; it is now
-2.5 s and carries both numbers against one unmoving object, which makes the "same oil, same
-pressure" point in a single frame instead of by waiting.
+**Show a consequence, not only a mechanism.** c06 and c07 are new: the same cylinder at the same
+pressure lifts a block pushing, and half a block pulling. The pull rig is mounted **inverted**,
+because a cylinder pulls by retracting and the only way to lift with it is to hang the load beneath.
 
-**77 words at 154 wpm**, down from 120 at 240.
+**Say how big it is.** c05 puts `crew` — 1.70 m, measured, assertion-checked — beside the cylinder.
+Draft 2 ran thirty seconds without ever establishing scale.
+
+**The numbers are in the scene.** `label` geometry, not caption text. Draft 2 had none.
 
 ---
 
-## h01 — the conclusion (0.0–4.0 s, 120 frames)
-
-**Picture.** The cylinder, stood up on the frame's diagonal, driving out. Callout **55 t** in scene,
-upper left. No title, no logo, no establishing wide.
+## c01 — The conclusion (0.0–3.0 s)
 
 > "A hydraulic cylinder pushes twice as hard as it pulls."
 
-`ledger: s01.F006` · `s01.F001`
 
-## h02 — the other number (4.0–7.0 s, 90 frames)
+## c02 — Pushing (3.0–4.8 s)
 
-**Picture.** The same shot reversing. The callout changes to **27 t**, lower right.
+> "Fifty-five tonnes pushing."
 
-> "Fifty-five tonnes pushing. Twenty-seven pulling."
 
-`ledger: s01.F006`
+## c03 — Pulling (4.8–6.6 s)
 
-## h03 — same oil, same pressure (7.0–9.5 s, 75 frames)
+> "Twenty-seven pulling."
 
-**Picture.** Both callouts on screen at once against one barely-moving object. 2.5 s.
 
-> "Same oil. Same pump. Same pressure."
+## c04 — Same pressure (6.6–8.6 s)
 
-This replaces draft 2's seven-second withhold. The question *"so where does half the force go?"* is
-cut entirely: the viewer was told the answer in h01, and the video's job from here is to earn it.
+> "Same oil. Same pressure."
 
-`ledger: s01.F001` — 350 bar, both directions
 
-## h04 — inside (9.5–14.0 s, 135 frames)
+## c05 — How big (8.6–10.6 s)
 
-**Picture.** Cut to the sectioned barrel, tight. Bore, brass piston, rod through the gland.
+> *(silent — the figure does the talking)*
 
-> "Force is pressure times area. The faces are not the same size."
 
-`ledger: s01.F002` · `s01.F004`
+## c06 — Push lifts this (10.6–12.8 s)
 
-## h05 — the ring (14.0–18.0 s, 120 frames)
+> "Push, and it lifts this."
 
-**Picture.** Front on, orthographic. The ring (140 outer, 100 inner) beside the rod's circle.
 
-> "The rod is in the way. What is left is a ring."
+## c07 — Pull lifts half (12.8–15.0 s)
 
-## h06 — the same size (18.0–23.0 s, 150 frames)
+> "Pull, and only this."
 
-**Picture.** Cut to the ring re-formed as a solid circle, 98.0 mm, beside the rod's 100.0 mm.
-**They are the same size.**
 
-> "It does not look like half. Gather it up: the same size."
+## c08 — Inside (15.0–17.2 s)
 
-`ledger: s01.F004` · `s01.F005`
+> "Force is pressure times area."
 
-**Orthographic, and it must stay so.** An area comparison under a perspective lens argues for
-whichever figure is nearer the lens (H24).
 
-**A cut, not a morph.** `CHANNELS` is `{location, rotation, scale, spin}` — no shape interpolation.
-The reveal is the comparison, not the tween.
+## c09 — Two faces (17.2–19.2 s)
 
-**Why the ring is not simply shown as "half".** Measured on a probe: a 140/100 annulus reads as about
-**a third** of a 140 disc, not a half. The number is right and the eye disagrees, which is why the
-ring is re-formed rather than asserted. `critique.md` §5.
+> "The faces are not the same size."
 
-## h07 — three of them (23.0–30.0 s, 210 frames)
 
-**Picture.** Three cylinders, no machine, stroking in sequence.
+## c10 — The whole piston (19.2–21.0 s)
 
-> "That is why an excavator curls in hard and pushes out weak. Three on the arm. None pull their
-> weight."
+> "Pushing, the whole piston."
 
-**No excavator is modelled.** A boom, stick and bucket is S2's entire subject and this brief never
-budgeted it. **The machine is never named** either: ledger `F003` rests on a trade parts listing and
-carries `status: unknown`, so its treatment is `omit`.
 
----
+## c11 — The rod is in the way (21.0–23.0 s)
+
+> "Pulling, the rod is in the way."
+
+
+## c12 — A ring (23.0–25.1 s)
+
+> "What is left is a ring."
+
+
+## c13 — The same size (25.1–27.6 s)
+
+> "It does not look like half. It is."
+
+
+## c14 — Three of them (27.6–30.0 s)
+
+> "Three on the arm. None pull their weight."
+
+
 
 ## Pace
 
-| shot | s | words | wpm |
-|---|---|---|---|
-| h01 | 4.0 | 10 | 150 |
-| h02 | 3.0 | 5 | 100 |
-| h03 | 2.5 | 6 | 144 |
-| h04 | 4.5 | 12 | 160 |
-| h05 | 4.0 | 12 | 180 |
-| h06 | 5.0 | 12 | 144 |
-| h07 | 7.0 | 20 | 171 |
-| **total** | **30.0** | **77** | **154** |
+| shot | s | words | speech s | ceiling s |
+|---|---|---|---|---|
+| c01 | 3.0 | 10 | 3.57 | 4.05 |
+| c02 | 1.8 | 3 | 1.07 | 2.43 |
+| c03 | 1.8 | 2 | 0.71 | 2.43 |
+| c04 | 2.0 | 4 | 1.43 | 2.70 |
+| c05 | 2.0 | 0 | 0.00 | 2.70 |
+| c06 | 2.2 | 5 | 1.79 | 2.97 |
+| c07 | 2.2 | 4 | 1.43 | 2.97 |
+| c08 | 2.2 | 5 | 1.79 | 2.97 |
+| c09 | 2.0 | 7 | 2.50 | 2.70 |
+| c10 | 1.8 | 4 | 1.43 | 2.43 |
+| c11 | 2.0 | 7 | 2.50 | 2.70 |
+| c12 | 2.1 | 6 | 2.14 | 2.84 |
+| c13 | 2.5 | 8 | 2.86 | 3.38 |
+| c14 | 2.4 | 8 | 2.86 | 3.24 |
 
-Draft 2 was 120 words at 240 wpm and `voice` refused it. h05 and h07 are the tightest lines left; if
-`voice` complains, h05 loses "What is left is" and h07 loses "That is why".
+**73 words across 30.0 s = 146 wpm.** Draft 2 was 120 words at 240 wpm and `voice`
+refused it. `validate` now refuses any shot whose narration cannot be spoken inside its own
+duration, so this can no longer be discovered after a render.
 
 ## Caption policy
 

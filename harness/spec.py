@@ -22,7 +22,8 @@ from typing import Any
 # a machine with no Blender at all. build.py asserts the two agree.
 
 TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
-META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device", "units"}
+META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device",
+             "units", "caption_size"}
 PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots",
              "smooth"}
 CAMERA_KEYS = {"id", "lens_mm", "ortho_scale", "loc", "look_at"}
@@ -211,6 +212,10 @@ def load(path: str | Path) -> Episode:
     meta.setdefault("engine", "CYCLES")
     meta.setdefault("device", "CPU")
     meta.setdefault("units", "metric")
+    # Caption type size in pixels at the spec's own resolution. 62 is the
+    # documentary default; a Short wants far larger - the genre runs 5-7% of
+    # frame height and 62 on 1920 is 3.2%.
+    meta.setdefault("caption_size", 62)
     if meta["engine"] not in ENGINES:
         raise SpecError(f"meta.engine: {meta['engine']!r} not in {sorted(ENGINES)}")
     if meta["device"] not in DEVICES:

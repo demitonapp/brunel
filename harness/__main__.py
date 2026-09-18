@@ -182,8 +182,8 @@ def cmd_captions(args: argparse.Namespace) -> int:
     vj = ep_dir / "audio" / "vo_durations.json"
     if vj.exists():
         durations = json.loads(vj.read_text())
-    cues = build_cues(ep, durations)
-    ass = write_ass(cues, ep_dir / "captions.ass")
+    cues = build_cues(ep, durations, caption_size=int(ep.meta["caption_size"]))
+    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]))
     srt = write_srt(cues, ep_dir / "captions.srt")
     print(f"{len(cues)} cues -> {ass.name}, {srt.name}")
     for c in cues:
@@ -334,8 +334,9 @@ def _deliver_from_backend(args: argparse.Namespace, ep: Any, ep_dir: Path) -> in
             # shot. Either way the operator must not read past it.
             print(f"  WARNING: delivering with NO VOICEOVER - {exc}", file=sys.stderr)
 
-    cues = build_cues(ep, durations, shot_durations=measured)
-    ass = write_ass(cues, ep_dir / "captions.ass")
+    cues = build_cues(ep, durations, shot_durations=measured,
+                      caption_size=int(ep.meta["caption_size"]))
+    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]))
     write_srt(cues, ep_dir / "captions.srt")
     print(f"  {len(cues)} caption cues, timed on the delivered clips")
 
@@ -415,8 +416,8 @@ def cmd_deliver(args: argparse.Namespace) -> int:
         )
         return 3
 
-    cues = build_cues(ep, durations)
-    ass = write_ass(cues, ep_dir / "captions.ass")
+    cues = build_cues(ep, durations, caption_size=int(ep.meta["caption_size"]))
+    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]))
     write_srt(cues, ep_dir / "captions.srt")
     print(f"  {len(cues)} caption cues")
 

@@ -27,6 +27,17 @@ CAPTION_MARGIN_V = 430  # caption baseline height above the frame bottom
 # 42 chars at font size 62 fits the 860 px text area inside the side margins
 # in one or two wrapped lines. 48 did not, and clipped at the frame edges.
 MAX_CHARS = 42
+BASE_SIZE = 62          # the size MAX_CHARS was measured against
+
+
+def max_chars_for(size: int) -> int:
+    """Characters per line at a given font size.
+
+    42 fits the 860 px text area at size 62. Bigger type fits fewer, and a
+    caption sized up without narrowing the wrap runs off the safe area - which
+    is a caption that is technically present and practically unreadable.
+    """
+    return max(14, round(MAX_CHARS * BASE_SIZE / max(1, size)))
 
 
 class CaptionError(Exception):
@@ -101,6 +112,7 @@ def build_cues(
     lead: float = 0.35,
     tail: float = 0.45,
     shot_durations: dict[str, float] | None = None,
+    caption_size: int = BASE_SIZE,
 ) -> list[dict[str, Any]]:
     """One cue per chunk, laid out along the episode timeline.
 
@@ -119,7 +131,7 @@ def build_cues(
         dur = float((shot_durations or {}).get(shot["id"], shot["seconds"]))
         text = (shot.get("narration") or "").strip()
         if text:
-            chunks = chunk_text(text)
+            chunks = chunk_text(text, max_chars_for(caption_size))
             speech = (vo_durations or {}).get(shot["id"], dur)
             window = min(dur, speech) if speech else dur
             usable = max(0.5, window - lead - tail)
