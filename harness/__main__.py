@@ -697,6 +697,85 @@ def cmd_generate(args: argparse.Namespace) -> int:
     return 1 if failed and not written else 0
 
 
+#: Where the blessed canary frames live. One PNG per shot, plus a `canary.json`
+#: recording the render profile they were blessed at.
+GOLDENS_ROOT = Path("goldens")
+
+
+def _canary_stills(ep: Any, ep_dir: Path) -> dict[str, Path]:
+    """The one storyboard still per shot, in spec order.
+
+    `render --stills` writes exactly one frame per shot directory, which is why
+    the canary rides on the storyboard pass rather than needing a render of its
+    own. A shot directory holding a full frame range is a full render, not a
+    storyboard, and is skipped: comparing "frame 54 of this run" to "frame 54 of
+    last run" would be a fine canary too, but blessing it costs an hour instead
+    of a minute.
+    """
+    out: dict[str, Path] = {}
+    for shot in ep.shots:
+        frames = sorted((ep_dir / shot["id"]).glob("frame_*.png"))
+        if len(frames) == 1:
+            out[shot["id"]] = frames[0]
+    return out
+
+
+def _canary(args: argparse.Namespace, ep: Any, ep_dir: Path,
+            stills: dict[str, Path], problems: list[str]) -> int | None:
+    """Bless or compare the canary frames. Returns an exit code, or None."""
+    from . import check
+
+    root = Path(getattr(args, "goldens", None) or GOLDENS_ROOT)
+    # Read the profile off render.json, never off the spec. `verify` loads the
+    # spec WITHOUT the --fast/--res/--samples overrides the render was made
+    # with, so `ep.meta` describes what was asked for at delivery, not what is
+    # on disk. Recording that would have the profile guard below comparing a
+    # 480x854 preview against a canary it had labelled 1080x1920 - the guard
+    # reporting the wrong profile is worse than no guard.
+    render_json = ep_dir / "render.json"
+    profile: dict[str, Any] = {"resolution": None, "samples": None, "device": None}
+    if render_json.exists():
+        rec = json.loads(render_json.read_text(encoding="utf-8"))
+        profile = {"resolution": rec.get("resolution"), "samples": rec.get("samples"),
+                   "device": rec.get("device")}
+    meta_path = root / ep.id / "canary.json"
+
+    if getattr(args, "bless", False):
+        # Deliberate, never automatic. A canary that seeded itself on first
+        # sight would lock in whatever was on disk, including a regression.
+        for shot, frame in sorted(stills.items()):
+            dest = check.golden_path(root, ep.id, shot)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(frame, dest)
+            print(f"  blessed      {shot} -> {dest}")
+        meta_path.write_text(
+            json.dumps({"episode": ep.id, "blessed_at": _dt.date.today().isoformat(),
+                        "shots": sorted(stills), **profile}, indent=2) + "\n",
+            encoding="utf-8")
+        res = profile["resolution"]
+        where = f"{res[0]}x{res[1]}, {profile['samples']} spp" if res else "an unrecorded profile"
+        print(f"\n  {len(stills)} canary frame(s) blessed at {where}. "
+              f"Re-run `verify` to compare against them.")
+        return 0
+
+    # A canary blessed at a different resolution cannot be compared to this
+    # run - SSIM on mismatched sizes fails inside ffmpeg with an opaque error.
+    # Say which profile is which instead, because a check that cries wolf on a
+    # profile change is a check that gets switched off.
+    if meta_path.exists():
+        was = json.loads(meta_path.read_text(encoding="utf-8"))
+        if was.get("resolution") != profile["resolution"]:
+            problems.append(
+                f"WARN: canary blessed at {was.get('resolution')} but this run is "
+                f"{profile['resolution']} - not compared. Render at the blessed "
+                f"profile, or re-bless at this one."
+            )
+            return None
+    problems += check.check_goldens(stills, root, ep.id)
+    print(f"  canary       {len(stills)} still(s) vs {root / ep.id}")
+    return None
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """Check whatever this episode has produced, and say so in one line."""
     from . import check
@@ -731,6 +810,17 @@ def cmd_verify(args: argparse.Namespace) -> int:
         checked += 1
     if clips:
         print(f"  generated    {len(clips)} clip(s)")
+
+    # The canary. Every check above is a THRESHOLD check and cannot see drift;
+    # this is the only one that compares this render against the last known
+    # good one. It runs on the storyboard stills because those are the frames
+    # the harness already renders cheaply for exactly this purpose.
+    stills = _canary_stills(ep, ep_dir)
+    if stills:
+        rc = _canary(args, ep, ep_dir, stills, problems)
+        if rc is not None:
+            return rc
+        checked += len(stills)
 
     if not checked:
         print("nothing to verify - no frames, passes or clips found")
@@ -1078,6 +1168,12 @@ def build_parser() -> argparse.ArgumentParser:
     vf.add_argument("spec")
     vf.add_argument("--out", default="renders", help="output root (default: renders)")
     vf.add_argument("--backend", default="wan", help="which generated-<backend> dir to check")
+    vf.add_argument("--bless", action="store_true",
+                    help="seed goldens/<ep>/ from this run's storyboard stills - the "
+                         "canary every later `verify` compares against. Deliberate by "
+                         "design: look at the frames first.")
+    vf.add_argument("--goldens", default=str(GOLDENS_ROOT),
+                    help=f"canary root (default: {GOLDENS_ROOT})")
     vf.set_defaults(func=cmd_verify)
 
     return p

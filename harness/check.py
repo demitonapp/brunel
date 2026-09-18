@@ -44,6 +44,35 @@ DEPTH_MEAN_MIN = 25.0
 DEPTH_MEAN_MAX = 205.0
 DEPTH_SPREAD_MIN = 90
 
+#: A canary frame must match its golden this closely (SSIM, 0-1).
+#:
+#: Every other check in this file is a THRESHOLD check - is it black, is it
+#: flat, is depth in range. Threshold checks catch catastrophes and cannot
+#: catch drift, which is the thing a "measurably better every time" claim
+#: actually turns on. This is the one COMPARISON check: is it the same as last
+#: time.
+#:
+#: Calibrated 2026-09-18 on `spec/ad02`, at 480x854 / 8 spp / CPU Cycles:
+#:
+#:   same spec, same code, two runs, all five shots  1.000000
+#:   lens 40.0 -> 41.0 mm  (a 2.5% focal change)     0.859949
+#:   camera moved 0.05 m of a 4 m throw              0.826597
+#:
+#: **Why SSIM and not a hash**, measured rather than assumed. Two clean runs of
+#: the same spec produce **pixel-identical** frames on this machine - the
+#: decoded RGB of all five shots hashes the same - but the **PNG files do not**:
+#: every frame's container bytes differ run to run. So hashing the file is a
+#: mirage, hashing the decoded pixels would work today, and neither survives the
+#: move to a GPU render node, where the pixels themselves will drift. SSIM is
+#: the metric that is correct in all three cases.
+#:
+#: The smallest change a human would call a change costs ~0.14 of SSIM, so the
+#: gap is wide and the exact constant is not load-bearing. 0.995 sits below
+#: today's noise floor (zero) on purpose, to leave headroom for the render node
+#: without being anywhere near a real regression. Re-measure and re-record here
+#: when that node lands - do not just relax it.
+GOLDEN_SSIM_MIN = 0.995
+
 
 class CheckError(RuntimeError):
     """Raised when a check cannot run at all - distinct from a failed check."""
@@ -319,8 +348,74 @@ def check_clip(path: Path) -> list[str]:
     return problems
 
 
+# --- the canary: the one check that compares rather than thresholds ---------
+
+
+def ssim(a: Path, b: Path) -> float:
+    """Structural similarity between two images, 0-1. 1.0 is bit-identical.
+
+    ffmpeg's own `ssim` filter, because ffmpeg is already a hard dependency and
+    the alternatives (scikit-image, OpenCV, numpy) are not. `stats_file=-` puts
+    the numbers on stdout; without it they go to stderr at info level, where
+    `-v error` swallows them and the function silently measures nothing.
+    """
+    for p in (a, b):
+        if not Path(p).exists():
+            raise CheckError(f"no such frame: {p}")
+    out = subprocess.run(
+        [_ffmpeg(), "-hide_banner", "-v", "error", "-i", str(a), "-i", str(b),
+         "-lavfi", "ssim=stats_file=-", "-f", "null", "-"],
+        capture_output=True, text=True, errors="replace",
+    ).stdout
+    for field in out.split():
+        if field.startswith("All:"):
+            return float(field[4:])
+    raise CheckError(
+        f"ffmpeg produced no SSIM for {a.name} vs {b.name} - most often because "
+        f"the two frames are different sizes. Output: {out.strip()[:200]!r}"
+    )
+
+
+def golden_path(goldens_root: Path, episode: str, shot: str) -> Path:
+    return Path(goldens_root) / episode / f"{shot}.png"
+
+
+def check_goldens(
+    stills: dict[str, Path], goldens_root: Path, episode: str,
+    *, minimum: float = GOLDEN_SSIM_MIN,
+) -> list[str]:
+    """Compare this run's storyboard stills against the blessed canary frames.
+
+    `stills` maps shot id -> the still rendered for it this run.
+
+    A shot with no golden is reported, not failed: seeding is a deliberate act
+    (`verify --bless`), and a canary that blesses itself on first sight would
+    lock in whatever happened to be on disk - including a regression.
+    """
+    problems: list[str] = []
+    for shot, frame in sorted(stills.items()):
+        golden = golden_path(goldens_root, episode, shot)
+        if not golden.exists():
+            problems.append(
+                f"WARN: {shot}: no canary at {golden} - nothing to compare against. "
+                f"Bless it with `verify --bless` once the frame is known good."
+            )
+            continue
+        score = ssim(frame, golden)
+        if score < minimum:
+            problems.append(
+                f"{shot}: SSIM {score:.6f} against the canary {golden.name} "
+                f"(floor {minimum}). The picture changed. If the change is "
+                f"intended, look at both frames and re-bless; if it is not, this "
+                f"is the regression the canary exists to catch."
+            )
+    return problems
+
+
 __all__ = [
     "CheckError", "grey_stats", "is_greyscale",
     "check_storyboard", "check_depth_pass", "check_clip",
+    "ssim", "check_goldens", "golden_path",
     "BLACK_MEAN", "MIN_SPREAD", "DEPTH_MEAN_MIN", "DEPTH_MEAN_MAX", "DEPTH_SPREAD_MIN",
+    "GOLDEN_SSIM_MIN",
 ]

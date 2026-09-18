@@ -1,0 +1,17 @@
+{
+  "episode": "ad02",
+  "blessed_at": "2026-09-18",
+  "shots": [
+    "c01",
+    "c02",
+    "c03",
+    "c04",
+    "c05"
+  ],
+  "resolution": [
+    480,
+    854
+  ],
+  "samples": 8,
+  "device": "CPU"
+}
