@@ -46,7 +46,6 @@ first place.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import time
 from collections.abc import Collection, Iterable, Sequence
@@ -56,6 +55,7 @@ from typing import Any
 
 from . import build as build_mod
 from . import spec as spec_mod
+from .tools import ffmpeg
 
 # The pass names that exist. `plate` is the beauty render; it is the source for
 # `edge` and `vis`, which are derived rather than rendered.
@@ -348,10 +348,7 @@ def _restore_render_passes(scene: Any) -> None:
 
 
 def _run_ffmpeg(args: Sequence[str]) -> None:
-    exe = shutil.which("ffmpeg")
-    if not exe:
-        raise PassError("ffmpeg is required for the edge and vis passes")
-    proc = subprocess.run([exe, "-y", "-hide_banner", "-loglevel", "error", *args],
+    proc = subprocess.run([ffmpeg(), "-y", "-hide_banner", "-loglevel", "error", *args],
                           capture_output=True, text=True)
     if proc.returncode != 0:
         raise PassError(f"ffmpeg failed ({proc.returncode}): {proc.stderr.strip()[:400]}")

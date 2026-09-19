@@ -869,3 +869,34 @@ one or the other.
   block reappears under `tests/`. The port itself was the proof: turning the heredocs into modules
   immediately surfaced two live defects (the exit-status hole above, and `grep -q "PASS. x"`
   matching `[PASS] x` because `.` is a regex wildcard) that the bash form had hidden.
+
+## 2026-09-20 — A sentinel that means "zero" and "I could not tell" is not a measurement
+
+- **Context:** Three near-identical duration probes existed - `__main__._probe_seconds`,
+  `audio._duration`, and an inline copy in `assemble` - and all three returned `0.0` when ffprobe
+  was missing, the file was absent, or the output would not parse. In `__main__` that was harmless
+  by luck: all three call sites compare the result against the spec's declared length and refuse a
+  mismatch, so `0.0` fails safe. In `audio.synthesise` it was not. `spoken = 0.0` makes
+  `spoken > slot` false, so the time-compression branch never runs and the segment ships at
+  whatever length it happens to be - silently, in the deliverable, on the one path where nothing
+  downstream re-measures it.
+- **Check:** One probe. It raises `ToolError` rather than returning a number it does not have. A
+  caller that genuinely wants leniency has to write the `try` itself, where the reader can see it.
+- **Where:** `harness/tools.py` (`duration_seconds`).
+- **ENFORCED BY:** `tests/test_tools.py` - an unreadable file and a missing file must both raise,
+  and a real clip must measure within the tolerance `deliver` actually applies.
+
+## 2026-09-20 — Seven copies of "find ffmpeg", and the default one did not fail
+
+- **Context:** Seven modules resolved ffmpeg for themselves. `assemble`, `captions` and `audio`
+  used `FFMPEG = shutil.which("ffmpeg") or "ffmpeg"`, which does not fail when ffmpeg is absent -
+  it defers to subprocess and surfaces as `FileNotFoundError: 'ffmpeg'` from inside whichever
+  helper happened to run first. `check`, `passes` and `backend` each raised their own readable
+  error; `__main__` printed its own message and returned 2. One behaviour, four spellings, and the
+  worst of the four was the default in three files.
+- **Check:** One resolver, one error type, caught once in `main()`. `doctor` is the deliberate
+  exception - reporting that a tool is missing is its whole job, so `which` returning None is the
+  answer there, not an error.
+- **Where:** `harness/tools.py` (`ffmpeg`, `ffprobe`, `ToolError`), `harness/__main__.py` (`main`).
+- **ENFORCED BY:** `tests/test_tools.py` for the resolver; nothing stops an eighth copy being
+  written. The honest enforcement is that there is now an obvious place to import from.

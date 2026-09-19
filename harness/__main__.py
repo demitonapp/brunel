@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from . import __version__
 from .spec import SpecError, load
+from .tools import ToolError, duration_seconds, ffmpeg
 
 if TYPE_CHECKING:
     # Annotation-only. A runtime import here would pull backend.py in for
@@ -47,25 +48,32 @@ def _tag_problem(tag: str, p: str) -> str:
     return f"{tag}: {p}"
 
 
+#: A shot directory holding no more than this many frames is the storyboard
+#: pass (first, middle, last), not a full render. Real shots are 150+ frames.
+STORYBOARD_FRAMES = 3
+
+
+def _motion(frames: list[Path], label: str) -> list[str]:
+    """`check_motion` over frames that may be a storyboard pass.
+
+    Across a storyboard's three frames the neighbours are SECONDS apart, so the
+    lurch threshold and the busy-motion warning describe nothing - they would
+    fire on every correct shot, which is the cry-wolf failure this repo keeps
+    finding. Only "nothing moved at all" survives being spread out, and that is
+    exactly the fault the stills pass now exists to catch.
+    """
+    from . import check
+
+    spread = len(frames) <= STORYBOARD_FRAMES
+    problems = check.check_motion(
+        frames, label=label,
+        max_step=float("inf") if spread else check.MOTION_MAX_STEP)
+    return [x for x in problems if not (spread and x.startswith("WARN:"))]
+
+
 #: How far a generated clip's measured duration may drift from the spec's
 #: declared shot length before it is a problem, not a rounding error.
 DURATION_TOLERANCE = 0.2
-
-
-def _probe_seconds(path: Path) -> float:
-    """A media file's duration in seconds, or 0.0 if it cannot be read."""
-    probe = shutil.which("ffprobe")
-    if not probe or not Path(path).exists():
-        return 0.0
-    out = subprocess.run(
-        [probe, "-v", "error", "-show_entries", "format=duration",
-         "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True, errors="replace",
-    ).stdout.strip()
-    try:
-        return float(out)
-    except ValueError:
-        return 0.0
 
 
 def cmd_doctor(_: argparse.Namespace) -> int:
@@ -134,14 +142,29 @@ def cmd_render(args: argparse.Namespace) -> int:
     # on someone opening eight PNGs - which, historically, nobody did.
     if args.stills:
         from . import check
-        frames = sorted((Path(args.out) / ep.id).glob("*/frame_*.png"))
+        ep_dir = Path(args.out) / ep.id
+        frames = sorted(ep_dir.glob("*/frame_*.png"))
         problems = check.check_storyboard(frames)
-        if problems:
+        # A frozen shot is invisible to every per-frame check: each still is a
+        # perfectly good picture. s01 rendered three frozen hooks past a
+        # passing storyboard pass and 3.5 hours of frames, and only `verify`
+        # saw it afterwards. Grouped by shot: across the seam between two
+        # shots, "did anything move" is not a question with a meaning.
+        for shot_dir in sorted(d for d in ep_dir.glob("*") if d.is_dir()):
+            shot_frames = sorted(shot_dir.glob("frame_*.png"))
+            if shot_frames:
+                problems += _motion(shot_frames, shot_dir.name)
+                problems += check.check_coverage(shot_frames, label=shot_dir.name)
+        for p in [x for x in problems if x.startswith("WARN:")]:
+            print(f"  {p}")
+        fatal = [x for x in problems if not x.startswith("WARN:")]
+        if fatal:
             print("\nstoryboard check FAILED:", file=sys.stderr)
-            for p in problems:
+            for p in fatal:
                 print(f"  - {p}", file=sys.stderr)
             return 3
-        print(f"  storyboard check: {len(frames)} frame(s), all carry a picture")
+        print(f"  storyboard check: {len(frames)} frame(s), all carry a picture "
+              f"and every shot moves")
     return 0
 
 
@@ -238,9 +261,21 @@ def _publish_gate(ep: Any, publish: bool) -> int | None:
               f"(see above).", file=sys.stderr)
         return 2
 
-    licence_path = Path("legal") / "licences.json"
+    # H26. Beside the fact ledger, never global. The register used to be one
+    # hardcoded `legal/licences.json` - ep01's, declaring ep01's engravings -
+    # so s01, which borrows nothing and generates every object from cited
+    # dimensions, was blocked by unresolved provenance on a different video.
+    # A gate that blocks a cut over another cut's assets teaches people to
+    # reach for --waive, and a waiver habit is worse than no gate.
+    #
+    # There is deliberately NO fallback to the global file. Falling through to
+    # a register that answers for someone else is the same bug pointing the
+    # other way: it would CLEAR a video nobody had reviewed.
+    licence_path = Path("spec") / ep.id / "legal" / "licences.json"
     if not licence_path.exists():
-        print(f"PUBLISH BLOCKED: no licence register at {licence_path}.",
+        print(f"PUBLISH BLOCKED: no licence register at {licence_path}. Every "
+              f"video declares its own, including one that borrowed nothing - "
+              f'an empty "assets": [] is that declaration, and silence is not.',
               file=sys.stderr)
         return 2
     if licencegate.main([str(licence_path), "--publish"]) != 0:
@@ -281,7 +316,7 @@ def _deliver_from_backend(args: argparse.Namespace, ep: Any, ep_dir: Path) -> in
         if bad:
             problems += [f"{shot['id']}: {p}" for p in bad]
             continue
-        secs = _probe_seconds(clip)
+        secs = duration_seconds(clip)
         want = float(shot["seconds"])
         if abs(secs - want) > DURATION_TOLERANCE:
             problems.append(
@@ -303,15 +338,12 @@ def _deliver_from_backend(args: argparse.Namespace, ep: Any, ep_dir: Path) -> in
 
     print(f"  {len(clips)} clip(s), {sum(measured.values()):.2f}s measured")
 
-    exe = shutil.which("ffmpeg")
-    if not exe:
-        print("ffmpeg is required", file=sys.stderr)
-        return 2
     concat_list = ep_dir / f"_concat_{args.backend}.txt"
     concat_list.write_text(
         "\n".join(f"file '{c.resolve()}'" for c in clips) + "\n", encoding="utf-8"
     )
     silent = ep_dir / f"{ep.id}_{args.backend}_silent.mp4"
+    exe = ffmpeg()
     proc = subprocess.run(
         [exe, "-y", "-v", "error", "-f", "concat", "-safe", "0",
          "-i", str(concat_list), "-c", "copy", str(silent)],
@@ -564,7 +596,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     def _bundle_seconds(bundle: PassBundle) -> float:
         if "depth" not in bundle.videos:
             return 0.0
-        return _probe_seconds(bundle.videos["depth"])
+        return duration_seconds(bundle.videos["depth"])
 
     estimated_seconds = sum(_bundle_seconds(b) for b in bundles)
     estimate = estimated_seconds * backend.usd_per_second
@@ -657,7 +689,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     measured: dict[str, float] = {}
     mismatches: list[str] = []
     for bundle, target in outputs:
-        secs = round(_probe_seconds(target), 3)
+        secs = round(duration_seconds(target), 3)
         measured[f"{bundle.shot}_{bundle.chunk}"] = secs
         want = float(ep.shot(bundle.shot)["seconds"])
         if abs(secs - want) > DURATION_TOLERANCE:
@@ -706,18 +738,19 @@ GOLDENS_ROOT = Path("goldens")
 def _canary_stills(ep: Any, ep_dir: Path) -> dict[str, Path]:
     """The one storyboard still per shot, in spec order.
 
-    `render --stills` writes exactly one frame per shot directory, which is why
-    the canary rides on the storyboard pass rather than needing a render of its
-    own. A shot directory holding a full frame range is a full render, not a
-    storyboard, and is skipped: comparing "frame 54 of this run" to "frame 54 of
-    last run" would be a fine canary too, but blessing it costs an hour instead
-    of a minute.
+    `render --stills` writes first, middle and last, which is why the canary
+    rides on the storyboard pass rather than needing a render of its own. It
+    takes the MIDDLE one, as it always has - goldens blessed when the pass wrote
+    a single frame stay comparable. A shot directory holding a full frame range
+    is a full render, not a storyboard, and is skipped: comparing "frame 54 of
+    this run" to "frame 54 of last run" would be a fine canary too, but blessing
+    it costs an hour instead of a minute.
     """
     out: dict[str, Path] = {}
     for shot in ep.shots:
         frames = sorted((ep_dir / shot["id"]).glob("frame_*.png"))
-        if len(frames) == 1:
-            out[shot["id"]] = frames[0]
+        if 1 <= len(frames) <= STORYBOARD_FRAMES:
+            out[shot["id"]] = frames[len(frames) // 2]
     return out
 
 
@@ -807,7 +840,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     for shot_dir in sorted(d for d in ep_dir.glob("*") if d.is_dir()):
         shot_frames = sorted(shot_dir.glob("frame_*.png"))
         if len(shot_frames) >= 3:
-            problems += check.check_motion(shot_frames, label=shot_dir.name)
+            problems += _motion(shot_frames, shot_dir.name)
             print(f"  motion       {len(shot_frames)} frame(s)  ({shot_dir.name})")
         if shot_frames:
             problems += check.check_coverage(shot_frames, label=shot_dir.name)
@@ -1120,8 +1153,8 @@ def build_parser() -> argparse.ArgumentParser:
                         "frames; captions are timed on the clips' MEASURED duration")
     d.add_argument("--publish", action="store_true",
                    help="strict: refuses unless the episode's fact ledger passes "
-                        "factgate --publish and legal/licences.json passes "
-                        "licencegate --publish")
+                        "factgate --publish and spec/<id>/legal/licences.json "
+                        "passes licencegate --publish")
     d.set_defaults(func=cmd_deliver)
 
     # --- the generative interface ---------------------------------------
@@ -1205,6 +1238,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     except FileNotFoundError as exc:
         print(f"not found: {exc}", file=sys.stderr)
+        return 2
+    except ToolError as exc:
+        # Nothing was measured, so nothing passed. Distinct from a failed
+        # check, and previously seven different messages or an opaque
+        # FileNotFoundError from inside whichever helper ran first.
+        print(f"tool error: {exc}", file=sys.stderr)
         return 2
 
 

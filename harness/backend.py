@@ -47,6 +47,7 @@ from pathlib import Path
 from typing import Any
 
 from .passes import PassProfile
+from .tools import ffmpeg
 
 # The repo's gitignored secret file. A key must never be committable, and a key
 # pasted into a transcript must be rotatable without touching code.
@@ -96,12 +97,9 @@ def load_env(path: Path | None = None) -> dict[str, str]:
 
 def _mux(frames_dir: Path, fps: int, out_path: Path) -> Path:
     """PNG sequence -> mp4. Every backend takes video in, not frames."""
-    exe = shutil.which("ffmpeg")
-    if not exe:
-        raise BackendError("ffmpeg is required to mux control passes")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     proc = subprocess.run(
-        [exe, "-y", "-hide_banner", "-loglevel", "error",
+        [ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
          "-framerate", str(fps), "-start_number", "1",
          "-i", str(frames_dir / "frame_%04d.png"),
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "14",

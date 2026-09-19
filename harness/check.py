@@ -18,11 +18,12 @@ trace back to a measurement is a taste.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
+
+from .tools import ffmpeg
 
 # --- thresholds, each traced to the observation that set it ---------------
 
@@ -78,13 +79,6 @@ class CheckError(RuntimeError):
     """Raised when a check cannot run at all - distinct from a failed check."""
 
 
-def _ffmpeg() -> str:
-    exe = shutil.which("ffmpeg")
-    if not exe:
-        raise CheckError("ffmpeg is required for output checks")
-    return exe
-
-
 def grey_stats(path: Path, *, size: int = 64) -> dict[str, Any]:
     """Luminance statistics for one frame, downscaled to `size` x `size`.
 
@@ -95,7 +89,7 @@ def grey_stats(path: Path, *, size: int = 64) -> dict[str, Any]:
     if not path.exists():
         raise CheckError(f"no such frame: {path}")
     raw = subprocess.run(
-        [_ffmpeg(), "-v", "error", "-i", str(path),
+        [ffmpeg(), "-v", "error", "-i", str(path),
          "-vf", f"scale={size}:{size}", "-pix_fmt", "gray",
          "-f", "rawvideo", "-"],
         capture_output=True,
@@ -122,7 +116,7 @@ def is_greyscale(path: Path, *, size: int = 64, tolerance: int = 2) -> tuple[boo
     the depth pass that was silently rendering the beauty image instead.
     """
     raw = subprocess.run(
-        [_ffmpeg(), "-v", "error", "-i", str(path),
+        [ffmpeg(), "-v", "error", "-i", str(path),
          "-vf", f"scale={size}:{size}", "-pix_fmt", "rgb24",
          "-f", "rawvideo", "-"],
         capture_output=True,
@@ -240,7 +234,7 @@ def frame_diff(a: Path, b: Path, *, size: int = 48) -> float:
     """Mean absolute luminance difference between two frames, 0-255."""
     def grey(path: Path) -> list[int]:
         return list(subprocess.run(
-            [_ffmpeg(), "-v", "error", "-i", str(path),
+            [ffmpeg(), "-v", "error", "-i", str(path),
              "-vf", f"scale={size}:{size}", "-pix_fmt", "gray",
              "-f", "rawvideo", "-"],
             capture_output=True,
@@ -343,7 +337,7 @@ def subject_coverage(path: Path, *, size: int = 96, tolerance: int = 12) -> floa
     warning rather than a gate.
     """
     raw = subprocess.run(
-        [_ffmpeg(), "-v", "error", "-i", str(path),
+        [ffmpeg(), "-v", "error", "-i", str(path),
          "-vf", f"scale={size}:{int(size * 16 / 9)}", "-pix_fmt", "gray",
          "-f", "rawvideo", "-"],
         capture_output=True,
@@ -396,7 +390,7 @@ def check_clip(path: Path) -> list[str]:
     # Sample the middle of the clip, not frame 0 - the first frame of a generated
     # shot is often a fade.
     probe = subprocess.run(
-        [_ffmpeg(), "-v", "error", "-sseof", "-1", "-i", str(path),
+        [ffmpeg(), "-v", "error", "-sseof", "-1", "-i", str(path),
          "-vf", "scale=64:64", "-pix_fmt", "gray", "-f", "rawvideo", "-"],
         capture_output=True,
     ).stdout
@@ -424,7 +418,7 @@ def ssim(a: Path, b: Path) -> float:
         if not Path(p).exists():
             raise CheckError(f"no such frame: {p}")
     out = subprocess.run(
-        [_ffmpeg(), "-hide_banner", "-v", "error", "-i", str(a), "-i", str(b),
+        [ffmpeg(), "-hide_banner", "-v", "error", "-i", str(a), "-i", str(b),
          "-lavfi", "ssim=stats_file=-", "-f", "null", "-"],
         capture_output=True, text=True, errors="replace",
     ).stdout

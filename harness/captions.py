@@ -11,12 +11,11 @@ central band.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
-FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
+from .tools import ffmpeg
 
 # Instagram Reels covers the top 250 px and the bottom 350 px of 1080x1920.
 SAFE_TOP_PX = 250
@@ -219,7 +218,7 @@ def burn(video: Path, ass_path: Path, out_path: Path, crf: int = 18) -> Path:
     ass_path = Path(ass_path).resolve()
     _run(
         [
-            FFMPEG, "-y", "-loglevel", "error",
+            ffmpeg(), "-y", "-loglevel", "error",
             "-i", str(video),
             "-vf", f"ass={ass_path.name}",
             "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),

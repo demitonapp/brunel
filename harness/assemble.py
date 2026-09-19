@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
-FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "ffprobe"
+from .tools import ffmpeg, ffprobe
 
 
 class AssembleError(Exception):
@@ -106,7 +104,7 @@ def assemble(
     for shot_dir in _shot_dirs(ep_dir, order):
         part = tmp / f"{shot_dir.name}.mp4"
         _run([
-            FFMPEG, "-y", "-loglevel", "error",
+            ffmpeg(), "-y", "-loglevel", "error",
             "-framerate", str(fps),
             "-i", str(shot_dir / "frame_%04d.png"),
             "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
@@ -120,13 +118,13 @@ def assemble(
     if out_path is None:
         out_path = ep_dir / f"{ep_dir.name}.mp4"
     _run([
-        FFMPEG, "-y", "-loglevel", "error",
+        ffmpeg(), "-y", "-loglevel", "error",
         "-f", "concat", "-safe", "0", "-i", str(listing),
         "-c", "copy", str(out_path),
     ])
 
     probe = subprocess.run(
-        [FFPROBE, "-v", "error", "-show_entries", "format=duration,size",
+        [ffprobe(), "-v", "error", "-show_entries", "format=duration,size",
          "-of", "json", str(out_path)],
         capture_output=True, text=True,
     )

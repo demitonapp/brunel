@@ -12,15 +12,13 @@ Nothing here is published as-is. `say` is a timing stand-in.
 
 from __future__ import annotations
 
-import json
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
+from .tools import duration_seconds, ffmpeg
+
 SAY = "/usr/bin/say"
-FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "ffprobe"
 
 # A UK voice suits the subject. Falls back to the system default if absent.
 DEFAULT_VOICE = "Daniel"
@@ -51,21 +49,9 @@ def _run(cmd: list[str]) -> None:
         raise AudioError(f"command failed: {' '.join(cmd)}\n{proc.stderr[-1500:]}")
 
 
-def _duration(path: Path) -> float:
-    out = subprocess.run(
-        [FFPROBE, "-v", "error", "-show_entries", "format=duration",
-         "-of", "json", str(path)],
-        capture_output=True, text=True,
-    )
-    try:
-        return float(json.loads(out.stdout)["format"]["duration"])
-    except (KeyError, ValueError, json.JSONDecodeError):
-        return 0.0
-
-
 def _silence(seconds: float, dest: Path) -> None:
     _run([
-        FFMPEG, "-y", "-loglevel", "error",
+        ffmpeg(), "-y", "-loglevel", "error",
         "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
         "-t", f"{seconds:.3f}", "-ar", "44100", "-ac", "1", str(dest),
     ])
@@ -114,7 +100,7 @@ def synthesise(
 
         raw = out_dir / f"{sid}_vo.aiff"
         _run([SAY, "-v", voice, "-r", str(rate), "-o", str(raw), text])
-        spoken = _duration(raw)
+        spoken = duration_seconds(raw)
         durations[sid] = spoken
 
         filters = []
@@ -143,7 +129,7 @@ def synthesise(
         filters.append(f"apad=whole_dur={slot:.3f}")
 
         _run([
-            FFMPEG, "-y", "-loglevel", "error",
+            ffmpeg(), "-y", "-loglevel", "error",
             "-i", str(raw),
             "-af", ",".join(filters),
             "-t", f"{slot:.3f}", "-ar", "44100", "-ac", "1", str(seg),
@@ -154,7 +140,7 @@ def synthesise(
     listing.write_text("".join(f"file '{s.name}'\n" for s in segments), encoding="utf-8")
     voice_track = out_dir / "voice.wav"
     _run([
-        FFMPEG, "-y", "-loglevel", "error",
+        ffmpeg(), "-y", "-loglevel", "error",
         "-f", "concat", "-safe", "0", "-i", str(listing),
         "-ar", "44100", "-ac", "1", str(voice_track),
     ])
@@ -168,7 +154,7 @@ def synthesise(
 def mux(video: Path, audio: Path, out_path: Path) -> Path:
     """Attach the voice track. Picture is copied, not re-encoded."""
     _run([
-        FFMPEG, "-y", "-loglevel", "error",
+        ffmpeg(), "-y", "-loglevel", "error",
         "-i", str(video), "-i", str(audio),
         "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
         "-map", "0:v:0", "-map", "1:a:0", "-shortest", str(out_path),
