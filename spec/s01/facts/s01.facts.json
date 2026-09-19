@@ -7,9 +7,9 @@
     "subject": "A double-acting hydraulic cylinder, 140 mm bore x 100 mm rod, at 350 bar implement pressure",
     "period": "contemporary",
     "runtime_s": 30,
-    "ledger_revision": 5,
+    "ledger_revision": 6,
     "narration_source": "docs/videos/s01-hydraulic-cylinder/script.md",
-    "spec_script_sha256": "0faaf6fd225046b09371914c0787e9909ba90ffc3be3e0cee117d9d0354c1427"
+    "spec_script_sha256": "01618ed0234752151b64ad64bac891b075f25c23b0049d37cbee3c169e2caec3"
   },
   "sources": [
     {
@@ -252,7 +252,7 @@
   ],
   "gate": {
     "ruleset_version": "1.0.0",
-    "evaluated_at": "2026-09-18T22:54:35+00:00",
+    "evaluated_at": "2026-09-19T22:17:28+00:00",
     "result": "fail",
     "checks": [
       {

@@ -141,9 +141,19 @@ def _section_bm(bm: Any) -> Any:
     face with the geometry, so a part laid along Y with rot = [90, 0, 0] has its
     section facing -Z. Stage the camera against the cut, not the other way up.
     """
-    bmesh.ops.bisect_plane(
+    res = bmesh.ops.bisect_plane(
         bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
         plane_co=(0.0, 0.0, 0.0), plane_no=(0.0, 1.0, 0.0), clear_inner=True)
+
+    # FILL THE CUT. bisect_plane leaves the section face OPEN, so the camera
+    # looks straight through the shell at the inside of the far wall and the
+    # shot reads as a smear of highlights rather than a sliced object. A
+    # section reads because the cut plane is solid material catching light -
+    # that flat face IS the drawing convention.
+    cut = [e for e in res.get("geom_cut", []) if isinstance(e, bmesh.types.BMEdge)]
+    if cut:
+        bmesh.ops.edgeloop_fill(bm, edges=cut)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return bm
 
 

@@ -74,6 +74,13 @@ roughness = 0.80
 metallic = 0.0
 
 [[material]]
+id = "annot"
+base_color = [0.62, 0.66, 0.72]
+roughness = 0.9
+metallic = 0.0
+emission = 0.7
+
+[[material]]
 id = "backdrop"
 base_color = [0.055, 0.062, 0.078]
 roughness = 1.0
@@ -104,7 +111,7 @@ smooth = 30.0
 [part.params]
 bore = 0.14
 rod = 0.1
-wall = 0.015
+wall = 0.022
 length = 1.50
 section = false
 segments = 64
@@ -120,7 +127,7 @@ smooth = 30.0
 [part.params]
 bore = 0.14
 rod = 0.1
-wall = 0.015
+wall = 0.022
 length = 1.50
 section = true
 segments = 64
@@ -215,7 +222,7 @@ smooth = 30.0
 [part.params]
 bore = 0.140
 rod = 0.100
-wall = 0.015
+wall = 0.022
 length = 1.10
 segments = 48
 
@@ -253,7 +260,7 @@ smooth = 30.0
 [part.params]
 bore = 0.140
 rod = 0.100
-wall = 0.015
+wall = 0.022
 length = 1.10
 segments = 48
 
@@ -277,10 +284,76 @@ emit = "rod"
 id = "pull_load"
 gen = "box"
 material = "load"
-loc = [0.0, 0.0, -0.36]
+loc = [0.0, 0.0, -0.055]
 shots = ["c07"]
 [part.params]
 dims = [0.62, 0.62, 0.31]
+
+[[part]]
+id = "load_label_push"
+gen = "label"
+material = "face"
+loc = [-0.58, -0.34, 0.50]
+shots = ["c06"]
+[part.params]
+text = "55 t"
+size = 0.16
+extrude = 0.005
+
+[[part]]
+id = "load_label_pull"
+gen = "label"
+material = "rodface"
+loc = [-0.58, -0.34, 0.26]
+shots = ["c07"]
+[part.params]
+text = "27 t"
+size = 0.16
+extrude = 0.005
+
+[[part]]
+id = "sum_bore"
+gen = "label"
+material = "face"
+loc = [0.0, -0.02, 0.150]
+shots = ["c13"]
+[part.params]
+text = "154"
+size = 0.026
+extrude = 0.001
+
+[[part]]
+id = "sum_minus"
+gen = "label"
+material = "rodface"
+loc = [0.0, -0.02, 0.112]
+shots = ["c13"]
+[part.params]
+text = "- 79"
+size = 0.026
+extrude = 0.001
+
+[[part]]
+id = "sum_eq"
+gen = "label"
+material = "face"
+loc = [0.0, -0.02, 0.074]
+shots = ["c13"]
+[part.params]
+text = "= 75"
+size = 0.026
+extrude = 0.001
+
+[[part]]
+id = "sum_units"
+gen = "label"
+material = "annot"
+loc = [0.0, -0.02, -0.150]
+shots = ["c13"]
+[part.params]
+text = "cm2 each face"
+size = 0.014
+extrude = 0.001
 
 # --- the area figures ----------------------------------------------------
 [[part]]
@@ -297,7 +370,7 @@ inner = 0.0
 id = "area_ring"
 gen = "area_disc"
 material = "face"
-loc = [-0.058, 0.0, 0.0]
+loc = [-0.058, 0.0, -0.055]
 shots = ["c11", "c12"]
 [part.params]
 outer = 0.140
@@ -307,7 +380,7 @@ inner = 0.100
 id = "area_plug"
 gen = "area_disc"
 material = "rodface"
-loc = [0.058, 0.0, 0.0]
+loc = [0.058, 0.0, -0.055]
 shots = ["c11", "c12", "c13"]
 [part.params]
 outer = 0.100
@@ -320,7 +393,7 @@ inner = 0.0
 id = "area_eq"
 gen = "area_disc"
 material = "face"
-loc = [-0.058, 0.0, 0.0]
+loc = [-0.058, 0.0, -0.055]
 shots = ["c13"]
 [part.params]
 outer = 0.098
@@ -498,7 +571,7 @@ part = "pull_load"
 channel = "location"
 shots = ["c07"]
 frames = [0.0, 0.18, 0.85, 1.0]
-values = [[0.0, 0.0, -0.36], [0.0, 0.0, -0.36], [0.0, 0.0, 0.11], [0.0, 0.0, 0.11]]
+values = [[0.0, 0.0, -0.055], [0.0, 0.0, -0.055], [0.0, 0.0, 0.415], [0.0, 0.0, 0.415]]
 
 [[track]]
 part = "arm_boom_rod"
@@ -534,23 +607,31 @@ look_at = [0.0, 0.0, 0.0]
 id = "cam_scale"
 lens_mm = 40.0
 loc = [0.30, -3.10, 0.20]
-look_at = [-0.55, 0.0, -0.20]
+look_at = [0.0, 0.0, -0.20]
 
+# c06 sits on the push rig alone; c07 pulls back so both rigs share the frame,
+# because a block size means nothing without the other block next to it.
 [[camera]]
-id = "cam_load"
+id = "cam_push"
 lens_mm = 50.0
-loc = [1.05, -2.35, 0.30]
+loc = [0.42, -2.20, 0.30]
 look_at = [0.0, 0.0, 0.05]
 
 [[camera]]
+id = "cam_load"
+lens_mm = 46.0
+loc = [0.66, -2.35, 0.28]
+look_at = [-0.10, 0.0, 0.12]
+
+[[camera]]
 id = "cam_section"
-lens_mm = 105.0
-loc = [0.46, -1.02, 0.30]
+lens_mm = 52.0
+loc = [0.76, -1.69, 0.50]
 look_at = [0.0, 0.0, 0.0]
 
 [[camera]]
 id = "cam_piston"
-lens_mm = 150.0
+lens_mm = 88.0
 loc = [0.34, -0.72, 0.16]
 look_at = [-0.02, 0.0, -0.06]
 
@@ -599,6 +680,7 @@ look_at = [0.0, 0.0, 0.0]
 [[light]]
 id = "backwash"
 type = "AREA"
+shots = ["c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c14"]
 energy = 260.0
 color = [0.34, 0.46, 0.72]
 loc = [0.0, 2.10, 2.40]
@@ -620,7 +702,7 @@ shots = ["c08", "c09"]
 id = "c01"
 name = "The conclusion"
 camera = "cam_hero"
-seconds = 3.0
+seconds = 2.8
 narration = "A hydraulic cylinder pushes twice as hard as it pulls."
 
 [[shot]]
@@ -648,75 +730,75 @@ narration = "Same oil. Same pressure."
 id = "c05"
 name = "How big"
 camera = "cam_scale"
-seconds = 2.0
+seconds = 1.8
 
 [[shot]]
 id = "c06"
 name = "Push lifts this"
 camera = "cam_load"
-seconds = 2.2
+seconds = 2.1
 narration = "Push, and it lifts this."
 
 [[shot]]
 id = "c07"
 name = "Pull lifts half"
 camera = "cam_load"
-seconds = 2.2
+seconds = 2.0
 narration = "Pull, and only this."
 
 [[shot]]
 id = "c08"
 name = "Inside"
 camera = "cam_section"
-seconds = 2.2
+seconds = 2.0
 narration = "Force is pressure times area."
 
 [[shot]]
 id = "c09"
 name = "Two faces"
 camera = "cam_piston"
-seconds = 2.0
+seconds = 1.9
 narration = "The faces are not the same size."
 
 [[shot]]
 id = "c10"
 name = "The whole piston"
 camera = "cam_areas"
-seconds = 1.8
+seconds = 1.6
 move_from = [0.0, -1.20, 0.0]
 move_to = [0.012, -1.20, -0.007]
-narration = "Pushing, the whole piston."
+narration = "Pushing: the whole face."
 
 [[shot]]
 id = "c11"
 name = "The rod is in the way"
 camera = "cam_areas"
-seconds = 2.0
+seconds = 2.2
 move_from = [0.0, -1.20, 0.0]
 move_to = [0.014, -1.20, -0.008]
-narration = "Pulling, the rod is in the way."
+narration = "Oil pushes on the piston's face."
 
 [[shot]]
 id = "c12"
 name = "A ring"
 camera = "cam_areas"
-seconds = 2.1
+seconds = 2.8
 move_from = [0.010, -1.20, -0.006]
 move_to = [-0.008, -1.20, 0.005]
-narration = "What is left is a ring."
+narration = "The rod takes the middle. Only a ring is left."
 
 [[shot]]
 id = "c13"
 name = "The same size"
 camera = "cam_areas"
-seconds = 2.5
+seconds = 3.0
 move_from = [0.0, -1.20, 0.0]
 move_to = [-0.014, -1.20, 0.008]
-narration = "It does not look like half. It is."
+narration = "Ring and rod are the same size. Each is half."
 
 [[shot]]
 id = "c14"
 name = "Three of them"
 camera = "cam_three"
-seconds = 2.4
+seconds = 2.2
 narration = "Three on the arm. None pull their weight."

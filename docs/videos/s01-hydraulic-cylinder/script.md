@@ -19,117 +19,102 @@
 
 ## The shape of the re-edit
 
-**Draft 4 — Tiers 1–3.** Fourteen shots, none over 3 s. Draft 2 ran six shots at 5.0 s average,
-which is documentary pacing in a swipe feed.
+**Draft 5 — review notes applied.** Four faults were called on draft 4 and all four were real:
 
-**State the conclusion first.** The comparator this slot was chosen against —
-[@KnowArt, 432k likes](https://www.youtube.com/shorts/gjCfbgKbAbc) — opens with *"hydraulic
-cylinders can push harder than they can pull"*. Title, first line and thumbnail are one sentence.
+1. **The pull block was not attached to the rod.** A measured 0.305 m gap; it floated. Fixed at the
+   geometry: the rod tip sits at z = 0.10 and a 0.31 m block belongs centred at -0.055.
+2. **Nothing indicated the block sizes.** The two loads lived in different shots with nothing to
+   compare against. Both shots now share one camera and one rig position, and each load carries its
+   own `label` — judging volume across a cut is the same mistake the ring already taught us.
+3. **The section looked poor.** `bisect_plane` leaves the cut face OPEN, so the camera looked
+   straight through the shell at the inside of the far wall. `_section_bm` now fills the cut, the
+   wall went 15 mm to 22 mm so the cut face is a face rather than a sliver, and the crop widened
+   from 105/150 mm to 52/88 mm so the object is legible.
+4. **"It does not look like half. It is." asserted without evidence.** c13 now shows the published
+   subtraction — 154 − 79 = 75 cm² — colour-coded to the two circles beneath it.
 
-**Show a consequence, not only a mechanism.** c06 and c07 are new: the same cylinder at the same
-pressure lifts a block pushing, and half a block pulling. The pull rig is mounted **inverted**,
-because a cylinder pulls by retracting and the only way to lift with it is to hang the load beneath.
-
-**Say how big it is.** c05 puts `crew` — 1.70 m, measured, assertion-checked — beside the cylinder.
-Draft 2 ran thirty seconds without ever establishing scale.
-
-**The numbers are in the scene.** `label` geometry, not caption text. Draft 2 had none.
+**And "the rod is in the way" was doing too much work.** The rod is *joined to the middle of that
+face*, so there is nothing to push on there. That is the sentence.
 
 ---
 
-## c01 — The conclusion (0.0–3.0 s)
+## c01 — The conclusion (0.0–2.8 s)
 
 > "A hydraulic cylinder pushes twice as hard as it pulls."
 
-
-## c02 — Pushing (3.0–4.8 s)
+## c02 — Pushing (2.8–4.6 s)
 
 > "Fifty-five tonnes pushing."
 
-
-## c03 — Pulling (4.8–6.6 s)
+## c03 — Pulling (4.6–6.4 s)
 
 > "Twenty-seven pulling."
 
-
-## c04 — Same pressure (6.6–8.6 s)
+## c04 — Same pressure (6.4–8.4 s)
 
 > "Same oil. Same pressure."
 
+## c05 — How big (8.4–10.2 s)
 
-## c05 — How big (8.6–10.6 s)
+> *(silent — the figure carries it)*
 
-> *(silent — the figure does the talking)*
-
-
-## c06 — Push lifts this (10.6–12.8 s)
+## c06 — Push lifts this (10.2–12.3 s)
 
 > "Push, and it lifts this."
 
-
-## c07 — Pull lifts half (12.8–15.0 s)
+## c07 — Pull lifts half (12.3–14.3 s)
 
 > "Pull, and only this."
 
-
-## c08 — Inside (15.0–17.2 s)
+## c08 — Inside (14.3–16.3 s)
 
 > "Force is pressure times area."
 
-
-## c09 — Two faces (17.2–19.2 s)
+## c09 — Two faces (16.3–18.2 s)
 
 > "The faces are not the same size."
 
+## c10 — The whole piston (18.2–19.8 s)
 
-## c10 — The whole piston (19.2–21.0 s)
+> "Pushing: the whole face."
 
-> "Pushing, the whole piston."
+## c11 — The rod is in the way (19.8–22.0 s)
 
+> "Oil pushes on the piston's face."
 
-## c11 — The rod is in the way (21.0–23.0 s)
+## c12 — A ring (22.0–24.8 s)
 
-> "Pulling, the rod is in the way."
+> "The rod takes the middle. Only a ring is left."
 
+## c13 — The same size (24.8–27.8 s)
 
-## c12 — A ring (23.0–25.1 s)
+> "Ring and rod are the same size. Each is half."
 
-> "What is left is a ring."
-
-
-## c13 — The same size (25.1–27.6 s)
-
-> "It does not look like half. It is."
-
-
-## c14 — Three of them (27.6–30.0 s)
+## c14 — Three of them (27.8–30.0 s)
 
 > "Three on the arm. None pull their weight."
-
-
 
 ## Pace
 
 | shot | s | words | speech s | ceiling s |
 |---|---|---|---|---|
-| c01 | 3.0 | 10 | 3.57 | 4.05 |
+| c01 | 2.8 | 10 | 3.57 | 3.78 |
 | c02 | 1.8 | 3 | 1.07 | 2.43 |
 | c03 | 1.8 | 2 | 0.71 | 2.43 |
 | c04 | 2.0 | 4 | 1.43 | 2.70 |
-| c05 | 2.0 | 0 | 0.00 | 2.70 |
-| c06 | 2.2 | 5 | 1.79 | 2.97 |
-| c07 | 2.2 | 4 | 1.43 | 2.97 |
-| c08 | 2.2 | 5 | 1.79 | 2.97 |
-| c09 | 2.0 | 7 | 2.50 | 2.70 |
-| c10 | 1.8 | 4 | 1.43 | 2.43 |
-| c11 | 2.0 | 7 | 2.50 | 2.70 |
-| c12 | 2.1 | 6 | 2.14 | 2.84 |
-| c13 | 2.5 | 8 | 2.86 | 3.38 |
-| c14 | 2.4 | 8 | 2.86 | 3.24 |
+| c05 | 1.8 | 0 | 0.00 | 2.43 |
+| c06 | 2.1 | 5 | 1.79 | 2.84 |
+| c07 | 2.0 | 4 | 1.43 | 2.70 |
+| c08 | 2.0 | 5 | 1.79 | 2.70 |
+| c09 | 1.9 | 7 | 2.50 | 2.56 |
+| c10 | 1.6 | 4 | 1.43 | 2.16 |
+| c11 | 2.2 | 6 | 2.14 | 2.97 |
+| c12 | 2.8 | 10 | 3.57 | 3.78 |
+| c13 | 3.0 | 10 | 3.57 | 4.05 |
+| c14 | 2.2 | 8 | 2.86 | 2.97 |
 
-**73 words across 30.0 s = 146 wpm.** Draft 2 was 120 words at 240 wpm and `voice`
-refused it. `validate` now refuses any shot whose narration cannot be spoken inside its own
-duration, so this can no longer be discovered after a render.
+**78 words across 30.0 s = 156 wpm.** `validate` refuses any shot whose narration cannot be
+spoken in its own duration, and it fired twice while this draft was written.
 
 ## Caption policy
 
