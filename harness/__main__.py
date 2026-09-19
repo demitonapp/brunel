@@ -125,15 +125,43 @@ def cmd_build(args: argparse.Namespace) -> int:
 
 def cmd_render(args: argparse.Namespace) -> int:
     from .build import BuildError
-    from .render import render
+    from .render import RenderError, render
 
     ep = _loaded(args)
+
+    # H28. A full-quality render is the expensive step, so it is the one that
+    # asks whether a human has seen the shot. `--fast` and `--stills` are never
+    # gated: you cannot iterate toward approval through a gate that blocks the
+    # thing you iterate with.
+    if not args.stills and not args.fast and not getattr(args, "waive", None):
+        from . import boardgate
+        ledger = boardgate.refresh(ep, boardgate.load(ep))
+        boardgate.save(ep, ledger)
+        wanted = _parse_shots(args.shots) or [sh["id"] for sh in ep.shots]
+        blocked = [sid for sid in boardgate.blocking(ledger) if sid in wanted]
+        if blocked or boardgate.look_blocking(ledger):
+            print("RENDER BLOCKED: the board is not signed off.", file=sys.stderr)
+            if boardgate.look_blocking(ledger):
+                print("  look: not approved", file=sys.stderr)
+            for sid in blocked:
+                st = next(e["review"] for e in ledger["shots"] if e["id"] == sid)
+                print(f"  {sid}: {st['state']}"
+                      + (f" - {st['note']}" if st.get("note") else ""), file=sys.stderr)
+            print(f"\n  harness board {args.spec}            # look at it", file=sys.stderr)
+            print(f"  harness board {args.spec} --approve all --approve-look",
+                  file=sys.stderr)
+            print("  ...or --waive \"reason\" to render anyway.", file=sys.stderr)
+            return 4
+
     try:
         result = render(ep, out_root=Path(args.out), device=args.device,
                         stills_only=args.stills, force=args.force)
     except BuildError as exc:
         print(f"build FAILED\n{exc}", file=sys.stderr)
         return 2
+    except RenderError as exc:
+        print(f"render REFUSED\n{exc}", file=sys.stderr)
+        return 3
     (Path(args.out) / ep.id / "render.json").write_text(
         json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
@@ -213,6 +241,57 @@ def cmd_captions(args: argparse.Namespace) -> int:
         print(f"    {c['start']:>6.2f}-{c['end']:>6.2f}  {c['text']}")
     return 0
 
+
+
+def cmd_board(args: argparse.Namespace) -> int:
+    """The storyboard gate - record that a human looked, and revoke it on change."""
+    from . import boardgate
+
+    ep = load(args.spec)
+    ledger = boardgate.refresh(ep, boardgate.load(ep))
+
+    # measured coverage per shot, so the board reports what it knows before a
+    # human is asked to sign. It is information at sign-off time, not a verdict.
+    ep_dir = Path(args.out) / ep.id
+    try:
+        from . import check
+        for entry in ledger["shots"]:
+            frames = sorted((ep_dir / entry["id"]).glob("frame_*.png"))
+            if frames:
+                entry["coverage"] = round(check.subject_coverage(frames[0]), 1)
+    except Exception:  # noqa: BLE001 - ffmpeg absent, or no stills yet
+        pass
+
+    who = args.by
+    if args.approve:
+        ids = None if args.approve == "all" else _parse_shots(args.approve)
+        done = boardgate.set_state(ledger, ids, "approved", by=who, note=args.note)
+        print(f"approved {len(done)} shot(s): {', '.join(done)}")
+    if args.rework:
+        done = boardgate.set_state(ledger, _parse_shots(args.rework), "rework",
+                                   by=who, note=args.note)
+        print(f"marked for rework: {', '.join(done)}")
+    if args.approve_look:
+        ledger["look"]["review"] = {"state": "approved", "by": who,
+                                    "at": boardgate._now(), "note": args.note}
+        print("look approved")
+
+    path = boardgate.save(ep, ledger)
+    look = ledger["look"]["review"]["state"]
+    print(f"\nboard: {path}")
+    print(f"  look   {look}")
+    for e in ledger["shots"]:
+        cov = f"{e['coverage']:>5.1f}%" if e.get("coverage") is not None else "    -"
+        note = e["review"].get("note") or ""
+        print(f"  {e['id']:<5} {e['review']['state']:<10} {cov}  {e['name'][:26]:<28}"
+              + (f"  ({note})" if note else ""))
+    blocked = boardgate.blocking(ledger)
+    if blocked or boardgate.look_blocking(ledger):
+        print(f"\n  {len(blocked)} shot(s) not approved; a full render is blocked.")
+        print("  approve with: harness board <spec> --approve all")
+    else:
+        print("\n  all shots approved - a full render may proceed.")
+    return 0
 
 def cmd_voice(args: argparse.Namespace) -> int:
     from .audio import AudioError, say_available, synthesise
@@ -1031,7 +1110,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
     resolution rather than many frames at a fake one.
     """
     from .build import BuildError
-    from .render import render
+    from .render import RenderError, render
 
     ep = _loaded(args)
     ep.meta.setdefault("device", "CPU")
@@ -1041,6 +1120,9 @@ def cmd_bench(args: argparse.Namespace) -> int:
     except BuildError as exc:
         print(f"build FAILED\n{exc}", file=sys.stderr)
         return 2
+    except RenderError as exc:
+        print(f"render REFUSED\n{exc}", file=sys.stderr)
+        return 3
 
     # Read the profile back off the render, never off the spec - see render().
     device = result["device"]
@@ -1117,7 +1199,25 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--device", choices=["CPU", "GPU", "METAL", "OPTIX", "CUDA"])
     r.add_argument("--stills", action="store_true",
                    help="render only the middle frame of each shot (storyboard pass)")
+    r.add_argument("--waive", metavar="REASON",
+                   help="render at full cost without board sign-off. Reported loudly; "
+                        "exists because a gate with no escape hatch gets routed around "
+                        "rather than used.")
     r.set_defaults(func=cmd_render)
+
+    bd = sub.add_parser("board", help="the storyboard gate - sign off shots before a full render")
+    bd.add_argument("spec")
+    bd.add_argument("--out", default="renders", help="output root (default: renders)")
+    bd.add_argument("--approve", metavar="IDS",
+                    help='comma-separated shot ids, or "all"')
+    bd.add_argument("--approve-look", action="store_true",
+                    help="sign off the LOOK - materials, lights, type. Studios approve "
+                         "this before the board and separately; see "
+                         "docs/harness/storyboard-gate.md")
+    bd.add_argument("--rework", metavar="IDS", help="send shots back, with --note")
+    bd.add_argument("--note", help="why")
+    bd.add_argument("--by", default="human", help="who signed")
+    bd.set_defaults(func=cmd_board)
 
     a = sub.add_parser("assemble", help="frames -> mp4")
     a.add_argument("episode_dir", help="e.g. renders/ep01")

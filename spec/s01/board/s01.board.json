@@ -1,0 +1,186 @@
+{
+  "schema_version": "1.0.0",
+  "episode": {
+    "id": "s01",
+    "board_revision": 1
+  },
+  "look": {
+    "fingerprint": "e57b463d7c046fc0",
+    "review": {
+      "state": "approved",
+      "by": "justin",
+      "at": "2026-09-19T22:34:03Z",
+      "note": null
+    }
+  },
+  "shots": [
+    {
+      "id": "c01",
+      "name": "The conclusion",
+      "fingerprint": "1fa94a1641d74a1a",
+      "coverage": 59.1,
+      "review": {
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
+      }
+    },
+    {
+      "id": "c02",
+      "name": "Pushing",
+      "fingerprint": "5cc8472925f3bed5",
+      "coverage": 58.2,
+      "review": {
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
+      }
+    },
+    {
+      "id": "c03",
+      "name": "Pulling",
+      "fingerprint": "60fe178e2f300d77",
+      "coverage": 57.6,
+      "review": {
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
+      }
+    },
+    {
+      "id": "c04",
+      "name": "Same pressure",
+      "fingerprint": "241f869b4944ad3f",
+      "coverage": 58.2,
+      "review": {
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
+      }
+    },
+    {
+      "id": "c05",
+      "name": "How big",
+      "fingerprint": "dddc1da728591316",
+      "coverage": 49.5,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c06",
+      "name": "Push lifts this",
+      "fingerprint": "d2503c88f6416333",
+      "coverage": 55.6,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c07",
+      "name": "Pull lifts half",
+      "fingerprint": "92007b8d84434fa0",
+      "coverage": 53.9,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c08",
+      "name": "Inside",
+      "fingerprint": "67658eaaa54fd6fd",
+      "coverage": 57.3,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c09",
+      "name": "Two faces",
+      "fingerprint": "e184c0b918084303",
+      "coverage": 51.2,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c10",
+      "name": "The whole piston",
+      "fingerprint": "5e1d0f1e15f10d81",
+      "coverage": 14.3,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c11",
+      "name": "The rod is in the way",
+      "fingerprint": "3cdc3ac3d857b84d",
+      "coverage": 14.4,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c12",
+      "name": "A ring",
+      "fingerprint": "3eeedfdce4b31642",
+      "coverage": null,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c13",
+      "name": "The same size",
+      "fingerprint": "c3da621201becff0",
+      "coverage": null,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    },
+    {
+      "id": "c14",
+      "name": "Three of them",
+      "fingerprint": "e0dba5eabf9e8fdc",
+      "coverage": null,
+      "review": {
+        "state": "approved",
+        "by": "justin",
+        "at": "2026-09-19T22:34:03Z",
+        "note": null
+      }
+    }
+  ]
+}

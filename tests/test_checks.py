@@ -8,6 +8,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from conftest import FIXTURES, harness, output
@@ -125,6 +126,64 @@ def test_the_stills_pass_renders_enough_frames_to_check_motion(tmp_path: Path) -
         f"the stills pass wrote {len(frames)} frame(s) - check_motion cannot run below 3"
     assert proc.returncode == 3, f"a motionless shot was not refused:\n{output(proc)}"
     assert "nothing moves" in output(proc), output(proc)
+
+
+def _episode(frames: int) -> SimpleNamespace:
+    return SimpleNamespace(shots=[{"id": "b01"}], meta={"width": 1080, "height": 1920},
+                           frame_count=lambda shot, fps: frames)
+
+
+def test_a_render_that_cannot_fit_on_the_disk_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """H20. `render` writes every frame before `assemble` reads any, so a cut
+    that does not fit fails on disk before it fails on patience - silently, and
+    hours in. 12 GiB free on the authoring Mac against ~29 GB for a 7-minute cut
+    at 1080x1920.
+
+    Both directions, because a storage guard that fires early is a guard that
+    gets switched off: the second half is an ordinary 30 s Short at ~2.1 GB,
+    which must start.
+    """
+    from harness import render as render_mod
+    from harness.render import RenderError, _disk_guard
+
+    # H20's actual reading, pinned so the assertion means the same thing on a
+    # laptop with a terabyte free as on the machine the finding came from.
+    twelve_gib = 12 * 1024**3
+    monkeypatch.setattr(render_mod.shutil, "disk_usage",
+                        lambda path: SimpleNamespace(total=0, used=0, free=twelve_gib))
+
+    # A 7-minute long-form is 12,600 frames: ~29 GB, and it does not fit.
+    with pytest.raises(RenderError) as exc:
+        _disk_guard(_episode(12_600), tmp_path, 30, False, None)
+    message = str(exc.value)
+    assert "GB free" in message, f"the refusal does not name what is available: {message}"
+    assert "1080x1920" in message, f"the refusal does not name the profile: {message}"
+
+    # A 30 s Short is 900 frames: ~2.1 GB, and it starts.
+    _disk_guard(_episode(900), tmp_path, 30, False, None)
+
+
+def test_the_disk_guard_does_not_count_frames_already_on_disk(
+    ffmpeg: str, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A resume needs only what is missing.
+
+    Costing the whole cut again would refuse a render that is one shot from
+    finishing, over frames that are already paid for and already on the disk it
+    is worried about.
+    """
+    from harness.render import _disk_guard
+
+    shot = tmp_path / "b01"
+    shot.mkdir()
+    _disk_guard(_episode(3), tmp_path, 30, False, None)
+    assert "3 frame(s) to write" in capsys.readouterr().out
+
+    _frame(ffmpeg, shot / "frame_0001.png", "-f", "lavfi", "-i", "testsrc=s=64x64")
+    _disk_guard(_episode(3), tmp_path, 30, False, None)
+    assert "2 frame(s) to write" in capsys.readouterr().out
 
 
 def test_the_canary_fires_on_a_changed_frame_and_not_an_unchanged_one(

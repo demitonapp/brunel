@@ -235,7 +235,7 @@ Fix that with it or the report names the wrong thing six times.
 shot whose frames differ must not be - the same shape as the black-frame test, which is the only
 evidence that a check works.
 
-### H28 — Nothing gates a render on a human having looked at the picture
+### H28 — Nothing gates a render on a human having looked at the picture — FIXED
 
 `factgate` requires `human_approved` on every fact before `--publish`. There is **no equivalent for
 the frames.** `verify` runs `check_storyboard`, `check_coverage`, `check_motion` and the pace check
@@ -277,3 +277,31 @@ blocked by any of it. The third is the one that matters — the other two only t
 **Deliberately NOT included:** an automated judgement of whether a shot is good. `check_coverage` is
 a floor, not taste, and H22 already records why a "does this frame read" check would cry wolf. This
 item adds a *place for a human decision to be recorded and invalidated*, nothing more.
+
+**Built 2026-09-20.** `harness/boardgate.py` plus `harness board`, and a gate inside `cmd_render`.
+
+```bash
+harness board spec/s01/s01.toml                                  # the board, with coverage
+harness board spec/s01/s01.toml --approve all --approve-look     # sign it
+harness render spec/s01/s01.toml                                 # refused until you do
+```
+
+**The fingerprint is deliberately NOT `render._fingerprint`.** That one hashes the entire spec text
+so any edit invalidates its resume cache — correct for a cache, useless for approval, because a
+reworded comment would revoke every sign-off in the film and a gate that revokes itself constantly
+gets waived by habit. `boardgate.shot_fingerprint` hashes only that shot: its camera, the parts
+visible in it, their transforms and params, its tracks, the materials those parts use, the lights
+active in it, and the frame size. **Samples and device are excluded** — they change what a frame
+costs, not what it shows.
+
+**Verified surgical, not blanket.** Moving `cam_hero` by 2 cm on `spec/s01` revoked exactly c01–c04,
+the four shots that use it, and left c05 and c06 approved.
+
+**Checks.** `tests/test_board_gate.py`. The centrepiece is
+`test_approval_is_revoked_when_the_shot_changes`; its mirror,
+`test_approval_survives_an_edit_that_cannot_change_the_picture`, is equally load-bearing, because a
+gate that fires on a comment edit is one people learn to route around.
+`test_the_preview_path_is_never_gated` asserts `returncode != 4` rather than `== 0` on purpose: the
+fixture is a flat grey box that fails the *storyboard* check on its own merits, and conflating the
+two would make the test green for the wrong reason the day this gate broke.
+

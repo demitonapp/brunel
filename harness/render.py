@@ -54,6 +54,76 @@ def _smooth(obj: Any) -> None:
             kp.handle_right_type = "AUTO_CLAMPED"
 
 
+class RenderError(RuntimeError):
+    """Raised when a render must not be started - distinct from a build fault."""
+
+
+#: Bytes per megapixel of PNG. Measured: a 1080x1920 frame of ad01/a01 averaged
+#: 2.3 MB (H20, render-bench.json), which is 1.11 MB per megapixel. PNG size
+#: tracks pixel count far more closely than it tracks what is in the frame, so
+#: one number scaled by resolution is a better estimate than a per-video guess -
+#: and this is a question of 29 GB against 12, not of the last 10%.
+BYTES_PER_MEGAPIXEL = 1_110_000
+
+
+def _frame_list(frames: int, stills_only: bool, max_frames: int | None) -> list[int]:
+    """Which frame numbers this run will write for a shot of `frames` frames.
+
+    The storyboard pass renders the FIRST, MIDDLE and LAST frame of each shot.
+    It was the middle frame alone until s01 rendered three frozen hooks: a fault
+    that lives BETWEEN frames needs two frames to exist and three for
+    `check_motion` to look at, so one frame per shot made the cheap pass
+    structurally blind to the one fault the expensive pass found. Three frames
+    is still a storyboard - seconds, against hours.
+    """
+    out = (sorted({1, max(1, frames // 2), frames}) if stills_only
+           else list(range(1, frames + 1)))
+    return out[:max_frames] if max_frames is not None else out
+
+
+def _disk_guard(ep: spec_mod.Episode, ep_dir: Path, fps: int, stills_only: bool,
+                max_frames: int | None) -> None:
+    """Refuse a render that cannot fit, before the first frame instead of after
+    the nine-thousandth.
+
+    H20. `render` writes every frame before `assemble` reads any, so a long-form
+    cut fails on disk before it fails on patience - and it fails LATE, silently,
+    hours in. 12 GiB free on the authoring Mac against ~29 GB for a 7-minute cut
+    at 1080x1920.
+
+    Frames already on disk are not counted: a resume needs only what is missing,
+    and a run whose fingerprint has moved frees the old frames before it writes
+    the new ones. No headroom is invented on top - the question this answers is
+    the one H20 asked, "do the projected frame bytes exceed free space", and an
+    extra margin would be a number nothing measured.
+    """
+    needed = 0
+    for shot in ep.shots:
+        shot_dir = ep_dir / shot["id"]
+        # One listing per shot rather than a stat per frame: a 7-minute cut is
+        # 12,600 frames per shot directory and this runs before every render.
+        on_disk = {f.name for f in shot_dir.glob("frame_*.png") if _frame_ok(f)}
+        needed += sum(1 for f in _frame_list(ep.frame_count(shot, fps), stills_only,
+                                             max_frames)
+                      if f"frame_{f:04d}.png" not in on_disk)
+    megapixels = (int(ep.meta["width"]) * int(ep.meta["height"])) / 1e6
+    projected = int(needed * megapixels * BYTES_PER_MEGAPIXEL)
+    free = shutil.disk_usage(ep_dir).free
+    gb = 1_000_000_000
+    if projected > free:
+        raise RenderError(
+            f"{needed} frame(s) still to render at {ep.meta['width']}x{ep.meta['height']} "
+            f"is about {projected / gb:.1f} GB of PNG, and {ep_dir} has "
+            f"{free / gb:.1f} GB free - it fills at about frame "
+            f"{int(free / (megapixels * BYTES_PER_MEGAPIXEL)):,}. Refused before the "
+            f"first frame rather than hours in. Render fewer shots with --shots, "
+            f"assemble and drop the frames per shot, or point --out at a volume "
+            f"with room."
+        )
+    print(f"  disk: {needed} frame(s) to write, ~{projected / gb:.1f} GB projected, "
+          f"{free / gb:.1f} GB free")
+
+
 def _frame_ok(path: Path) -> bool:
     """A rendered frame is a real file, not a zero-byte stub from a killed run."""
     try:
@@ -249,6 +319,7 @@ def render(
 
     ep_dir = Path(out_root) / ep.id
     ep_dir.mkdir(parents=True, exist_ok=True)
+    _disk_guard(ep, ep_dir, int(ep.meta["fps"]), stills_only, max_frames)
 
     built = build_mod.build_scene(ep)
     build_mod.write_manifest(ep, built, ep_dir / "manifest.json")
@@ -278,16 +349,7 @@ def render(
         scene.frame_end = frames
 
         shot_dir = ep_dir / shot["id"]
-        # Stills pass renders the FIRST, MIDDLE and LAST frame of each shot. It
-        # was the middle frame alone until s01 rendered three frozen hooks: a
-        # fault that lives BETWEEN frames needs two frames to exist and three
-        # for `check_motion` to look at, so one frame per shot made the cheap
-        # pass structurally blind to the one fault the expensive pass found.
-        # Three frames is still a storyboard - seconds, against hours.
-        frame_list = (sorted({1, max(1, frames // 2), frames}) if stills_only
-                      else list(range(1, frames + 1)))
-        if max_frames is not None:
-            frame_list = frame_list[:max_frames]
+        frame_list = _frame_list(frames, stills_only, max_frames)
 
         # Per-shot resume. A run that dies at frame 800 must not re-render the
         # 799 in front of it, and a spec change must invalidate the cache

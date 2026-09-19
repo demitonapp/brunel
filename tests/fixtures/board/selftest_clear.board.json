@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "episode": {
+    "id": "selftest_clear",
+    "board_revision": 1
+  },
+  "look": {
+    "fingerprint": "26da5ee4d13a4bf1",
+    "review": {
+      "state": "unreviewed",
+      "by": null,
+      "at": null
+    }
+  },
+  "shots": [
+    {
+      "id": "s01",
+      "name": "camera is clear",
+      "fingerprint": "b78885cac89a93a6",
+      "coverage": null,
+      "review": {
+        "state": "unreviewed",
+        "by": null,
+        "at": null
+      }
+    }
+  ]
+}
