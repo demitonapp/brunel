@@ -8,12 +8,13 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
-from types import SimpleNamespace
+from typing import NamedTuple
 
 import pytest
 from conftest import FIXTURES, harness, output
 
 from harness import check
+from harness.spec import Episode, load
 
 
 def _frame(ffmpeg: str, dest: Path, *source: str) -> Path:
@@ -128,9 +129,24 @@ def test_the_stills_pass_renders_enough_frames_to_check_motion(tmp_path: Path) -
     assert "nothing moves" in output(proc), output(proc)
 
 
-def _episode(frames: int) -> SimpleNamespace:
-    return SimpleNamespace(shots=[{"id": "b01"}], meta={"width": 1080, "height": 1920},
-                           frame_count=lambda shot, fps: frames)
+class _Usage(NamedTuple):
+    """As much of `shutil.disk_usage`'s answer as the guard reads."""
+
+    free: int
+
+
+def _episode(frames: int, fps: int = 30) -> Episode:
+    """A real Episode of a given length, at the delivery profile.
+
+    Not a stand-in object: `_disk_guard` asks the episode how long each shot is
+    and how big a frame is, and a stub would let those two answers drift from
+    what the loader actually produces.
+    """
+    ep = load(str(FIXTURES / "camera_clear.toml"))
+    ep.meta.update(width=1080, height=1920, fps=fps)
+    ep.shots[0]["seconds"] = frames / fps
+    assert ep.frame_count(ep.shots[0], fps) == frames
+    return ep
 
 
 def test_a_render_that_cannot_fit_on_the_disk_is_refused(
@@ -152,7 +168,7 @@ def test_a_render_that_cannot_fit_on_the_disk_is_refused(
     # laptop with a terabyte free as on the machine the finding came from.
     twelve_gib = 12 * 1024**3
     monkeypatch.setattr(render_mod.shutil, "disk_usage",
-                        lambda path: SimpleNamespace(total=0, used=0, free=twelve_gib))
+                        lambda path: _Usage(free=twelve_gib))
 
     # A 7-minute long-form is 12,600 frames: ~29 GB, and it does not fit.
     with pytest.raises(RenderError) as exc:
@@ -176,12 +192,14 @@ def test_the_disk_guard_does_not_count_frames_already_on_disk(
     """
     from harness.render import _disk_guard
 
-    shot = tmp_path / "b01"
+    shot = tmp_path / "s01"
     shot.mkdir()
     _disk_guard(_episode(3), tmp_path, 30, False, None)
     assert "3 frame(s) to write" in capsys.readouterr().out
 
-    _frame(ffmpeg, shot / "frame_0001.png", "-f", "lavfi", "-i", "testsrc=s=64x64")
+    # 256x256, not 64x64: `_frame_ok` treats anything under 1 KiB as the stub a
+    # killed run leaves behind, and a 64x64 testsrc PNG is 531 bytes.
+    _frame(ffmpeg, shot / "frame_0001.png", "-f", "lavfi", "-i", "testsrc=s=256x256")
     _disk_guard(_episode(3), tmp_path, 30, False, None)
     assert "2 frame(s) to write" in capsys.readouterr().out
 

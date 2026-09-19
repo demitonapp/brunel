@@ -28,6 +28,7 @@ preserved in `git log` and, in enforceable form, in `LESSONS.md`; the audit itse
 | **H29** | Narration longer than `MAX_TEMPO` allowed was hard-cut mid-sentence by `-t slot` while printing a `fitted:` line that read as success — fixed; refuses and names the shot, the overrun and the shot length that would fit |
 | **H30** | Every check in the harness was a threshold check, so nothing could see drift — fixed; `goldens/`, `check.ssim`, `check.check_goldens`, `verify --bless`, calibrated on two real double-renders |
 | **H31** | The spin composition — the repo's most expensive bug — had no numeric test, only a WARNING whose thresholds overlap correct behaviour — fixed; `tests/spin_axis.py` |
+| **H20** | `render` writes every frame before `assemble` reads any, so a long-form cut failed on disk before it failed on patience — silently, hours in, at ~29 GB against 12 GiB free — fixed; `render._disk_guard` costs the frames still to write against `shutil.disk_usage` before the build and refuses naming both numbers and the frame the disk fills at. Frames already on disk are not counted, so a resume is costed for what it is. **Assembling per shot and dropping the frames is still not done** — this refuses the render, it does not make a 7-minute cut fit |
 | **H26** | `deliver --publish` read one hardcoded, global `legal/licences.json` — ep01's engravings — so s01, which generates every object it shows and borrows nothing, could not be published for reasons that had nothing to do with s01 — fixed; the register resolves to `spec/<id>/legal/licences.json` with **no fallback**, an empty `"assets": []` is a positive declaration and a missing `assets` key is refused |
 | **H32** | `render --stills` wrote ONE frame per shot and `check_motion` returns early below three, so the cheap pre-flight pass was structurally blind to a frozen shot — the fault that put 3.5 h of s01 frames on disk as still photographs, caught only by `verify` afterwards — fixed; the stills pass renders first, middle and last and checks motion and coverage per shot. **Numbered H32 because H27 is taken twice** (the `frame_count` entry above, and the `check_motion` wiring entry in Part VI); that collision is unresolved, not inherited by this one |
 
@@ -102,21 +103,6 @@ so the real cost is **1.7× the extrapolation**, not 0.25× as the first (conten
 
 **Open:** the OptiX row for the render node is still `not_measured`. Per
 `docs/strategy/slate.md`, that number is not needed until Phase 1.
-
-### H20 — `render` writes every frame before `assemble` reads any
-
-12 GiB free on the authoring Mac. At ~2.3 MB per 1080×1920 PNG (measured, `ad01/a01`):
-
-| | frames | disk |
-|---|---|---|
-| 30 s Short | 900 | ~2.1 GB — fits (6.7 h render) |
-| 7 min long-form | 12,600 | **~29 GB — does not fit** (94 h render) |
-
-Long-form fails on disk before it fails on patience, and it fails silently and late — after hours
-of render. **Blocks:** Phase 1, on this machine.
-**Fix.** Assemble per shot and drop the frames, or write to a scratch volume declared in the spec.
-**Check.** Refuse a render whose projected frame bytes exceed free space, naming both numbers.
-Not needed until Phase 1 — recorded now so it is not rediscovered at 3 a.m. on frame 9,000.
 
 ### H21 — A hero cylinder could not be made to look like one
 
