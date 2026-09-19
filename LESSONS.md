@@ -900,3 +900,23 @@ one or the other.
 - **Where:** `harness/tools.py` (`ffmpeg`, `ffprobe`, `ToolError`), `harness/__main__.py` (`main`).
 - **ENFORCED BY:** `tests/test_tools.py` for the resolver; nothing stops an eighth copy being
   written. The honest enforcement is that there is now an obvious place to import from.
+
+## 2026-09-20 — Five decoders read ffmpeg's stdout and none read its exit status
+
+- **Context:** `check.py` decoded a frame to raw pixels in five places -
+  `grey_stats`, `is_greyscale`, `frame_diff`, the coverage measurement and `check_clip` - with the
+  same open-coded `subprocess.run([...], capture_output=True).stdout`. Not one of them looked at
+  `returncode`. Each tested only whether stdout was empty, so a corrupt file, a filter that will
+  not build and a pixel format ffmpeg cannot reach all produced the identical message, "ffmpeg
+  produced no pixels", with ffmpeg's own diagnosis captured in `.stderr` and then discarded.
+  `frame_diff` did not even do that: it took the empty bytes, built two empty lists, and raised
+  "cannot compare a.png and b.png". This is the third instance of one family in two days - the
+  bash runner ignoring exit codes, `grep -q` inverting under `pipefail`, and now this. Capturing a
+  process's output and not its status is the shape.
+- **Check:** One decoder, `check._pixels`, which raises with ffmpeg's stderr attached. A caller
+  that must report rather than raise - `check_clip`, which runs per shot over a whole episode -
+  converts the exception explicitly, where the reader can see it happening.
+- **Where:** `harness/check.py` (`_pixels`), `harness/tools.py` (`run`).
+- **ENFORCED BY:** `tests/test_checks.py` ("a corrupt frame names the reason it could not be
+  read", which asserts the message is longer than the old fixed string, and "check_clip reports an
+  unreadable clip rather than raising"); `tests/test_tools.py` for `run`'s non-zero exit.

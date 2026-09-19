@@ -37,7 +37,6 @@ import inspect
 import json
 import os
 import shutil
-import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -47,7 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from .passes import PassProfile
-from .tools import ffmpeg
+from .tools import ffmpeg, run
 
 # The repo's gitignored secret file. A key must never be committable, and a key
 # pasted into a transcript must be rotatable without touching code.
@@ -98,16 +97,11 @@ def load_env(path: Path | None = None) -> dict[str, str]:
 def _mux(frames_dir: Path, fps: int, out_path: Path) -> Path:
     """PNG sequence -> mp4. Every backend takes video in, not frames."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(
-        [ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
+    run([ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
          "-framerate", str(fps), "-start_number", "1",
          "-i", str(frames_dir / "frame_%04d.png"),
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "14",
-         str(out_path)],
-        capture_output=True, text=True,
-    )
-    if proc.returncode != 0:
-        raise BackendError(f"ffmpeg mux failed: {proc.stderr.strip()[:400]}")
+         str(out_path)], error=BackendError)
     return out_path
 
 
@@ -154,12 +148,10 @@ def _download(url: str, out_path: Path) -> None:
     if not exe:
         raise BackendError("curl is required to download generated video")
     def _once() -> None:
-        proc = subprocess.run(
-            [exe, "-sSL", "--max-time", "600", "-o", str(out_path), url],
-            capture_output=True, text=True,
-        )
-        if proc.returncode != 0 or not out_path.exists():
-            raise BackendError(f"download failed: {proc.stderr.strip()[:300]}")
+        run([exe, "-sSL", "--max-time", "600", "-o", str(out_path), url],
+            error=BackendError)
+        if not out_path.exists():
+            raise BackendError(f"curl reported success but wrote nothing to {out_path}")
 
     _retrying(_once, what="video download")
 

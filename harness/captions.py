@@ -11,11 +11,10 @@ central band.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
-from .tools import ffmpeg
+from .tools import ffmpeg, run
 
 # Instagram Reels covers the top 250 px and the bottom 350 px of 1080x1920.
 SAFE_TOP_PX = 250
@@ -44,9 +43,7 @@ class CaptionError(Exception):
 
 
 def _run(cmd: list[str], cwd: Path | None = None) -> None:
-    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
-    if proc.returncode != 0:
-        raise CaptionError(f"command failed: {' '.join(cmd)}\n{proc.stderr[-1500:]}")
+    run(cmd, error=CaptionError, cwd=cwd)
 
 
 #: Words a caption should not end on. Splitting after these strands the reader

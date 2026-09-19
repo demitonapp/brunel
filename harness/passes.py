@@ -46,7 +46,6 @@ first place.
 from __future__ import annotations
 
 import json
-import subprocess
 import time
 from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass
@@ -55,7 +54,7 @@ from typing import Any
 
 from . import build as build_mod
 from . import spec as spec_mod
-from .tools import ffmpeg
+from .tools import ffmpeg, run
 
 # The pass names that exist. `plate` is the beauty render; it is the source for
 # `edge` and `vis`, which are derived rather than rendered.
@@ -348,10 +347,7 @@ def _restore_render_passes(scene: Any) -> None:
 
 
 def _run_ffmpeg(args: Sequence[str]) -> None:
-    proc = subprocess.run([ffmpeg(), "-y", "-hide_banner", "-loglevel", "error", *args],
-                          capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise PassError(f"ffmpeg failed ({proc.returncode}): {proc.stderr.strip()[:400]}")
+    run([ffmpeg(), "-y", "-hide_banner", "-loglevel", "error", *args], error=PassError)
 
 
 def _derive_edge(src_dir: Path, dst_dir: Path, frames: int) -> int:

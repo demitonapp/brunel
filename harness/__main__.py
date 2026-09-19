@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from . import __version__
 from .spec import SpecError, load
-from .tools import ToolError, duration_seconds, ffmpeg
+from .tools import ToolError, duration_seconds, ffmpeg, run
 
 if TYPE_CHECKING:
     # Annotation-only. A runtime import here would pull backend.py in for
@@ -343,14 +343,11 @@ def _deliver_from_backend(args: argparse.Namespace, ep: Any, ep_dir: Path) -> in
         "\n".join(f"file '{c.resolve()}'" for c in clips) + "\n", encoding="utf-8"
     )
     silent = ep_dir / f"{ep.id}_{args.backend}_silent.mp4"
-    exe = ffmpeg()
-    proc = subprocess.run(
-        [exe, "-y", "-v", "error", "-f", "concat", "-safe", "0",
-         "-i", str(concat_list), "-c", "copy", str(silent)],
-        capture_output=True, text=True,
-    )
-    if proc.returncode != 0:
-        print(f"concat FAILED\n{proc.stderr.strip()[:1000]}", file=sys.stderr)
+    try:
+        run([ffmpeg(), "-y", "-v", "error", "-f", "concat", "-safe", "0",
+             "-i", str(concat_list), "-c", "copy", str(silent)], error=ToolError)
+    except ToolError as exc:
+        print(f"concat FAILED\n{exc}", file=sys.stderr)
         return 2
 
     durations: dict[str, float] = {}

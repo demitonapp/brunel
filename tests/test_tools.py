@@ -17,6 +17,7 @@ import pytest
 
 from harness.__main__ import DURATION_TOLERANCE
 from harness.tools import ToolError, duration_seconds, ffprobe
+from harness.tools import run as tools_run
 
 
 def test_a_real_clip_measures_its_real_length(ffmpeg: str, tmp_path: Path) -> None:
@@ -51,3 +52,29 @@ def test_the_resolvers_agree_with_the_path(ffmpeg: str) -> None:
 
     assert tools.ffmpeg() == ffmpeg
     assert Path(ffprobe()).name.startswith("ffprobe")
+
+
+def test_run_raises_the_callers_error_on_a_non_zero_exit() -> None:
+    """The exception type stays a parameter because `main()` catches each
+    module's error separately to decide an exit code."""
+    class Mine(Exception):
+        pass
+
+    with pytest.raises(Mine) as exc:
+        tools_run(["false"], error=Mine)
+    assert "command failed (1)" in str(exc.value)
+
+
+def test_run_quotes_a_command_so_the_message_is_re_runnable(tmp_path: Path) -> None:
+    """`shlex.join`, not `" ".join`. A path with a space in it made the old
+    message look like a different command than the one that ran."""
+    spaced = tmp_path / "two words.mp4"
+    spaced.write_bytes(b"not a video")
+    with pytest.raises(ToolError) as exc:
+        duration_seconds(spaced)
+    # shlex quotes the whole path, so the command can be pasted and re-run.
+    assert f"'{spaced}'" in str(exc.value)
+
+
+def test_run_returns_stdout_on_success() -> None:
+    assert tools_run(["echo", "hello"], error=ToolError).strip() == "hello"

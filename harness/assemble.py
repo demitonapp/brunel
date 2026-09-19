@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 
-from .tools import ffmpeg, ffprobe
+from .tools import duration_seconds, ffmpeg, run
 
 
 class AssembleError(Exception):
@@ -15,11 +14,7 @@ class AssembleError(Exception):
 
 
 def _run(cmd: list[str]) -> None:
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise AssembleError(
-            f"command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stderr[-2000:]}"
-        )
+    run(cmd, error=AssembleError)
 
 
 def _shot_dirs(ep_dir: Path, order: list[str] | None = None) -> list[Path]:
@@ -123,18 +118,15 @@ def assemble(
         "-c", "copy", str(out_path),
     ])
 
-    probe = subprocess.run(
-        [ffprobe(), "-v", "error", "-show_entries", "format=duration,size",
-         "-of", "json", str(out_path)],
-        capture_output=True, text=True,
-    )
-    info = json.loads(probe.stdout or "{}").get("format", {})
+    # Size comes from the filesystem, not from ffprobe. A second subprocess to
+    # ask how big a file we just wrote is, is a subprocess that can fail and
+    # report 0 MB for a cut that exists.
     result = {
         "output": str(out_path),
         "shots": [p.stem for p in parts],
         "fps": fps,
-        "duration_s": round(float(info.get("duration", 0.0)), 2),
-        "size_mb": round(float(info.get("size", 0)) / 1_048_576, 2),
+        "duration_s": round(duration_seconds(out_path), 2),
+        "size_mb": round(out_path.stat().st_size / 1_048_576, 2),
     }
     print(f"  {out_path}  {result['duration_s']}s  {result['size_mb']} MB  ({len(parts)} shots)")
     return result

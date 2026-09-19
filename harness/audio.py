@@ -16,7 +16,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .tools import duration_seconds, ffmpeg
+from .tools import duration_seconds, ffmpeg, run
 
 SAY = "/usr/bin/say"
 
@@ -44,9 +44,7 @@ def list_voices() -> list[str]:
 
 
 def _run(cmd: list[str]) -> None:
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise AudioError(f"command failed: {' '.join(cmd)}\n{proc.stderr[-1500:]}")
+    run(cmd, error=AudioError)
 
 
 def _silence(seconds: float, dest: Path) -> None:

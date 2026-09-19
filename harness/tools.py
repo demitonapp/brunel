@@ -17,10 +17,18 @@ there, not an error.
 """
 from __future__ import annotations
 
+import shlex
 import shutil
 import subprocess
+from collections.abc import Sequence
 from functools import cache
 from pathlib import Path
+
+#: How much of a failed command's stderr to quote. The four wrappers this
+#: replaced used 400, 1500, 1500 and 2000 with no reason recorded for any of
+#: them; ffmpeg's own errors are a line or two, and the generous limit only
+#: matters when something unexpected is talking.
+STDERR_TAIL = 2000
 
 
 class ToolError(Exception):
@@ -47,6 +55,30 @@ def ffprobe() -> str:
     return _resolve("ffprobe")
 
 
+def run(cmd: Sequence[str], *, error: type[Exception], cwd: Path | None = None) -> str:
+    """Run a command, raise `error` on a non-zero exit, return its stdout.
+
+    `assemble`, `audio`, `captions` and `passes` each had their own copy of
+    this, identical but for the exception type and an arbitrary stderr limit,
+    and `backend._mux` plus two sites in `__main__` open-coded it again. The
+    exception type stays a parameter because `main()` catches each module's
+    error separately to decide an exit code - that distinction is real, and it
+    is the only thing that differed.
+
+    `shlex.join` rather than `" ".join`: a path with a space in it made the old
+    message look like a different command than the one that ran.
+    """
+    proc = subprocess.run(
+        [str(c) for c in cmd], capture_output=True, text=True, errors="replace", cwd=cwd,
+    )
+    if proc.returncode != 0:
+        raise error(
+            f"command failed ({proc.returncode}): {shlex.join(str(c) for c in cmd)}\n"
+            f"{proc.stderr[-STDERR_TAIL:]}"
+        )
+    return proc.stdout
+
+
 def duration_seconds(path: Path) -> float:
     """A media file's duration in seconds.
 
@@ -58,15 +90,14 @@ def duration_seconds(path: Path) -> float:
     segment is shipped at whatever length it happens to be. A number that means
     both "empty" and "unreadable" cannot be compared against anything.
     """
-    proc = subprocess.run(
+    out = run(
         [ffprobe(), "-v", "error", "-show_entries", "format=duration",
          "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True, errors="replace",
+        error=ToolError,
     )
     try:
-        return float(proc.stdout.strip())
+        return float(out.strip())
     except ValueError:
         raise ToolError(
-            f"ffprobe could not read a duration from {path}: "
-            f"{(proc.stderr or proc.stdout).strip()[:200] or 'no output'}"
+            f"ffprobe gave no duration for {path}: {out.strip()[:200] or 'no output'}"
         ) from None

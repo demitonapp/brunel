@@ -23,7 +23,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
-from .tools import ffmpeg
+from .tools import ffmpeg, run
 
 # --- thresholds, each traced to the observation that set it ---------------
 
@@ -79,6 +79,32 @@ class CheckError(RuntimeError):
     """Raised when a check cannot run at all - distinct from a failed check."""
 
 
+def _pixels(path: Path, *, scale: str, pix_fmt: str = "gray",
+            before_input: Sequence[str] = ()) -> bytes:
+    """Decode one frame to raw pixel bytes.
+
+    Five call sites open-coded this, and not one of them looked at ffmpeg's
+    exit status - each tested only whether stdout was empty. A decode that
+    failed for a nameable reason (a corrupt file, a filter that will not build,
+    a pixel format ffmpeg cannot reach) reported "produced no pixels" and threw
+    the reason away.
+
+    Binary, so it cannot go through `tools.run`: `text=True` would mangle the
+    very bytes this exists to return.
+    """
+    proc = subprocess.run(
+        [ffmpeg(), "-v", "error", *before_input, "-i", str(path),
+         "-vf", f"scale={scale}", "-pix_fmt", pix_fmt,
+         "-f", "rawvideo", "-"],
+        capture_output=True,
+    )
+    if proc.returncode != 0 or not proc.stdout:
+        detail = proc.stderr.decode("utf-8", "replace").strip()[:300]
+        raise CheckError(f"ffmpeg produced no pixels for {path}"
+                         + (f": {detail}" if detail else ""))
+    return proc.stdout
+
+
 def grey_stats(path: Path, *, size: int = 64) -> dict[str, Any]:
     """Luminance statistics for one frame, downscaled to `size` x `size`.
 
@@ -88,14 +114,7 @@ def grey_stats(path: Path, *, size: int = 64) -> dict[str, Any]:
     """
     if not path.exists():
         raise CheckError(f"no such frame: {path}")
-    raw = subprocess.run(
-        [ffmpeg(), "-v", "error", "-i", str(path),
-         "-vf", f"scale={size}:{size}", "-pix_fmt", "gray",
-         "-f", "rawvideo", "-"],
-        capture_output=True,
-    ).stdout
-    if not raw:
-        raise CheckError(f"ffmpeg produced no pixels for {path}")
+    raw = _pixels(path, scale=f"{size}:{size}")
     vals = list(raw)
     n = len(vals)
     mean = sum(vals) / n
@@ -115,14 +134,7 @@ def is_greyscale(path: Path, *, size: int = 64, tolerance: int = 2) -> tuple[boo
     A depth or segmentation-adjacent pass must be neutral. This is what caught
     the depth pass that was silently rendering the beauty image instead.
     """
-    raw = subprocess.run(
-        [ffmpeg(), "-v", "error", "-i", str(path),
-         "-vf", f"scale={size}:{size}", "-pix_fmt", "rgb24",
-         "-f", "rawvideo", "-"],
-        capture_output=True,
-    ).stdout
-    if not raw:
-        raise CheckError(f"ffmpeg produced no pixels for {path}")
+    raw = _pixels(path, scale=f"{size}:{size}", pix_fmt="rgb24")
     worst = 0
     for i in range(0, len(raw), 3):
         r, g, b = raw[i], raw[i + 1], raw[i + 2]
@@ -233,12 +245,7 @@ def check_depth_pass(frames: Sequence[Path]) -> list[str]:
 def frame_diff(a: Path, b: Path, *, size: int = 48) -> float:
     """Mean absolute luminance difference between two frames, 0-255."""
     def grey(path: Path) -> list[int]:
-        return list(subprocess.run(
-            [ffmpeg(), "-v", "error", "-i", str(path),
-             "-vf", f"scale={size}:{size}", "-pix_fmt", "gray",
-             "-f", "rawvideo", "-"],
-            capture_output=True,
-        ).stdout)
+        return list(_pixels(path, scale=f"{size}:{size}"))
     ga, gb = grey(a), grey(b)
     if len(ga) != len(gb) or not ga:
         raise CheckError(f"cannot compare {a.name} and {b.name}")
@@ -336,14 +343,7 @@ def subject_coverage(path: Path, *, size: int = 96, tolerance: int = 12) -> floa
     subject from a gradient, which is why the thresholds below are a floor and a
     warning rather than a gate.
     """
-    raw = subprocess.run(
-        [ffmpeg(), "-v", "error", "-i", str(path),
-         "-vf", f"scale={size}:{int(size * 16 / 9)}", "-pix_fmt", "gray",
-         "-f", "rawvideo", "-"],
-        capture_output=True,
-    ).stdout
-    if not raw:
-        raise CheckError(f"ffmpeg produced no pixels for {path}")
+    raw = _pixels(path, scale=f"{size}:{int(size * 16 / 9)}")
     counts: dict[int, int] = {}
     for v in raw:
         counts[v] = counts.get(v, 0) + 1
@@ -389,13 +389,13 @@ def check_clip(path: Path) -> list[str]:
     problems: list[str] = []
     # Sample the middle of the clip, not frame 0 - the first frame of a generated
     # shot is often a fade.
-    probe = subprocess.run(
-        [ffmpeg(), "-v", "error", "-sseof", "-1", "-i", str(path),
-         "-vf", "scale=64:64", "-pix_fmt", "gray", "-f", "rawvideo", "-"],
-        capture_output=True,
-    ).stdout
-    if not probe:
-        return [f"could not read any pixel from {path}"]
+    try:
+        probe = _pixels(path, scale="64:64", before_input=("-sseof", "-1"))
+    except CheckError as exc:
+        # This one REPORTS rather than raises: it is called per shot over a
+        # whole episode, and one unreadable clip must not stop the rest from
+        # being checked.
+        return [str(exc)]
     vals = list(probe)
     mean = sum(vals) / len(vals)
     if mean < BLACK_MEAN:
@@ -417,11 +417,11 @@ def ssim(a: Path, b: Path) -> float:
     for p in (a, b):
         if not Path(p).exists():
             raise CheckError(f"no such frame: {p}")
-    out = subprocess.run(
+    out = run(
         [ffmpeg(), "-hide_banner", "-v", "error", "-i", str(a), "-i", str(b),
          "-lavfi", "ssim=stats_file=-", "-f", "null", "-"],
-        capture_output=True, text=True, errors="replace",
-    ).stdout
+        error=CheckError,
+    )
     for field in out.split():
         if field.startswith("All:"):
             return float(field[4:])

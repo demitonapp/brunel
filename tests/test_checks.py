@@ -9,6 +9,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 from conftest import FIXTURES, harness, output
 
 from harness import check
@@ -170,3 +171,26 @@ def test_a_shot_with_no_canary_warns_it_does_not_fail(ffmpeg: str, tmp_path: Pat
     unblessed = check.check_goldens({"c99": golden}, tmp_path, "ad02")
     assert unblessed and all(p.startswith("WARN:") for p in unblessed), \
         f"a shot with no canary was treated as a failure: {unblessed}"
+
+
+def test_a_corrupt_frame_names_the_reason_it_could_not_be_read(tmp_path: Path) -> None:
+    """Five decode sites open-coded the same ffmpeg call and not one of them
+    looked at its exit status - each tested only whether stdout was empty, so
+    the reason ffmpeg gave was thrown away and every failure read the same.
+    """
+    junk = tmp_path / "corrupt.png"
+    junk.write_bytes(b"\x89PNG\r\n\x1a\n" + b"garbage" * 20)
+    with pytest.raises(check.CheckError) as exc:
+        check.grey_stats(junk)
+    assert "corrupt.png" in str(exc.value)
+    # ffmpeg's own diagnosis, not just "produced no pixels".
+    assert len(str(exc.value)) > len(f"ffmpeg produced no pixels for {junk}")
+
+
+def test_check_clip_reports_an_unreadable_clip_rather_than_raising(tmp_path: Path) -> None:
+    """It is called per shot over a whole episode; one unreadable clip must not
+    stop the rest from being checked."""
+    junk = tmp_path / "corrupt.mp4"
+    junk.write_bytes(b"not an mp4 at all")
+    problems = check.check_clip(junk)
+    assert problems and "corrupt.mp4" in problems[0]
