@@ -234,3 +234,46 @@ Fix that with it or the report names the wrong thing six times.
 **Check.** `tests/test_checks.py`: a synthetic shot of identical frames must be reported by `verify`, and a
 shot whose frames differ must not be - the same shape as the black-frame test, which is the only
 evidence that a check works.
+
+### H28 — Nothing gates a render on a human having looked at the picture
+
+`factgate` requires `human_approved` on every fact before `--publish`. There is **no equivalent for
+the frames.** `verify` runs `check_storyboard`, `check_coverage`, `check_motion` and the pace check
+— all of them technical — and prints "all N artefact(s) pass". That sentence has never meant "this
+cut is any good", and twice this week it was read as though it did.
+
+The research is `docs/harness/storyboard-gate.md`. The finding that matters: VFX and animation track
+**two separate approval axes**, `VERSION APPROVED` (creative) and `TECH CHECKS APPROVED`
+(technical), and the vocabulary even has a state for when they disagree —
+`PUBLISHED - ELEMENT IN PIPE`, "internally approved but tech checks failed". Brunel has one axis and
+behaves as though it were both.
+
+**Cost paid for not having this:** s01 was rendered four times. A 3.5-hour render went out with
+three frozen shots; a 22-hour overnight attempt died carrying a backdrop that had never been
+approved as a look. Every fault in `storyboard-gate.md` §3 was visible in a still beforehand. The
+storyboard pass ran every time — nobody was ever required to look at it.
+
+**Blocks:** nothing mechanically. It is the reason four renders happened instead of one.
+
+**Fix — three gates, cheapest first.**
+
+1. **LOOK.** One shot at final resolution and samples, approved once per video: materials, lights,
+   backdrop, type. A look change after board approval invalidates every board frame and must say so.
+2. **BOARD.** `harness board <spec>` writes `spec/<id>/board/<id>.board.json` — one entry per shot
+   carrying the still, its measured coverage, a note, and `review: {state, by, at}`. Approval is
+   **fingerprint-bound** using the `_fingerprint(ep, shot, ...)` that `render.py` already computes
+   for its resume cache: change the camera, a part, a track or a material and that shot silently
+   returns to `unreviewed`. Approval that a later edit cannot invalidate is a memory, not approval —
+   the argument that already justifies `script_hash_matches_ledger`.
+3. **RENDER.** Full quality refuses a shot that is not `approved`. `--fast` and `--stills` are never
+   gated, or there is no way to iterate toward approval. `--waive` exists and is reported loudly,
+   because a gate with no escape hatch gets routed around rather than used.
+
+**Checks.** `tests/test_gates.py`: a full render is refused when a shot is `unreviewed`; the same
+render is allowed once it is `approved`; approval is **dropped automatically** when the shot's
+fingerprint changes (move a camera, re-run, assert the state reverted); and `--fast` is never
+blocked by any of it. The third is the one that matters — the other two only test bookkeeping.
+
+**Deliberately NOT included:** an automated judgement of whether a shot is good. `check_coverage` is
+a floor, not taste, and H22 already records why a "does this frame read" check would cry wolf. This
+item adds a *place for a human decision to be recorded and invalidated*, nothing more.
