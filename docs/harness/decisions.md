@@ -179,3 +179,28 @@ the option is known rather than rediscovered under pressure.
 
 **Reopens if** the B2B arm needs BIM ingest or interactivity — as a *second* pipeline, not a
 replacement — or if the 3080 benchmark disappoints badly enough to change the arithmetic.
+
+## D — The test runner is Python, and the dependency graph is locked
+
+**Decided 2026-09-20.**
+
+Two separate findings from a setup audit, fixed together because they share a root: the project's
+Python configuration described a smaller project than the one that exists.
+
+**The runner.** `tests/run.sh` was 702 lines of bash, 337 of them Python in heredocs — outside
+ruff, outside mypy, and not syntax-checked until the block ran. It is now nine `tests/test_*.py`
+modules under pytest. Three checks stay standalone scripts (`spin_axis.py`, `h24_projection.py`,
+`h25_cylinder_areas.py`) because bpy is a process-global singleton and h24 has the measurement to
+prove that two scene builds in one session return a confidently wrong number; pytest runs them as
+subprocesses. `pytest` is now a hard dependency for the same reason ruff and mypy are.
+
+**The manifest.** `pyproject.toml` declared only `bpy`; `jsonschema` — documented as a HARD
+dependency of the fact gate — existed only in `requirements.txt`, so `uv pip install .` produced a
+harness whose gate could not run. Both requirements files are gone. Runtime dependencies are in
+`[project.dependencies]`, checks are in `[dependency-groups].dev`, and `uv.lock` pins the
+transitive graph that `toolchain.lock.json` never covered (numpy, requests, attrs, cattrs and the
+rest were floating). A `[build-system]` makes the project installable, so `uv sync` puts `harness`
+on the path editably and the eleven `sys.path.insert(0, ".")` hacks are deleted.
+
+**Reopens if** bpy stops shipping wheels for a single CPython minor version, which is what makes
+one locked interpreter viable at all.

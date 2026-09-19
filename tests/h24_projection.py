@@ -32,7 +32,6 @@ PERSP_MINIMUM = 1.30
 
 def measure(which: str) -> dict[str, float]:
     """Build one fixture and return each cube's projected width, 0..1 of frame."""
-    sys.path.insert(0, str(ROOT))
     import bpy
     from bpy_extras.object_utils import world_to_camera_view
 

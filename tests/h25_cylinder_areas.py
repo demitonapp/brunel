@@ -22,9 +22,6 @@ from __future__ import annotations
 
 import math
 import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
 
 # Rexroth RE 17331, "Areas, forces, flows", row piston AL 140 / piston rod MM 100.
 PUBLISHED_CM2 = {"piston": 153.94, "rod": 78.54, "annulus": 75.40}
@@ -34,7 +31,6 @@ BORE, ROD = 0.140, 0.100
 
 
 def main() -> int:
-    sys.path.insert(0, str(ROOT))
     import bpy
 
     from harness import generators

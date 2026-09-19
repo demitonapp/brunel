@@ -128,7 +128,7 @@ them is exactly the tautology H7 names, and the validator would reject the keys 
 The check that earns its place compares the generator's output against **a number printed by someone
 who does not know this repo exists.** Rexroth RE 17331 publishes, for 140 × 100, a piston area of
 **153.94 cm²** and an annulus of **75.40 cm²**. Measured this session: derived 153.94 / 75.40 —
-agreement to 0.002 cm². That assertion lives in `tests/run.sh`, specified in **H25**.
+agreement to 0.002 cm². That assertion lives in `tests/test_scripts.py`, specified in **H25**.
 
 It fails if the generator ever computes the annulus from the bore *radius* instead of the bore
 *area* — the most likely way to get this wrong, and one that still produces a plausible-looking

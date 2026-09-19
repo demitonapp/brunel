@@ -3,7 +3,35 @@ name = "brunel"
 version = "0.1.0"
 description = "A harness for engineering-history animation. Spec in, frames out."
 requires-python = ">=3.13,<3.14"
-dependencies = ["bpy>=5.2,<5.3"]
+dependencies = [
+    # bpy ships its own bundled Python modules, so the harness itself needs almost nothing.
+    "bpy>=5.2,<5.3",
+    # Schema validation for the fact ledger. Deliberately a HARD dependency: a gate that
+    # silently skips validation when a library is missing is not a gate.
+    "jsonschema>=4.20",
+]
+
+[dependency-groups]
+# Checks. `uv sync` installs these by default, so tests/ can call them directly.
+#
+# Pinned, like the toolchain: a linter that changes its mind between runs turns
+# a green suite red for reasons that have nothing to do with the code.
+#
+# These are HARD requirements of the suite, not optional extras. A suite that
+# silently skips its own static checks when a tool is missing is not a suite -
+# the same argument [project.dependencies] makes about jsonschema and the fact gate.
+dev = [
+    "ruff==0.14.2",
+    "mypy==1.18.2",
+    "pytest==9.0.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["harness"]
 
 [tool.ruff]
 line-length = 100
@@ -16,14 +44,28 @@ target-version = "py313"
 select = ["E", "W", "F", "I", "UP", "B"]
 ignore = ["E501"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Assertions are the point of this suite; show the values that failed.
+addopts = "-q --tb=short"
+
 [tool.mypy]
 python_version = "3.13"
-files = ["harness"]
+# tests/ is in here deliberately. Half the old suite lived inside bash heredocs
+# where neither ruff nor mypy could see it, and 39 lint errors accumulated there
+# unnoticed. Test code that is not checked is test code that lies.
+files = ["harness", "tests"]
+# tests/fixtures holds NEGATIVE fixtures - code that exists to be rejected.
+# shadowed_def.py carries a deliberate no-redef error and is asserted on
+# directly by tests/test_static.py; checking it here would make the suite red
+# for containing its own evidence.
+exclude = ["^tests/fixtures/"]
 # bpy, bmesh and mathutils populate `bpy.data`, `bpy.ops` and `bpy.context` at
 # runtime; the shipped stubs do not describe them. Following them produces
 # hundreds of attribute errors about a library we do not control, which is the
 # fastest way to make a check unreadable and then ignored.
 [[tool.mypy.overrides]]
-module = ["bpy.*", "bpy", "bmesh.*", "bmesh", "mathutils.*", "mathutils", "jsonschema.*"]
+module = ["bpy.*", "bpy", "bpy_extras.*", "bmesh.*", "bmesh", "mathutils.*", "mathutils",
+          "jsonschema.*"]
 ignore_missing_imports = true
 follow_imports = "skip"

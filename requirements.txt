@@ -1,6 +1,0 @@
-# bpy ships its own bundled Python modules, so the harness itself needs almost nothing.
-bpy>=5.2,<5.3
-
-# Schema validation for the fact ledger. Deliberately a HARD dependency: a gate that
-# silently skips validation when a library is missing is not a gate.
-jsonschema>=4.20

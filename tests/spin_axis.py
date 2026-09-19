@@ -28,10 +28,6 @@ a per-frame check could never see it.
 from __future__ import annotations
 
 import math
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # `mathutils` is not a wheel on disk - it is registered as a builtin module by
 # importing bpy, so `import bpy` has to come first and cannot be dropped as

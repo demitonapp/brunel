@@ -102,9 +102,9 @@ un-excavated clay must be **roof and invert, never a wall between camera and sub
 
 ```bash
 cd brunel
-uv venv --python 3.13
-uv pip install -r requirements.txt -r requirements-dev.txt   # bpy==5.2.2, ruff, mypy
+uv sync                                 # locked: bpy 5.2.2, jsonschema, ruff, mypy, pytest
 python -m harness doctor                # verify the toolchain lock
+pytest                                  # the whole suite, ~45s, no Blender render needed
 ```
 
 **Always storyboard before you render.** Eight stills cost about a minute and catch the framing,
@@ -277,7 +277,7 @@ hashing the file is a mirage, hashing the decoded pixels would work *today*, and
 the render node, where the pixels themselves will drift. SSIM is the one metric that is correct in
 all three cases.
 
-`python -m harness verify <spec>` runs all of them over whatever exists. `tests/run.sh` proves the
+`python -m harness verify <spec>` runs all of them over whatever exists. `tests/test_checks.py` proves the
 storyboard check fires on a black frame *and* stays quiet on a real one — a check that has never been
 seen to fail is not a check.
 
@@ -338,7 +338,7 @@ A jack that turns six times and moves nothing is not a subtle animation error; i
 cannot exist, and it shipped once with the arithmetic written in a comment where nothing could
 check it.
 
-Also in `tests/run.sh`: **no shadowed top-level definitions.** A scripted rewrite left a duplicate
+Also in `tests/test_static.py`: **no shadowed top-level definitions.** A scripted rewrite left a duplicate
 `_depth_range` in `passes.py`, and Python takes the last one — so two rounds of careful fixes changed
 nothing, and the same broken number came back three times to three decimal places. The test found
 four more dead copies of the same mistake in the same file.
@@ -443,8 +443,9 @@ renders/          gitignored output
 
 - Python **3.13** exactly (bpy 5.2.2 requires it)
 - `ffmpeg` (present: 8.0.1) — now also required for the `edge` and `vis` passes
-- `ruff` and `mypy` — HARD dependencies of `tests/run.sh`, for the same reason as `jsonschema`
-  below. `requirements-dev.txt` pins both. mypy is what catches a top-level definition shadowed
+- `ruff`, `mypy` and `pytest` — HARD dependencies of the suite, for the same reason as
+  `jsonschema` below. The `dev` dependency group pins all three, and `uv.lock` pins the rest of
+  the graph. mypy is what catches a top-level definition shadowed
   by a later one — the defect that once made two rounds of careful fixes change nothing, because
   Python takes the last definition. `tests/fixtures/shadowed_def.py` exists to prove it fires.
 - `jsonschema` — a HARD dependency of the fact gate. A gate that silently skips schema validation

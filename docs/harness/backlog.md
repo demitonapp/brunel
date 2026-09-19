@@ -21,7 +21,7 @@ preserved in `git log` and, in enforceable form, in `LESSONS.md`; the audit itse
 
 | | |
 |---|---|
-| **H23** | For a Markdown script the ledger hash covered the stage directions too — fixed; `tests/run.sh` asserts that rewording an editorial note does not move the hash and changing a spoken word does |
+| **H23** | For a Markdown script the ledger hash covered the stage directions too — fixed; `tests/test_gates.py` asserts that rewording an editorial note does not move the hash and changing a spoken word does |
 | **H24** | The spec could not express an orthographic camera, which S1's area comparison needs — fixed; `tests/h24_projection.py` measures the projection rather than asserting an attribute |
 | **H27** | `PassProfile.frame_count` refused an over-long shot and silently **padded** a short one, so a 2 s shot on `wan` played 35% slow and the paid clip was then unshippable — fixed; refuses at both ends |
 | **H28** | `assemble` cut the edit in filename order from whatever frame directories were on disk, so a renamed shot re-entered the video and a non-sorting shot id reordered it — fixed; the spec's shot list is the edit order, orphans are refused |
@@ -78,7 +78,7 @@ python -m harness bench spec/ad01/ad01.toml --shots a01 \
     --res 1080x1920 --samples 8 --device CPU --frames 24
 ```
 
-**Check.** `tests/run.sh` asserts a one-frame benchmark is **refused** and writes no row —
+**Check.** `tests/test_backend.py` asserts a one-frame benchmark is **refused** and writes no row —
 `MIN_BENCH_FRAMES = 8`. The timer starts after `build_scene`, so build cost is excluded by
 construction; the floor exists for sampler warm-up and BVH build, which the first frame still pays.
 
@@ -140,7 +140,7 @@ or `ad01` frame changes. `bpy.ops.object.shade_smooth_by_angle` is the supported
 needs a selection, so `_shade_smooth` saves and restores it — a build that leaks selection makes the
 next part's operator do something else, which is an order-dependent bug that will not reproduce.
 
-**Checks.** `tests/run.sh`: `smooth = true` is refused with "expected an angle in DEGREES"
+**Checks.** `tests/test_spec_validation.py`: `smooth = true` is refused with "expected an angle in DEGREES"
 (`tests/fixtures/smooth_not_an_angle.toml`), and an 8-segment and a 64-segment cylinder must not
 have the same polygon count (`tests/fixtures/cylinder_segments.toml`).
 
@@ -179,7 +179,7 @@ make the arithmetic work, and that was the honest answer available at the time.
 **Blocks:** nothing today; `GEN cylinder` does not exist yet. Recorded now because the check has to
 be written with the component, not retrofitted after a render looks plausible.
 
-**The check, precisely.** When `GEN cylinder` lands, `tests/run.sh` builds a 140 × 100 cylinder and
+**The check, precisely.** When `GEN cylinder` lands, `tests/test_scripts.py` builds a 140 × 100 cylinder and
 asserts its derived piston and annulus areas match 153.94 cm² and 75.40 cm² within 0.01 cm². It fails
 if the generator ever computes an annulus from the bore radius instead of the bore *area*, which is
 the single most likely way to get this wrong and produces a number that still looks reasonable.
@@ -200,7 +200,7 @@ licence_path = Path("legal") / "licences.json"      # harness/__main__.py
 
 That file declares `"episode": "ep01"` and its assets are ep01's — contemporary engravings, the
 Illustrated London News, the Brunel Museum — three of which are `UNVERIFIED` or `unknown` and
-correctly block. `tests/run.sh` already records that it blocks today.
+correctly block. `tests/test_gates.py` already records that it blocks today.
 
 **So s01 cannot be published, and not for any reason of its own.** Every object in s01 is generated
 by the harness from cited dimensions; it uses no third-party asset at all. It is blocked by
@@ -219,7 +219,7 @@ answer "may this specific cut ship".
 entries under `spec/ep01/`. A video with no third-party assets still needs a register: an **empty**
 asset list is a positive declaration that nothing was borrowed, and is not the same as no file.
 
-**Check.** `tests/run.sh`: a spec whose own register is clean publishes even when the global one
+**Check.** `tests/test_gates.py`: a spec whose own register is clean publishes even when the global one
 blocks; and a spec with NO register of its own is refused rather than silently falling through to a
 permissive default.
 
@@ -263,6 +263,6 @@ as a lurch. Note the message interpolates `frames[0].parent.parent.name`, which 
 for a `renders/s01/b01/frame_*.png` layout - every problem above says `s01:` where it means `b01:`.
 Fix that with it or the report names the wrong thing six times.
 
-**Check.** `tests/run.sh`: a synthetic shot of identical frames must be reported by `verify`, and a
+**Check.** `tests/test_checks.py`: a synthetic shot of identical frames must be reported by `verify`, and a
 shot whose frames differ must not be - the same shape as the black-frame test, which is the only
 evidence that a check works.

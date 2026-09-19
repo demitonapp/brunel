@@ -1,0 +1,120 @@
+"""The output checks, each proven in BOTH directions.
+
+A check that only ever reports a fault it cannot also stay quiet about is a
+check that will be switched off the first time it cries wolf.
+"""
+from __future__ import annotations
+
+import shutil
+import subprocess
+from pathlib import Path
+
+from conftest import FIXTURES, harness, output
+
+from harness import check
+
+
+def _frame(ffmpeg: str, dest: Path, *source: str) -> Path:
+    subprocess.run([ffmpeg, "-v", "error", *source, "-frames:v", "1", str(dest)], check=True)
+    return dest
+
+
+def test_an_almost_empty_frame_is_reported(ffmpeg: str, tmp_path: Path) -> None:
+    """S1's first cut measured 1.9% subject coverage - 98% empty background -
+    and every check in the old suite passed it. A FLOOR, not the ceiling H22
+    rejected: no deliberate shot puts its subject at 2% of a 1080x1920 frame.
+    """
+    # A 20x20 white mark on a 1080x1920 field is ~0.02% of frame.
+    tiny = _frame(ffmpeg, tmp_path / "tiny.png",
+                  "-f", "lavfi", "-i", "color=c=0x2b2f36:s=1080x1920",
+                  "-f", "lavfi", "-i", "color=c=white:s=20x20",
+                  "-filter_complex", "overlay=500:900")
+    big = _frame(ffmpeg, tmp_path / "big.png",
+                 "-f", "lavfi", "-i", "color=c=0x2b2f36:s=1080x1920",
+                 "-f", "lavfi", "-i", "color=c=white:s=700x900",
+                 "-filter_complex", "overlay=190:500")
+
+    reported = check.check_coverage([tiny], label="tiny")
+    assert reported and "invisible at thumb scale" in reported[0], \
+        f"a 0.02%-coverage frame was NOT reported: {reported}"
+    assert not check.check_coverage([big], label="big")
+
+
+def test_a_black_frame_is_reported_and_a_real_one_is_not(ffmpeg: str, tmp_path: Path) -> None:
+    black = _frame(ffmpeg, tmp_path / "black.png",
+                   "-f", "lavfi", "-i", "color=c=black:s=64x64")
+    grey = _frame(ffmpeg, tmp_path / "grey.png", "-f", "lavfi", "-i", "testsrc=s=64x64")
+
+    assert check.check_storyboard([black]), \
+        "a black frame was NOT reported - the storyboard check cannot fire"
+    assert not check.check_storyboard([grey])
+
+
+def test_verify_runs_the_motion_check(ffmpeg: str, tmp_path: Path) -> None:
+    """H27. The regression risk is not that check_motion is wrong; it is that
+    nothing CALLS it.
+
+    Its only call site used to be inside check_depth_pass, reachable only when
+    control passes exist, so on `local` it never ran - and s01 rendered three
+    frozen shots while verify reported all 900 frames passing.
+    """
+    # testsrc genuinely animates across frames; a single colour does not.
+    moving = tmp_path / "selftest_clear" / "moving"
+    moving.mkdir(parents=True)
+    subprocess.run([ffmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc=s=64x64:r=6",
+                    "-frames:v", "6", str(moving / "frame_%04d.png")], check=True)
+    frozen = tmp_path / "selftest_clear" / "frozen"
+    frozen.mkdir(parents=True)
+    for i in range(1, 7):                       # the SAME frame, six times
+        shutil.copy(moving / "frame_0001.png", frozen / f"frame_{i:04d}.png")
+
+    blob = output(harness("verify", str(FIXTURES / "camera_clear.toml"), "--out", str(tmp_path)))
+    assert "frozen: nothing moves" in blob, f"verify did NOT report the frozen shot:\n{blob}"
+    assert "moving: nothing moves" not in blob, \
+        f"verify wrongly reported the moving shot as frozen:\n{blob}"
+
+
+def test_the_canary_fires_on_a_changed_frame_and_not_an_unchanged_one(
+    ffmpeg: str, tmp_path: Path,
+) -> None:
+    """The ONLY comparison check in the harness.
+
+    Every other one is a threshold and so cannot see drift. Calibrated against
+    two actual double-renders of ad02; see GOLDEN_SSIM_MIN in harness/check.py.
+    """
+    golden = tmp_path / "ad02" / "c01.png"
+    golden.parent.mkdir(parents=True)
+    _frame(ffmpeg, golden, "-f", "lavfi", "-i", "testsrc=s=128x128")
+    same = tmp_path / "same.png"
+    shutil.copy2(golden, same)
+    # A real picture change: the same pattern, cropped and rescaled. SSIM on
+    # ad02's smallest TRUE regression (a 5 cm camera move) measured 0.827, so a
+    # synthetic change has to be at least that visible to be a fair proxy.
+    drift = tmp_path / "drift.png"
+    subprocess.run([ffmpeg, "-v", "error", "-i", str(golden),
+                    "-vf", "crop=120:120:8:8,scale=128:128",
+                    "-frames:v", "1", str(drift)], check=True)
+
+    identical = check.ssim(same, golden)
+    assert identical >= 0.9999, \
+        f"two identical frames scored {identical} - the canary cannot recognise an unchanged render"
+    changed = check.ssim(drift, golden)
+    assert changed < check.GOLDEN_SSIM_MIN, \
+        f"a visibly changed frame scored {changed}, at or above the " \
+        f"{check.GOLDEN_SSIM_MIN} floor - the canary cannot fire"
+
+    # And through the check the CLI actually calls, not just the metric.
+    assert not check.check_goldens({"c01": same}, tmp_path, "ad02")
+    found = check.check_goldens({"c01": drift}, tmp_path, "ad02")
+    assert [p for p in found if not p.startswith("WARN:")], \
+        f"a changed frame was NOT reported as a regression: {found}"
+
+
+def test_a_shot_with_no_canary_warns_it_does_not_fail(ffmpeg: str, tmp_path: Path) -> None:
+    """Or the first run of a new spec is red for having no history yet."""
+    golden = tmp_path / "ad02" / "c01.png"
+    golden.parent.mkdir(parents=True)
+    _frame(ffmpeg, golden, "-f", "lavfi", "-i", "testsrc=s=128x128")
+    unblessed = check.check_goldens({"c99": golden}, tmp_path, "ad02")
+    assert unblessed and all(p.startswith("WARN:") for p in unblessed), \
+        f"a shot with no canary was treated as a failure: {unblessed}"

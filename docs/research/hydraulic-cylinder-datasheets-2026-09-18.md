@@ -146,7 +146,7 @@ Derived from the geometry, against what Rexroth prints:
 **This is the assertion the harness can hold.** `library/` rule 5 — a component that has been seen to
 fail gets a test — has a companion here: a component whose output can be checked against a published
 table *should* be. `GEN cylinder` computes A1 and A3 from bore and rod; those two numbers have a
-manufacturer's printed value to be compared against. That check belongs in `tests/run.sh`.
+manufacturer's printed value to be compared against. That check belongs in `tests/test_scripts.py`.
 
 **At Caterpillar's 350 bar (S002):**
 

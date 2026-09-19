@@ -488,8 +488,8 @@ The harness is fixed when:
   matches the spec. It does not yet produce a captioned cut from the *real* `ad02` clips, because
   those clips themselves are still 5.06 s against a 4.00 s spec (§8.1) — a real generation cost,
   not a code fix.
-- The `tests/run.sh`-fails-on-real-artefacts bullet was a point-in-time proof step for this
-  remediation, not a permanent assertion: `tests/run.sh` deliberately does not hard-code an
+- The the suite-fails-on-real-artefacts bullet was a point-in-time proof step for this
+  remediation, not a permanent assertion: the suite deliberately does not hard-code an
   expectation that `renders/ad02/generated-wan/` stays broken forever (see H6 - that pattern
   inverts the day someone fixes it). The proof was done manually and is recorded above.
 

@@ -29,7 +29,7 @@ one or the other.
   build succeeded and produced the wrong geometry. Nothing failed; the render was simply wrong.
 - **Check:** The compiler raises `SpecError` on any key not in the schema's closed vocabulary.
 - **Where:** `harness/spec.py` (top-level keys and `[part.params]` via `GENERATOR_PARAMS`).
-- **ENFORCED BY:** `harness/spec.py` (`_unknown`), exercised by `tests/run.sh` ("an unknown spec key is refused") via `tests/fixtures/unknown_key.toml`.
+- **ENFORCED BY:** `harness/spec.py` (`_unknown`), exercised by `tests/test_spec_validation.py` ("an unknown spec key is refused") via `tests/fixtures/unknown_key.toml`.
 
 ## 2026-09-17 - The closed vocabulary had a hole, and only a test found it
 
@@ -40,26 +40,26 @@ one or the other.
 - **Check:** `spec.py` declares `GENERATOR_PARAMS`, the allowed keys per generator, and refuses any
   others. `build.py` raises at import time if a generator has no declared schema.
 - **Where:** `harness/spec.py`, `tests/fixtures/unknown_key.toml`.
-- **ENFORCED BY:** `harness/spec.py` (`GENERATOR_PARAMS`), `harness/build.py` (import-time assert that every generator has a declared param schema), `tests/run.sh` ("an unknown spec key is refused").
+- **ENFORCED BY:** `harness/spec.py` (`GENERATOR_PARAMS`), `harness/build.py` (import-time assert that every generator has a declared param schema), `tests/test_spec_validation.py` ("an unknown spec key is refused").
 
 ## 2026-09-17 - A chained job is a delayed-action failure
 
 - **Context:** The render and the deliver step ran as one shell job (`render ; deliver`). A
   duplicate `--force` argument made argparse raise at startup, which would have killed `deliver`
   only AFTER the render finished - an hour spent for nothing.
-- **Check:** `tests/run.sh` checks that every subcommand parses. Anything a chained job will invoke
+- **Check:** `tests/test_cli.py` checks that every subcommand parses. Anything a chained job will invoke
   must be proven to START before the expensive step begins.
-- **Where:** `tests/run.sh`.
-- **ENFORCED BY:** `tests/run.sh` ("cli parses" loop - every subcommand's `--help` must exit 0).
+- **Where:** `tests/test_cli.py`.
+- **ENFORCED BY:** `tests/test_cli.py` ("cli parses" loop - every subcommand's `--help` must exit 0).
 
 ## 2026-09-17 - A check that has never been seen to fail is not a check
 
 - **Context:** The camera assertion and the closed vocabulary were both written, believed, and
   never exercised against a known-bad input. The vocabulary one was wrong.
 - **Check:** Every assertion gets a negative fixture that MUST fail, plus a positive control that
-  MUST pass. `./tests/run.sh` runs both directions.
-- **Where:** `tests/run.sh`, `tests/fixtures/`.
-- **ENFORCED BY:** `tests/run.sh` itself - this is the rule the whole file follows, not one assertion in it.
+  MUST pass. `pytest` runs both directions.
+- **Where:** `tests/`, `tests/fixtures/`.
+- **ENFORCED BY:** the suite itself - this is the rule the whole file follows, not one assertion in it.
 ## 2026-09-17 — Score renders, not code
 
 - **Context:** "The script ran" and "the shot works" are different claims, and only the second one
@@ -68,7 +68,7 @@ one or the other.
   floor of `GOLDEN_SSIM_MIN`. Hash equality is not used - see the 2026-09-18 entry for what was
   actually measured about reproducibility, which is more specific than the reason first given here.
 - **Where:** `goldens/<episode>/<shot>.png`, `harness/check.py`, `harness/__main__.py` (`verify`).
-- **ENFORCED BY:** `harness/check.py` (`check_goldens`) via `harness verify`, and `tests/run.sh`
+- **ENFORCED BY:** `harness/check.py` (`check_goldens`) via `harness verify`, and `tests/test_checks.py`
   ("the canary scores 1.0 on an unchanged frame and fires on a changed one"). **Built 2026-09-18**,
   having sat here as `nothing - prose only` since the first commit while `goldens/` stayed empty -
   which is exactly the pattern the entry two below warns about. The numbers in the original
@@ -102,7 +102,7 @@ one or the other.
   failure. Parts opt out with `camera_inside_ok = true`. Flat parts are skipped: a plane has no
   volume to be inside of.
 - **Where:** `harness/build.py` (`_assert_cameras_clear`).
-- **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`), `tests/run.sh` ("camera inside geometry is rejected" / "camera clear of geometry is accepted") via `tests/fixtures/camera_inside.toml` / `camera_clear.toml`.
+- **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`), `tests/test_spec_validation.py` ("camera inside geometry is rejected" / "camera clear of geometry is accepted") via `tests/fixtures/camera_inside.toml` / `camera_clear.toml`.
 
 ## 2026-09-17 - Do NOT try to automate "is the framing good"
 
@@ -124,7 +124,7 @@ one or the other.
 - **Check:** `render --stills` renders the middle frame of each shot. Run it, build a contact
   sheet, and look at it before starting a full render.
 - **Where:** `harness/render.py` (`stills_only`), `harness/__main__.py` (`--stills`).
-- **ENFORCED BY:** `harness/__main__.py` (`cmd_render` calls `check.check_storyboard` after `--stills`), and `check_storyboard` itself is unit-tested in `tests/run.sh` ("a black frame is reported, a real frame is not").
+- **ENFORCED BY:** `harness/__main__.py` (`cmd_render` calls `check.check_storyboard` after `--stills`), and `check_storyboard` itself is unit-tested in `tests/test_checks.py` ("a black frame is reported, a real frame is not").
 
 ## 2026-09-17 - Track time must be normalised, not frame-numbered
 
@@ -167,13 +167,22 @@ one or the other.
 ## 2026-09-17 - The pipeline trap, again, in the test harness
 
 - **Context:** A lesson about `set -e` and pipelines was written earlier the same day. Hours
-  later the identical mistake appeared in `tests/run.sh`, which runs under `set -uo pipefail`.
+  later the identical mistake appeared in `tests/run.sh`, which ran under `set -uo pipefail`.
   `factgate ... | grep -q PASS` fails when factgate exits 1 - because grep matched, but pipefail
   returns the rightmost non-zero status. The check reported FAIL for a rule that had passed.
 - **Check:** Capture the output into a variable, then grep the variable. Never pipe a
   deliberately-failing command into a matcher.
-- **Where:** `tests/run.sh`, fact-gate section.
-- **ENFORCED BY:** nothing automated - a coding convention in `tests/run.sh`, not a lint. Re-violated and re-caught by testing, not by a check, while adding the "deliver --backend" tests on 2026-09-18 - direct evidence this remains a discipline, not an enforcement.
+- **Where:** was `tests/run.sh`, fact-gate section; the runner is now Python.
+- **ENFORCED BY:** the language, as of 2026-09-20. This was a coding convention for a year and was
+  re-violated twice - once hours after the lesson was written, once again while adding the
+  "deliver --backend" tests on 2026-09-18 - which is what a discipline rather than an enforcement
+  looks like. The bash runner is gone: `subprocess.run(..., capture_output=True)` returns the
+  output and the exit status as separate fields, so there is no pipeline whose status can be
+  silently substituted. The port also surfaced a second instance of the same family that the
+  convention did NOT catch: `grep -q "PASS. script_hash_matches_ledger"` was matching
+  `[PASS] script_hash_matches_ledger`, because `.` is a regex wildcard that happens to match `]`.
+  A literal `in` does not, and the two assertions had to be corrected to `[PASS]` / `[FAIL]` to
+  keep passing. A shell matcher is a regex matcher whether or not you wanted one.
 
 ## 2026-09-17 - A rule can be present, correct, and still not fire
 
@@ -181,8 +190,8 @@ one or the other.
   Every strong source in the ledger had `"quote": "PLACEHOLDER - retrieve and paste verbatim"`,
   which is truthy, so the rule passed while enforcing nothing.
 - **Check:** A quote containing "placeholder" does not count as a quote.
-- **Where:** `harness/factgate.py` (`_has_quote`), fixture-backed in `tests/run.sh`.
-- **ENFORCED BY:** `harness/factgate.py` (`_has_quote`, the `PLACEHOLDER` regex), `tests/run.sh` ("a PLACEHOLDER quote does not count as a quote").
+- **Where:** `harness/factgate.py` (`_has_quote`), fixture-backed in `tests/test_gates.py`.
+- **ENFORCED BY:** `harness/factgate.py` (`_has_quote`, the `PLACEHOLDER` regex), `tests/test_gates.py` ("a PLACEHOLDER quote does not count as a quote").
 
 ---
 
@@ -214,7 +223,7 @@ one or the other.
   are quoted in the README.
 - **Where:** recorded here and in the `_depth_override_material` docstring; verified by the
   greyscale-outlier count (0 of 57,600 pixels) reported in the README.
-- **ENFORCED BY:** `harness/check.py` (`is_greyscale`, used inside `check_depth_pass`) - runs on every real `passes` invocation that requests depth; not covered by an isolated fixture in `tests/run.sh`.
+- **ENFORCED BY:** `harness/check.py` (`is_greyscale`, used inside `check_depth_pass`) - runs on every real `passes` invocation that requests depth; not covered by an isolated fixture in `tests/`.
 
 ## 2026-09-18 - Blender 5.2 removed the compositor's arithmetic
 
@@ -275,7 +284,7 @@ one or the other.
   c05 advanced the cell 0.26 m with no mechanism block and no spin track at all, one shot after the
   block that *was* checked. Fixed the same day: `_check_mechanisms` in `harness/spec.py` now derives
   `turns` and `advance` from the tracks actually applying to the shot and checks the declared numbers
-  against those. ENFORCED BY: `tests/run.sh` ("mechanism blocks are checked against tracks").
+  against those. ENFORCED BY: `tests/test_spec_validation.py` ("mechanism blocks are checked against tracks").
 
 ## 2026-09-18 - Blender's AREA lights default to pointing straight down
 
@@ -389,7 +398,7 @@ one or the other.
 - **Check:** `grep -c "^def <name>"` after any scripted rewrite. An unchanged measurement across a
   changed input is the signal; treat identical results after a fix as a bug in the fix.
 - **Where:** `harness/passes.py` — the duplicate was removed (67 lines).
-- **ENFORCED BY:** `tests/run.sh` ("harness hygiene" - an AST pass that fails on any shadowed top-level definition) - the automated form of the manual `grep` this entry describes.
+- **ENFORCED BY:** `tests/test_static.py` ("harness hygiene" - an AST pass that fails on any shadowed top-level definition) - the automated form of the manual `grep` this entry describes.
 
 ## 2026-09-18 - urllib has no CA bundle on this machine; curl does
 
@@ -453,7 +462,7 @@ one or the other.
   frozen shot (nothing changes) is a hard failure; a busy one is a warning to go and look. Wired
   into `check_depth_pass`.
 - **Where:** `harness/check.py` (`check_motion`, `frame_diff`).
-- **ENFORCED BY:** `harness/check.py` (`check_motion`, called from `check_depth_pass`) - runs on every real depth-pass check; not covered by a synthetic fixture in `tests/run.sh` (see H18, `docs/harness/backlog.md`).
+- **ENFORCED BY:** `harness/check.py` (`check_motion`, called from `check_depth_pass`) - runs on every real depth-pass check; not covered by a synthetic fixture in `tests/test_checks.py` (see H18, `docs/harness/backlog.md`).
 
 ## 2026-09-18 - A threshold calibrated on the bug cannot separate the bug from the fix
 
@@ -476,9 +485,9 @@ one or the other.
   changed nothing.
 - **Check:** After any scripted rewrite, `grep` for a string that only the new code contains and
   assert a non-zero count. An unchanged result after a fix is the signal.
-- **Where:** this file's sibling in `tests/run.sh` — "no shadowed top-level definitions" — catches
+- **Where:** this file's sibling in `tests/test_static.py` — "no shadowed top-level definitions" — catches
   the duplicate half of this class; the no-op half is caught only by grepping after the edit.
-- **ENFORCED BY:** `tests/run.sh` ("harness hygiene") catches the duplicate-definition half; the no-op-replacement half remains a manual `grep`-after-edit discipline, same as the entry above.
+- **ENFORCED BY:** `tests/test_static.py` ("harness hygiene") catches the duplicate-definition half; the no-op-replacement half remains a manual `grep`-after-edit discipline, same as the entry above.
 
 ## 2026-09-18 - A documented check is not an enforced check
 
@@ -498,8 +507,8 @@ one or the other.
   measured against. Going forward: a lesson recorded here without a line naming what enforces it is a
   lesson that can ship again.
 - **Where:** `harness/__main__.py` (`cmd_generate`'s `_accept`, `cmd_deliver`'s
-  `_deliver_from_backend`), `tests/run.sh` ("deliver --backend" section), `docs/strategy/spec.md`.
-- **ENFORCED BY:** `harness/__main__.py` (`_accept`, `_deliver_from_backend`), `tests/run.sh`
+  `_deliver_from_backend`), `tests/test_backend.py` ("deliver --backend" section), `docs/strategy/spec.md`.
+- **ENFORCED BY:** `harness/__main__.py` (`_accept`, `_deliver_from_backend`), `tests/test_backend.py`
   ("deliver --backend" section - a synthetic black clip and a synthetic mistimed clip are both
   proven refused). Every other entry in this file was given this same line the day this one was
   written: annotating all 40 in one pass was first tried and rejected as "asserting enforcement
@@ -595,7 +604,7 @@ one or the other.
 - **CORRECTION, same day.** This entry first said no check existed and the harness had the same
   hole. **That was wrong, and wrong in the worst direction** - it told a future reader a guard was
   missing when it is there and tested. `build._assert_cameras_clear` refuses a camera whose position
-  falls inside any part's bounds unless that part sets `camera_inside_ok`, and `tests/run.sh` proves
+  falls inside any part's bounds unless that part sets `camera_inside_ok`, and `tests/test_spec_validation.py` proves
   it fires (`tests/fixtures/camera_inside.toml`, "camera inside geometry is rejected") and does not
   over-fire (`camera_clear.toml`). It was written after a camera inside the flood-water box rendered
   s07 black.
@@ -605,8 +614,8 @@ one or the other.
   the harness wherever a fixture can carry the question, and for not trusting a scratch render's
   silence.
 - **Where:** `scratchpad/probe/section_probe.py` (throwaway, bypassed the check),
-  `harness/build.py` (`_assert_cameras_clear`), `tests/run.sh`.
-- **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`) and `tests/run.sh` ("camera inside
+  `harness/build.py` (`_assert_cameras_clear`), `tests/test_spec_validation.py`.
+- **ENFORCED BY:** `harness/build.py` (`_assert_cameras_clear`) and `tests/test_spec_validation.py` ("camera inside
   geometry is rejected" / "camera clear of geometry is accepted") - both re-read this session rather
   than assumed, which is how the original claim in this entry was found to be false.
 
@@ -652,11 +661,11 @@ one or the other.
   automatic**: a canary that seeded itself on first sight would lock in whatever happened to be on
   disk, including the regression it exists to catch.
 - **Check:** `harness verify` scores each shot's storyboard still against `goldens/<ep>/<shot>.png`
-  and fails below the floor. `tests/run.sh` proves the metric reads 1.0 on an unchanged frame and
+  and fails below the floor. `tests/test_checks.py` proves the metric reads 1.0 on an unchanged frame and
   fires on a changed one, and that an unblessed shot only warns.
 - **Where:** `harness/check.py` (`ssim`, `check_goldens`, `GOLDEN_SSIM_MIN`),
   `harness/__main__.py` (`_canary`, `_canary_stills`, `verify --bless`), `goldens/ad02/`.
-- **ENFORCED BY:** `tests/run.sh` ("the canary scores 1.0 on an unchanged frame and fires on a
+- **ENFORCED BY:** `tests/test_checks.py` ("the canary scores 1.0 on an unchanged frame and fires on a
   changed one", "a shot with no canary warns, it does not fail") — and, on real renders,
   `harness verify`, which was confirmed this session to exit 3 on a genuine 5 cm camera move and 0
   on a clean re-render. `goldens/ad02` is blessed; **`goldens/ep01` is not**, so ep01 has no canary.
@@ -680,7 +689,7 @@ one or the other.
 - **Check:** `frame_count` raises on either side of a backend's window, naming the seconds that
   would fit.
 - **Where:** `harness/passes.py` (`PassProfile.frame_count`).
-- **ENFORCED BY:** `tests/run.sh` ("a shot below a backend's min_frames is refused, not silently
+- **ENFORCED BY:** `tests/test_backend.py` ("a shot below a backend's min_frames is refused, not silently
   padded") — asserted against `WanVaceBackend.profile` itself, not a hand-made profile, so it
   tracks the real backend if its window changes.
 
@@ -710,7 +719,7 @@ one or the other.
   as the control that proves the assertion can fail.
 - **Where:** `harness/render.py` (`spin_euler`, extracted from `_apply_tracks` so the test exercises
   shipped code rather than a copy that can drift), `tests/spin_axis.py`.
-- **ENFORCED BY:** `tests/run.sh` ("a spin turns the part about its own axis, for every base
+- **ENFORCED BY:** `tests/test_scripts.py` ("a spin turns the part about its own axis, for every base
   rotation").
 
 ## 2026-09-18 — The edit order came from the filesystem, not from the spec
@@ -732,7 +741,7 @@ one or the other.
   frame directory that is not a shot in the spec is refused rather than cut in.
 - **Where:** `harness/assemble.py` (`_shot_dirs`, `assemble(shots=...)`), `harness/__main__.py`
   (`cmd_pipeline`, `cmd_deliver` pass `[s["id"] for s in ep.shots]`).
-- **ENFORCED BY:** `tests/run.sh` ("the cut follows the spec's shot order, not the filesystem's",
+- **ENFORCED BY:** `tests/test_assemble.py` ("the cut follows the spec's shot order, not the filesystem's",
   "a leftover or missing shot directory is refused, not cut in"). The fixture uses ids `s1, s2, s10`
   deliberately, and asserts that they do **not** already sort into spec order — a fixture whose ids
   sort correctly would pass on the broken code, which is the same trap the spin test's whole-turn
@@ -786,7 +795,7 @@ one or the other.
 - **Where:** `harness/check.py` (`check_motion`), `harness/__main__.py` (`cmd_verify`),
   `spec/s01/s01.toml`, `docs/harness/backlog.md` H27.
 - **ENFORCED BY:** `harness/__main__.py` (`cmd_verify` now runs `check_motion` per shot directory -
-  grouped, because over a flat glob the seam between two shots reads as a lurch) and `tests/run.sh`
+  grouped, because over a flat glob the seam between two shots reads as a lurch) and `tests/test_checks.py`
   ("verify reports a frozen shot and not a moving one"), which builds six identical frames and six
   animating ones and asserts the report distinguishes them. The test was written wrong first - it
   synthesised "moving" frames that were all the same colour - and failed, which is how it earned
@@ -827,3 +836,36 @@ one or the other.
   a frame is worth, not a rule. What IS enforced is `harness bench`, which exists precisely so
   throughput claims are measured; the failure here was not using it before committing a machine to
   an eleven-hour job.
+
+## 2026-09-20 — Half the suite's pass cases could not fail
+
+- **Context:** `tests/run.sh`'s `check()` helper ran the harness, captured the combined output, and
+  grepped it. For an expect-**fail** case it asserted the phrase was present. For an expect-**pass**
+  case it asserted only that the phrase was *absent* — and never looked at the exit status at all.
+  So `check "camera clear of geometry is accepted" pass ...` stayed green if the build crashed for
+  any reason whatsoever. Demonstrated on a nonexistent path: exit 2, `spec error: spec not found`,
+  verdict `pass`. Three of the six cases were pass-expecting. The positive control this repo
+  insists on for every negative fixture was, for a year, an assertion that could not fail.
+- **Check:** A pass case asserts `returncode == 0` **first**; the absence of a phrase is the second
+  assertion, never the only one. Absence of evidence is what a crashed process also produces.
+- **Where:** `tests/test_spec_validation.py` (`test_build_accepts_a_clear_camera`).
+- **ENFORCED BY:** `tests/test_spec_validation.py` — every `harness(...)` call site now asserts on
+  `proc.returncode`, which is a field rather than something that has to be remembered.
+
+## 2026-09-20 — 337 lines of the test suite were invisible to every tool that checks code
+
+- **Context:** `tests/run.sh` was 702 lines, of which 337 were Python inside `<<'PY'` heredocs.
+  `ruff check harness/ tests/` could not see them because they were not `.py` files; `mypy` could
+  not see them because `files = ["harness"]`; nothing syntax-checked them until the block ran, at
+  which point a typo printed a traceback that the `if` read as a failed assertion — indistinguishable
+  from a real regression. Extracting the blocks and running the repo's **own** ruff config over them
+  found 39 errors, including `E401`, `E402` and four `I001`. The project had spent an entire
+  decisions entry (D-2026-09-18) on wiring up ruff and mypy, and half the suite was outside both.
+- **Check:** Test code is code. It lives in `.py` files, it is linted, and it is type-checked.
+  `mypy.files` includes `tests`.
+- **Where:** `tests/test_*.py`, `pyproject.toml` (`files = ["harness", "tests"]`).
+- **ENFORCED BY:** `tests/test_static.py` — `test_ruff` and `test_mypy` now cover `tests/` as well
+  as `harness/`, and `test_the_suite_has_no_python_hidden_in_shell_heredocs` fails if a `<<'PY`
+  block reappears under `tests/`. The port itself was the proof: turning the heredocs into modules
+  immediately surfaced two live defects (the exit-status hole above, and `grep -q "PASS. x"`
+  matching `[PASS] x` because `.` is a regex wildcard) that the bash form had hidden.

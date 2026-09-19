@@ -1,0 +1,43 @@
+# The suite already refuses to skip a check when a tool is missing. This makes
+# it refuse to skip because a human forgot to run it.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      # ffmpeg is a HARD requirement: most of the output checks synthesise
+      # their own fixtures with it. A runner without it must fail loudly.
+      #
+      # The X and GL libraries are for bpy. The wheel is a full Blender build
+      # and links them even when it never opens a window; without them the
+      # import fails rather than degrading to headless.
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg libgl1 libxi6 libxxf86vm1 libxfixes3 libxrender1 libsm6 libxkbcommon0
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      # --locked, not plain sync: CI must fail if uv.lock has drifted from
+      # pyproject.toml rather than quietly resolving something else.
+      - run: uv sync --locked
+
+      # ruff, mypy and the whole suite. Deliberately one command - the static
+      # checks are tests here (tests/test_static.py), so there is one list of
+      # what must pass and CI cannot disagree with `pytest` run locally.
+      - run: uv run pytest
