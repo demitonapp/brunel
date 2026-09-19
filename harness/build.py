@@ -68,6 +68,8 @@ def reset_scene(ep: spec_mod.Episode) -> Any:
         scene.cycles.use_denoising = True
         device = ep.meta["device"]
         scene.cycles.device = "GPU" if device in {"OPTIX", "CUDA", "METAL"} else "CPU"
+        if scene.cycles.device == "GPU":
+            _enable_gpu(device)
 
     # AgX, held for the whole episode. Never Filmic - it is deprecated.
     try:
@@ -76,6 +78,46 @@ def reset_scene(ep: spec_mod.Episode) -> Any:
         pass
     return scene
 
+
+
+def _enable_gpu(device: str) -> None:
+    """Turn the requested compute backend on, or refuse.
+
+    `scene.cycles.device = "GPU"` on its own does NOT use the GPU. Cycles reads
+    the backend from user preferences, which default to NONE, and silently
+    renders on the CPU when nothing is enabled. The render succeeds, the frames
+    are correct, and the only symptom is that it took twenty times as long.
+
+    This repo has already paid for that once: H19 records a benchmark row that
+    stored `"device": "OPTIX"` for a render that ran entirely on CPU.
+
+    So this refuses rather than falling back. A spec that asks for OPTIX on a
+    machine with no OptiX device has an author who expects a GPU render, and
+    quietly giving them a CPU one is the silent failure this compiler exists to
+    prevent.
+    """
+    prefs = bpy.context.preferences.addons["cycles"].preferences
+    prefs.compute_device_type = device
+    # get_devices() populates prefs.devices; without it the list can be empty
+    # even on a machine that has the hardware.
+    try:
+        prefs.get_devices()
+    except Exception:  # noqa: BLE001 - older/newer API shapes differ
+        pass
+    usable = [d for d in prefs.devices if d.type == device]
+    for d in prefs.devices:
+        d.use = d.type == device
+    if not usable:
+        have = sorted({d.type for d in prefs.devices})
+        raise BuildError(
+            f"device = {device!r} but Blender reports no {device} device on this machine. "
+            f"Backends it can see: {have or ['none']}. Refusing rather than falling back to "
+            f"CPU, because a silent CPU render at GPU prices is indistinguishable from a "
+            f"working one until the clock says otherwise. Use device = \"CPU\", or fix the "
+            f"driver/runtime for {device}."
+        )
+    names = ", ".join(d.name for d in usable)
+    print(f"  cycles: {device} enabled on {len(usable)} device(s) - {names}")
 
 def build_materials(ep: spec_mod.Episode) -> dict[str, Any]:
     out: dict[str, Any] = {}
