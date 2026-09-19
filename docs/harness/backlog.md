@@ -28,6 +28,8 @@ preserved in `git log` and, in enforceable form, in `LESSONS.md`; the audit itse
 | **H29** | Narration longer than `MAX_TEMPO` allowed was hard-cut mid-sentence by `-t slot` while printing a `fitted:` line that read as success — fixed; refuses and names the shot, the overrun and the shot length that would fit |
 | **H30** | Every check in the harness was a threshold check, so nothing could see drift — fixed; `goldens/`, `check.ssim`, `check.check_goldens`, `verify --bless`, calibrated on two real double-renders |
 | **H31** | The spin composition — the repo's most expensive bug — had no numeric test, only a WARNING whose thresholds overlap correct behaviour — fixed; `tests/spin_axis.py` |
+| **H26** | `deliver --publish` read one hardcoded, global `legal/licences.json` — ep01's engravings — so s01, which generates every object it shows and borrows nothing, could not be published for reasons that had nothing to do with s01 — fixed; the register resolves to `spec/<id>/legal/licences.json` with **no fallback**, an empty `"assets": []` is a positive declaration and a missing `assets` key is refused |
+| **H32** | `render --stills` wrote ONE frame per shot and `check_motion` returns early below three, so the cheap pre-flight pass was structurally blind to a frozen shot — the fault that put 3.5 h of s01 frames on disk as still photographs, caught only by `verify` afterwards — fixed; the stills pass renders first, middle and last and checks motion and coverage per shot. **Numbered H32 because H27 is taken twice** (the `frame_count` entry above, and the `check_motion` wiring entry in Part VI); that collision is unresolved, not inherited by this one |
 
 ---
 
@@ -188,40 +190,6 @@ the single most likely way to get this wrong and produces a number that still lo
 numbers proves nothing. This compares the generator's output against a figure printed by someone
 who does not know this repo exists.
 
-
-### H26 — The licence register is global while the fact ledger is per-video, so ep01 blocks s01
-
-`deliver --publish` resolves the fact ledger per spec, and then reads the licence register from a
-**hardcoded, global path**:
-
-```python
-licence_path = Path("legal") / "licences.json"      # harness/__main__.py
-```
-
-That file declares `"episode": "ep01"` and its assets are ep01's — contemporary engravings, the
-Illustrated London News, the Brunel Museum — three of which are `UNVERIFIED` or `unknown` and
-correctly block. `tests/test_gates.py` already records that it blocks today.
-
-**So s01 cannot be published, and not for any reason of its own.** Every object in s01 is generated
-by the harness from cited dimensions; it uses no third-party asset at all. It is blocked by
-unresolved provenance on a different video's engravings.
-
-**Blocks:** `deliver spec/s01/s01.toml --publish`. Nothing else — the render, assemble, captions and
-voice paths do not read the register.
-
-**This is the gate crying wolf, which is the failure mode H23 was just fixed for.** A gate that
-blocks a video over another video's assets teaches people to pass `--waive`, and a waiver habit is
-worse than no gate. The asymmetry is the bug: facts are per-video and licences are not, though both
-answer "may this specific cut ship".
-
-**Fix.** Resolve the register beside the ledger — `spec/<id>/legal/licences.json`, falling back to
-`legal/licences.json` only when the per-video file is absent, so ep01 is unaffected. Move ep01's
-entries under `spec/ep01/`. A video with no third-party assets still needs a register: an **empty**
-asset list is a positive declaration that nothing was borrowed, and is not the same as no file.
-
-**Check.** `tests/test_gates.py`: a spec whose own register is clean publishes even when the global one
-blocks; and a spec with NO register of its own is refused rather than silently falling through to a
-permissive default.
 
 ### H27 — `check_motion` cannot run on the shipping path
 

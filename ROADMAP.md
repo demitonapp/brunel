@@ -241,7 +241,7 @@ Observable, checkable exit criteria. You can look at a render and say yes or no.
 | `qa/rubrics/*.md` | The tier checklist *is* the rubric. | Episode 1 |
 | `facts/epNN.facts.json` + `factgate` | The accuracy product, made mechanical. Written **before** the script. | Episode 1 |
 | `render-bench.json` | Replaces every estimated number in this roadmap with a measured one. | Day 3 |
-| `legal/licences.json` | Per-asset source, licence, URL, retrieved date, modifications, plus a dated screenshot of the licence page. | Episode 1 |
+| `spec/<id>/legal/licences.json` | Per-asset source, licence, URL, retrieved date, modifications, plus a dated screenshot of the licence page. | Episode 1 |
 | `LESSONS.md` | Every entry carries an executable check, or it does not belong here. | Continuous |
 | `eval/` | The eval ledger. The only evidence accepted in a retrospective. | Episode 1 |
 
@@ -285,7 +285,7 @@ voice cloning; no YouTube long-form cut.
 
 **Must ship as reusable assets:** `toolchain.lock.json`, compiler MVP, `GEN_shield_frame`,
 `GEN_brick_bond`, `MAT_*` masters, `CHR_worker_scale` (1.70 m reference figure), 2 shot templates,
-6-shot canary reel, `facts/ep01.facts.json` + passing `factgate`, `legal/licences.json`.
+6-shot canary reel, `facts/ep01.facts.json` + passing `factgate`, `spec/ep01/legal/licences.json`.
 
 ---
 

@@ -74,6 +74,58 @@ def test_verify_runs_the_motion_check(ffmpeg: str, tmp_path: Path) -> None:
         f"verify wrongly reported the moving shot as frozen:\n{blob}"
 
 
+def test_the_storyboard_pass_can_see_a_frozen_shot(ffmpeg: str, tmp_path: Path) -> None:
+    """Both directions, across frames that are SECONDS apart.
+
+    `render --stills` used to write one frame per shot, and `check_motion`
+    returns early below three - so the cheap pass could not, even in principle,
+    see the fault that rendered three of s01's six hooks as still photographs.
+    It now writes first, middle and last.
+
+    The second half is the more important one. Spread that far apart, adjacent
+    stills differ enormously, so the lurch threshold and the busy warning would
+    fire on every correctly animated shot. A check that reports a fault on
+    correct work is a check that gets switched off.
+    """
+    from harness.__main__ import _motion
+
+    spread = tmp_path / "spread"
+    spread.mkdir()
+    subprocess.run([ffmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc=s=64x64:r=12",
+                    "-frames:v", "36", str(spread / "f_%04d.png")], check=True)
+    moving = [spread / "f_0001.png", spread / "f_0018.png", spread / "f_0036.png"]
+    frozen = []
+    for i, _ in enumerate(moving, 1):
+        dest = tmp_path / f"frozen_{i}.png"
+        shutil.copy(moving[0], dest)
+        frozen.append(dest)
+
+    reported = _motion(frozen, "b01")
+    assert reported and "nothing moves" in reported[0], \
+        f"three identical stills were NOT reported as frozen: {reported}"
+    assert "b01" in reported[0], f"the report names the wrong thing: {reported[0]}"
+    assert not _motion(moving, "b02"), \
+        f"three stills seconds apart were reported as a fault: {_motion(moving, 'b02')}"
+
+
+def test_the_stills_pass_renders_enough_frames_to_check_motion(tmp_path: Path) -> None:
+    """The wiring, not the check. `check_motion` returns early below three
+    frames, so a stills pass that writes fewer silently stops running it -
+    which is how this fault shipped the first time.
+
+    camera_clear.toml is a box that does not move, so the pass must also REFUSE
+    it. That is the fixture being honest, not the fixture being wrong: it is a
+    positive control for the camera-inside assertion, not for animation.
+    """
+    proc = harness("render", "--stills", str(FIXTURES / "camera_clear.toml"),
+                   "--out", str(tmp_path))
+    frames = sorted((tmp_path / "selftest_clear" / "s01").glob("frame_*.png"))
+    assert len(frames) >= 3, \
+        f"the stills pass wrote {len(frames)} frame(s) - check_motion cannot run below 3"
+    assert proc.returncode == 3, f"a motionless shot was not refused:\n{output(proc)}"
+    assert "nothing moves" in output(proc), output(proc)
+
+
 def test_the_canary_fires_on_a_changed_frame_and_not_an_unchanged_one(
     ffmpeg: str, tmp_path: Path,
 ) -> None:

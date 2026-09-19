@@ -8,8 +8,12 @@ page as evidence rather than a URL that can rot.
 
 Run directly (like factgate, so it needs no CLI wiring):
 
-    python -m harness.licencegate legal/licences.json
-    python -m harness.licencegate legal/licences.json --publish
+    python -m harness.licencegate spec/ep01/legal/licences.json
+    python -m harness.licencegate spec/ep01/legal/licences.json --publish
+
+The register lives beside the video's fact ledger, one per video (H26). Both
+answer "may this specific cut ship", and a global register answers it for the
+wrong cut.
 """
 
 from __future__ import annotations
@@ -46,9 +50,15 @@ def evaluate(ledger: dict[str, Any]) -> tuple[list[str], list[str]]:
     prohibited = set(policy.get("prohibited", PROHIBITED))
     hosts = {h.lower() for h in ledger.get("prohibited_hosts", [])}
 
-    assets = ledger.get("assets", [])
-    if not assets:
-        failures.append("register declares no assets")
+    # An EMPTY asset list is a positive declaration that nothing was borrowed -
+    # s01 generates every object it shows from cited dimensions - and it is not
+    # the same thing as a register that never mentions assets at all. The first
+    # is an answer; the second is silence, and silence must not publish.
+    assets = ledger.get("assets")
+    if assets is None:
+        failures.append('register has no "assets" key - declare [] if this '
+                        'video borrowed nothing')
+        assets = []
 
     for a in assets:
         aid = a.get("id", "<no id>")

@@ -24,9 +24,9 @@ verification ledger is the thing to re-run, not these.
 ## The gap this directory currently has
 
 Nothing in the repo links to any of these files, and nothing links to the master either. Meanwhile
-`legal/licences.json` carries one asset — `lic_placeholder_brunel_museum`, licence `unknown` — which
+`spec/ep01/legal/licences.json` carries one asset — `lic_placeholder_brunel_museum`, licence `unknown` — which
 **blocks `licencegate`**, and therefore blocks `deliver --publish` for every episode.
 
 2,847 lines of licence research and a register with a placeholder in it is the same failure the
 harness keeps finding in its own code: the evidence exists, and it is wired to nothing. The fix is
-to populate `legal/licences.json` from the master's §1 decision table, not to do more research.
+to populate `spec/ep01/legal/licences.json` from the master's §1 decision table, not to do more research.

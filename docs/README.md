@@ -42,7 +42,7 @@ not summarise it into strategy documents and then let the two drift.
 §1 is the table you act on. The four long-form source documents it was compressed from are in
 [`research/evidence/`](research/evidence/README.md), which exists because a summary cannot carry
 what could *not* be verified. Nothing in the repo currently links to any of it, while
-`legal/licences.json` still holds a placeholder that blocks `licencegate`; that gap is the open
+`spec/ep01/legal/licences.json` still holds a placeholder that blocks `licencegate`; that gap is the open
 action, not more research.
 
 The newest entry is the first one bound to a shipping deliverable rather than to a tooling decision:

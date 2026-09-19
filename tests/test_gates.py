@@ -8,9 +8,14 @@ demand, as information, not as pass/fail.
 """
 from __future__ import annotations
 
+import json
+import shutil
 import subprocess
 import sys
+from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from conftest import FIXTURES, ROOT
 
 from harness.factgate import _markdown_narration
@@ -77,3 +82,60 @@ def test_a_non_commercial_asset_is_blocked() -> None:
 def test_a_clear_public_domain_asset_is_accepted() -> None:
     proc = _gate("licencegate", str(FIXTURES / "licences_clean.json"))
     assert proc.returncode == 0, f"false positive on a clean asset:\n{proc.stdout}"
+
+
+NOTHING_BORROWED = {"schema": 1, "episode": "tv", "assets": []}
+
+
+@pytest.mark.parametrize("register,expected,desc", [
+    (NOTHING_BORROWED, 0, "an empty list is a declaration that nothing was borrowed"),
+    ({"schema": 1, "episode": "tv"}, 1, "a register that never mentions assets is silence"),
+])
+def test_an_empty_asset_list_is_not_the_same_as_no_asset_list(
+    register: dict, expected: int, desc: str, tmp_path: Path,
+) -> None:
+    """s01 generates every object it shows, so its register is honestly empty.
+
+    That has to publish, or the gate blocks the one kind of video this harness
+    exists to make. It must not publish by accident, though: a file that simply
+    forgot to say is not a file that said no.
+    """
+    path = tmp_path / "licences.json"
+    path.write_text(json.dumps(register), encoding="utf-8")
+    proc = _gate("licencegate", str(path))
+    assert proc.returncode == expected, f"{desc}:\n{proc.stdout}"
+
+
+def test_the_licence_register_is_resolved_per_video(tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    """H26. The register belongs beside the fact ledger, and nowhere else.
+
+    It used to be one hardcoded `legal/licences.json` holding ep01's engravings,
+    three of them UNVERIFIED and correctly blocking - so s01, which borrows
+    nothing, could not be published for reasons that had nothing to do with s01.
+    A gate that blocks a cut over another cut's assets teaches the habit of
+    passing --waive.
+
+    Both directions matter, and the second is the one a "fall back to the global
+    file" fix would get wrong: a video with no register of its own must be
+    REFUSED, not quietly cleared by someone else's paperwork.
+    """
+    from harness.__main__ import _publish_gate
+
+    facts = tmp_path / "spec" / "tv" / "facts"
+    facts.mkdir(parents=True)
+    shutil.copy(FIXTURES / "ledger_passing.json", facts / "tv.facts.json")
+    # A global register that BLOCKS, exactly as ep01's does today.
+    (tmp_path / "legal").mkdir()
+    shutil.copy(FIXTURES / "licences_dirty.json", tmp_path / "legal" / "licences.json")
+    monkeypatch.chdir(tmp_path)
+    ep = SimpleNamespace(id="tv")
+
+    assert _publish_gate(ep, True) == 2, \
+        "a video with no register of its own was allowed to publish"
+
+    own = tmp_path / "spec" / "tv" / "legal"
+    own.mkdir()
+    (own / "licences.json").write_text(json.dumps(NOTHING_BORROWED), encoding="utf-8")
+    assert _publish_gate(ep, True) is None, \
+        "a video whose own register is clean was blocked by another video's assets"

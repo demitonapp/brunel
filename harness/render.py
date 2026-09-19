@@ -235,8 +235,8 @@ def render(
 ) -> dict[str, Any]:
     """Build the scene and render every shot to ``out_root/<episode>/<shot>/``.
 
-    ``stills_only`` renders just the middle frame of each shot - the cheap
-    storyboard pass you run BEFORE committing an hour to the full render.
+    ``stills_only`` renders the first, middle and last frame of each shot - the
+    cheap storyboard pass you run BEFORE committing an hour to the full render.
 
     ``max_frames`` caps how many frames of each shot are rendered. It exists for
     `harness bench`: measuring s/frame at delivery resolution must not mean
@@ -278,9 +278,14 @@ def render(
         scene.frame_end = frames
 
         shot_dir = ep_dir / shot["id"]
-        # Stills pass renders the MIDDLE frame of each shot - the moment the
-        # staging is most representative.
-        frame_list = [max(1, frames // 2)] if stills_only else list(range(1, frames + 1))
+        # Stills pass renders the FIRST, MIDDLE and LAST frame of each shot. It
+        # was the middle frame alone until s01 rendered three frozen hooks: a
+        # fault that lives BETWEEN frames needs two frames to exist and three
+        # for `check_motion` to look at, so one frame per shot made the cheap
+        # pass structurally blind to the one fault the expensive pass found.
+        # Three frames is still a storyboard - seconds, against hours.
+        frame_list = (sorted({1, max(1, frames // 2), frames}) if stills_only
+                      else list(range(1, frames + 1)))
         if max_frames is not None:
             frame_list = frame_list[:max_frames]
 
