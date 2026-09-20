@@ -32,6 +32,18 @@ device = "CPU"
 units = "metric"
 # 62 is the documentary default and 3.2% of frame height. A Short wants 5%.
 caption_size = 96
+caption_font = "IBM Plex Sans SemiBold"
+
+# --- world ----------------------------------------------------------------
+# A CC0 studio HDRI. Metal is made by what it REFLECTS, and every metal in this
+# film had nothing to reflect but a flat colour - which is the shared cause of
+# "the block looks rubbish" and "those circles look terrible". `visible = false`
+# keeps the HDRI out of camera rays, so the frame keeps its dark brand field
+# and the steel still has a room in it.
+[world]
+hdri = "assets/hdri/studio_small_09_2k.hdr"
+strength = 0.55
+visible = false
 
 # --- materials ------------------------------------------------------------
 # Draft 2 was one grey. Four families, four hues, so the eye can parse the
@@ -63,9 +75,13 @@ metallic = 0.8
 
 [[material]]
 id = "load"
-base_color = [0.52, 0.26, 0.13]
-roughness = 0.85
+base_color = [0.52, 0.52, 0.50]
+roughness = 0.90
 metallic = 0.0
+base_color_map = "assets/textures/concrete_floor_02_diff_2k.jpg"
+roughness_map = "assets/textures/concrete_floor_02_rough_2k.jpg"
+normal_map = "assets/textures/concrete_floor_02_nor_gl_2k.jpg"
+uv_scale = 2.0
 
 [[material]]
 id = "hiviz"
@@ -175,6 +191,7 @@ shots = ["c01", "c02", "c04"]
 text = "55 t"
 size = 0.19
 extrude = 0.006
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 [[part]]
 id = "callout_pull"
@@ -186,6 +203,7 @@ shots = ["c03", "c04"]
 text = "27 t"
 size = 0.19
 extrude = 0.006
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 # --- scale witness --------------------------------------------------------
 # Thirty seconds of draft 2 never said how big any of this is. `crew` is 1.70 m
@@ -299,6 +317,7 @@ shots = ["c06"]
 text = "55 t"
 size = 0.16
 extrude = 0.005
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 [[part]]
 id = "load_label_pull"
@@ -310,6 +329,7 @@ shots = ["c07"]
 text = "27 t"
 size = 0.16
 extrude = 0.005
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 [[part]]
 id = "sum_bore"
@@ -321,6 +341,7 @@ shots = ["c13"]
 text = "154"
 size = 0.026
 extrude = 0.001
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 [[part]]
 id = "sum_minus"
@@ -332,6 +353,7 @@ shots = ["c13"]
 text = "- 79"
 size = 0.026
 extrude = 0.001
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 [[part]]
 id = "sum_eq"
@@ -343,6 +365,7 @@ shots = ["c13"]
 text = "= 75"
 size = 0.026
 extrude = 0.001
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 [[part]]
 id = "sum_units"
@@ -354,6 +377,7 @@ shots = ["c13"]
 text = "cm2 each face"
 size = 0.014
 extrude = 0.001
+font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 
 # --- the area figures ----------------------------------------------------
 [[part]]

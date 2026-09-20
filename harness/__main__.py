@@ -135,8 +135,11 @@ def cmd_render(args: argparse.Namespace) -> int:
     # thing you iterate with.
     if not args.stills and not args.fast and not getattr(args, "waive", None):
         from . import boardgate
+        # Refresh in memory only. A render must not MUTATE the board - writing
+        # here made the test suite dirty tests/fixtures/board/ just by running,
+        # and a gate that edits the thing it is checking is not a gate.
+        # Persisting is `harness board`'s job.
         ledger = boardgate.refresh(ep, boardgate.load(ep))
-        boardgate.save(ep, ledger)
         wanted = _parse_shots(args.shots) or [sh["id"] for sh in ep.shots]
         blocked = [sid for sid in boardgate.blocking(ledger) if sid in wanted]
         if blocked or boardgate.look_blocking(ledger):
@@ -234,7 +237,8 @@ def cmd_captions(args: argparse.Namespace) -> int:
     if vj.exists():
         durations = json.loads(vj.read_text())
     cues = build_cues(ep, durations, caption_size=int(ep.meta["caption_size"]))
-    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]))
+    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]),
+                    font=str(ep.meta.get("caption_font") or "Helvetica"))
     srt = write_srt(cues, ep_dir / "captions.srt")
     print(f"{len(cues)} cues -> {ass.name}, {srt.name}")
     for c in cues:
@@ -517,7 +521,8 @@ def _deliver_from_backend(args: argparse.Namespace, ep: Any, ep_dir: Path) -> in
 
     cues = build_cues(ep, durations, shot_durations=measured,
                       caption_size=int(ep.meta["caption_size"]))
-    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]))
+    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]),
+                    font=str(ep.meta.get("caption_font") or "Helvetica"))
     write_srt(cues, ep_dir / "captions.srt")
     print(f"  {len(cues)} caption cues, timed on the delivered clips")
 
@@ -598,7 +603,8 @@ def cmd_deliver(args: argparse.Namespace) -> int:
         return 3
 
     cues = build_cues(ep, durations, caption_size=int(ep.meta["caption_size"]))
-    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]))
+    ass = write_ass(cues, ep_dir / "captions.ass", size=int(ep.meta["caption_size"]),
+                    font=str(ep.meta.get("caption_font") or "Helvetica"))
     write_srt(cues, ep_dir / "captions.srt")
     print(f"  {len(cues)} caption cues")
 

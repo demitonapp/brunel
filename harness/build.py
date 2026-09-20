@@ -134,6 +134,7 @@ def build_materials(ep: spec_mod.Episode) -> dict[str, Any]:
             if strength > 0.0:
                 bsdf.inputs["Emission Color"].default_value = (c[0], c[1], c[2], 1.0)
                 bsdf.inputs["Emission Strength"].default_value = strength
+            _wire_maps(mat, bsdf, m)
         out[m["id"]] = mat
     return out
 
@@ -225,6 +226,53 @@ def _world_dims(objs: list[Any]) -> tuple[float, float, float]:
     lo, hi = _world_bounds(objs)
     return (hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
 
+
+
+def _wire_maps(mat: Any, bsdf: Any, m: dict[str, Any]) -> None:
+    """Attach CC0 texture maps to a Principled BSDF.
+
+    Every material in s01 was a flat colour, which is the real reason a block
+    read as cardboard and a barrel read as plastic: a single RGB value carries
+    no surface. Maps are optional - a material that declares none behaves
+    exactly as before.
+    """
+    maps = {k: m.get(k) for k in ("base_color_map", "roughness_map", "normal_map")}
+    if not any(maps.values()):
+        return
+    nt = mat.node_tree
+    scale = float(m.get("uv_scale", 1.0) or 1.0)
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    mapping = nt.nodes.new("ShaderNodeMapping")
+    mapping.inputs["Scale"].default_value = (scale, scale, scale)
+    # OBJECT coordinates with BOX projection, not UV. Nothing this harness
+    # generates has a UV map - `_box` is a bare bmesh cube and `_cyl` a bare
+    # cone - so a UV-mapped texture samples one texel and renders as a flat
+    # colour, which is exactly what the first textured block did. Box
+    # projection needs no UVs and works on every primitive here.
+    nt.links.new(coord.outputs["Object"], mapping.inputs["Vector"])
+
+    def tex(path: str, non_color: bool) -> Any:
+        node = nt.nodes.new("ShaderNodeTexImage")
+        node.image = bpy.data.images.load(str(path), check_existing=True)
+        node.projection = "BOX"
+        node.projection_blend = 0.25
+        if non_color:
+            # Roughness and normals are DATA. Reading them through sRGB is the
+            # same class of error as rendering a depth pass through AgX.
+            node.image.colorspace_settings.name = "Non-Color"
+        nt.links.new(mapping.outputs["Vector"], node.inputs["Vector"])
+        return node
+
+    if maps["base_color_map"]:
+        nt.links.new(tex(maps["base_color_map"], False).outputs["Color"],
+                     bsdf.inputs["Base Color"])
+    if maps["roughness_map"]:
+        nt.links.new(tex(maps["roughness_map"], True).outputs["Color"],
+                     bsdf.inputs["Roughness"])
+    if maps["normal_map"]:
+        nm = nt.nodes.new("ShaderNodeNormalMap")
+        nt.links.new(tex(maps["normal_map"], True).outputs["Color"], nm.inputs["Color"])
+        nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
 
 def build_cameras(ep: spec_mod.Episode, collection: Any) -> dict[str, Any]:
     out: dict[str, Any] = {}
@@ -319,13 +367,50 @@ def build_lights(ep: spec_mod.Episode, collection: Any) -> dict[str, Any]:
 
 
 def build_world(ep: spec_mod.Episode, color: tuple[float, float, float], strength: float) -> None:
+    """The environment. An HDRI is what metal REFLECTS.
+
+    A flat background colour gives a metal surface nothing to reflect, so it
+    reads as flat plastic however carefully it is lit - which is why s01's
+    barrel, block and area discs all drew the same note. `[world] hdri = ...`
+    replaces the colour with a real environment.
+
+    `visible = false` (the default) keeps the HDRI out of the CAMERA ray while
+    leaving it in the glossy and diffuse ones: the film keeps its dark brand
+    backdrop, and the metal still has a room to reflect.
+    """
     world = bpy.data.worlds.new("BrunelWorld")
     bpy.context.scene.world = world
     world.use_nodes = True
-    bg = world.node_tree.nodes.get("Background")
-    if bg:
-        bg.inputs[0].default_value = (color[0], color[1], color[2], 1.0)
-        bg.inputs[1].default_value = strength
+    nt = world.node_tree
+    bg = nt.nodes.get("Background")
+    if not bg:
+        return
+    bg.inputs[0].default_value = (color[0], color[1], color[2], 1.0)
+    bg.inputs[1].default_value = strength
+
+    spec_world = getattr(ep, "world", None) or {}
+    hdri = spec_world.get("hdri")
+    if not hdri:
+        return
+    env = nt.nodes.new("ShaderNodeTexEnvironment")
+    env.image = bpy.data.images.load(str(hdri), check_existing=True)
+    bg.inputs[1].default_value = float(spec_world.get("strength", 1.0))
+    nt.links.new(env.outputs["Color"], bg.inputs["Color"])
+    if not spec_world.get("visible", False):
+        # Camera rays see the flat brand colour; glossy and diffuse rays see the
+        # room. Without this the HDRI becomes the backdrop and the whole look
+        # decision about a dark navy field is silently overruled by a photo.
+        lw = nt.nodes.new("ShaderNodeLightPath")
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        flat = nt.nodes.new("ShaderNodeBackground")
+        flat.inputs[0].default_value = (color[0], color[1], color[2], 1.0)
+        flat.inputs[1].default_value = strength
+        out = nt.nodes.get("World Output")
+        nt.links.new(lw.outputs["Is Camera Ray"], mix.inputs["Fac"])
+        nt.links.new(bg.outputs["Background"], mix.inputs[1])
+        nt.links.new(flat.outputs["Background"], mix.inputs[2])
+        if out:
+            nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
 
 
 # --- assertions: the deterministic truth layer ---------------------------

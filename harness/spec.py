@@ -16,19 +16,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parent.parent
+
 # --- closed vocabularies -------------------------------------------------
 # Anything not listed here is a hard error, not a warning. The canonical
 # generator list lives here (not in generators.py) so that `validate` works on
 # a machine with no Blender at all. build.py asserts the two agree.
 
-TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track"}
+TOP_KEYS = {"meta", "part", "camera", "light", "material", "shot", "track", "world"}
 META_KEYS = {"id", "title", "fps", "width", "height", "samples", "engine", "device",
-             "units", "caption_size"}
+             "units", "caption_size", "caption_font", "font"}
 PART_KEYS = {"id", "gen", "parent", "loc", "rot", "scale", "material", "params", "shots",
              "smooth"}
 CAMERA_KEYS = {"id", "lens_mm", "ortho_scale", "loc", "look_at"}
 LIGHT_KEYS = {"id", "type", "energy", "loc", "rot", "look_at", "color", "angle", "shots"}
-MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic", "emission"}
+MATERIAL_KEYS = {"id", "base_color", "roughness", "metallic", "emission",
+                 "base_color_map", "roughness_map", "normal_map", "uv_scale"}
+#: The environment. An HDRI is what a metal surface REFLECTS, and metal with
+#: nothing to reflect reads as flat plastic however it is lit.
+WORLD_KEYS = {"hdri", "strength", "color", "visible"}
 SHOT_KEYS = {"id", "name", "camera", "seconds", "move_from", "move_to", "notes",
              "narration", "depth_range", "mechanism"}
 MECHANISM_KEYS = {"turns", "pitch", "advance", "tolerance"}
@@ -68,7 +74,7 @@ GENERATOR_PARAMS = {
     "cylinder_body": {"bore", "rod", "wall", "length", "section", "cap", "segments"},
     "cylinder_rod": {"bore", "rod", "length", "piston", "section", "segments", "emit"},
     "area_disc": {"outer", "inner", "depth", "segments"},
-    "label": {"text", "size", "extrude"},
+    "label": {"text", "size", "extrude", "font"},
     "figure": {"height", "facing"},
 }
 # Every part may carry this regardless of generator.
@@ -97,6 +103,7 @@ class Episode:
     materials: list[dict[str, Any]] = field(default_factory=list)
     shots: list[dict[str, Any]] = field(default_factory=list)
     tracks: list[dict[str, Any]] = field(default_factory=list)
+    world: dict[str, Any] = field(default_factory=dict)
     source: Path | None = None
 
     @property
@@ -160,6 +167,7 @@ class Episode:
             materials=list(self.materials),
             shots=list(selected),
             tracks=list(self.tracks),
+            world=dict(self.world),
             source=self.source,
         )
 
@@ -217,12 +225,29 @@ def load(path: str | Path) -> Episode:
     # documentary default; a Short wants far larger - the genre runs 5-7% of
     # frame height and 62 on 1920 is 3.2%.
     meta.setdefault("caption_size", 62)
+    # The brand face. IBM Plex is SIL OFL and ships in assets/fonts, so nothing
+    # has to be installed on the machine that renders.
+    meta.setdefault("font", "")
+    meta.setdefault("caption_font", "Helvetica")
     if meta["engine"] not in ENGINES:
         raise SpecError(f"meta.engine: {meta['engine']!r} not in {sorted(ENGINES)}")
     if meta["device"] not in DEVICES:
         raise SpecError(f"meta.device: {meta['device']!r} not in {sorted(DEVICES)}")
     if meta["units"] != "metric":
         raise SpecError("meta.units must be 'metric' - 1 Blender unit is 1 metre, always")
+
+    world = dict(raw.get("world") or {})
+    if world:
+        _unknown("world", world, WORLD_KEYS)
+        if world.get("hdri"):
+            hp = Path(str(world["hdri"]))
+            if not hp.is_absolute():
+                hp = ROOT / hp
+            if not hp.exists():
+                raise SpecError(f"world.hdri: no such file {world['hdri']!r}")
+            world["hdri"] = str(hp)
+        world.setdefault("strength", 1.0)
+        world.setdefault("visible", False)
 
     materials: list[dict[str, Any]] = []
     for i, m in enumerate(raw.get("material", [])):
@@ -240,6 +265,14 @@ def load(path: str | Path) -> Episode:
         # s01: 10-14 s/frame without a backdrop, 43.5 with one, and 49.6 after
         # shrinking it, which is how the size hypothesis died. An emissive
         # surface returns its colour on the first hit and costs almost nothing.
+        for key in ("base_color_map", "roughness_map", "normal_map"):
+            if m.get(key):
+                tp = Path(str(m[key]))
+                if not tp.is_absolute():
+                    tp = ROOT / tp
+                if not tp.exists():
+                    raise SpecError(f"{where}.{key}: no such file {m[key]!r}")
+                m[key] = str(tp)
         m.setdefault("emission", 0.0)
         if float(m["emission"]) < 0.0:
             raise SpecError(f"{where}.emission: {m['emission']} is negative")

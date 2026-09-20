@@ -35,6 +35,42 @@
       "screenshot": null,
       "status": "VERIFIED - CC0 is stated by Blender Studio for the asset-bundle programme and the bundle is served from download.blender.org. A dated screenshot of the licence page is still outstanding, per this file's own _why.",
       "note": "The first third-party asset in this repo. Admissible under the one-line rule in docs/research/3d-asset-licensing-master-2026-09-17.md - CC0, public domain, CC BY - which is also why a Mixamo or Sketchfab-NC figure would not be."
+    },
+    {
+      "id": "lic_polyhaven_studio_hdri",
+      "description": "Environment lighting - what the metal reflects. studio_small_09, 2k HDR.",
+      "source": "Poly Haven (polyhaven.com/a/studio_small_09)",
+      "licence": "cc0",
+      "licence_url": "https://polyhaven.com/license",
+      "retrieved": "2026-09-20",
+      "modifications": "none; loaded at 2k",
+      "screenshot": null,
+      "status": "VERIFIED - Poly Haven states CC0 for all assets",
+      "note": "Used for glossy/diffuse rays only; camera rays see the brand backdrop."
+    },
+    {
+      "id": "lic_polyhaven_concrete_floor_02",
+      "description": "Concrete surface for the load blocks - diffuse, roughness and normal, 2k.",
+      "source": "Poly Haven (polyhaven.com/a/concrete_floor_02)",
+      "licence": "cc0",
+      "licence_url": "https://polyhaven.com/license",
+      "retrieved": "2026-09-20",
+      "modifications": "none; box-projected at uv_scale 2.0",
+      "screenshot": null,
+      "status": "VERIFIED - Poly Haven states CC0 for all assets",
+      "note": "Replaces a flat RGB value, which is why the block read as cardboard."
+    },
+    {
+      "id": "lic_ibm_plex",
+      "description": "IBM Plex Mono SemiBold (numeric callouts) and IBM Plex Sans (captions).",
+      "source": "IBM / Google Fonts, ofl/ibmplexmono + ofl/ibmplexsans",
+      "licence": "cc-by",
+      "licence_url": "https://openfontlicense.org/",
+      "retrieved": "2026-09-20",
+      "modifications": "none; shipped in assets/fonts with OFL.txt alongside",
+      "screenshot": null,
+      "status": "VERIFIED - SIL Open Font License 1.1, recorded here as cc-by because the register's vocabulary has no OFL term. OFL permits commercial use and embedding; it forbids selling the fonts alone, which we do not do.",
+      "note": "Demiton's own brand face - monorepo shared-config specifies Plex Serif/Sans/Mono."
     }
   ]
 }

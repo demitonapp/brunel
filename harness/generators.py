@@ -651,8 +651,16 @@ def gen_label(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     text = str(params.get("text", ""))
     size = float(params.get("size", 0.12))
     extrude = float(params.get("extrude", 0.004))
+    font = params.get("font")
 
     cu = bpy.data.curves.new(f"{name}_font", type="FONT")
+    if font:
+        fp = Path(str(font))
+        if not fp.is_absolute():
+            fp = ASSETS_DIR.parent / fp
+        if not fp.exists():
+            raise BuildError(f"label: no such font {font!r}")
+        cu.font = bpy.data.fonts.load(str(fp), check_existing=True)
     cu.body = text
     cu.size = size
     cu.extrude = extrude

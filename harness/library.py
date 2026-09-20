@@ -505,6 +505,7 @@ _add(Component(
         "text": Param("55 t", "", "the string to set"),
         "size": Param(0.12, "m", "cap height in metres - it is geometry, so it has a size"),
         "extrude": Param(0.004, "m", "depth, so the type catches a highlight and reads as an object"),
+        "font": Param("", "", "path to a .ttf/.otf; blank uses Blender's default face"),
     },
     provenance=(
         "measured: false - a label has no cited dimension of its own; what it SAYS must come from "

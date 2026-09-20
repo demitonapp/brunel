@@ -24,6 +24,8 @@ PLAY_RES_Y = 1920
 CAPTION_MARGIN_V = 430  # caption baseline height above the frame bottom
 # 42 chars at font size 62 fits the 860 px text area inside the side margins
 # in one or two wrapped lines. 48 did not, and clipped at the frame edges.
+_FONTS_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+
 MAX_CHARS = 42
 BASE_SIZE = 62          # the size MAX_CHARS was measured against
 
@@ -217,7 +219,11 @@ def burn(video: Path, ass_path: Path, out_path: Path, crf: int = 18) -> Path:
         [
             ffmpeg(), "-y", "-loglevel", "error",
             "-i", str(video),
-            "-vf", f"ass={ass_path.name}",
+            # fontsdir so libass finds a face this repo SHIPS rather than one
+            # the machine happens to have installed. Without it a caption set
+            # in IBM Plex silently renders in whatever fontconfig substitutes,
+            # and the brand face is the one thing nobody would notice missing.
+            "-vf", f"ass={ass_path.name}:fontsdir={_FONTS_DIR}",
             "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
             "-pix_fmt", "yuv420p", str(out_path),
         ],
