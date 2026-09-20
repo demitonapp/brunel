@@ -63,15 +63,40 @@ metallic = 1.0
 
 [[material]]
 id = "face"
-base_color = [0.80, 0.58, 0.20]
+base_color = [0.72, 0.40, 0.04]
 roughness = 0.32
 metallic = 0.6
 
+# Callouts are annotation, not mechanism, so they are lit by themselves rather
+# than by the rig. The look set had "27 t" on a dark metal that vanished into
+# the backdrop while "55 t" read fine - asymmetric legibility on the one
+# comparison the film is about. Gold means push/bore and blue means pull/rod
+# here and in the area diagram, so the two colours carry meaning throughout.
 [[material]]
-id = "rodface"
-base_color = [0.42, 0.52, 0.64]
-roughness = 0.30
-metallic = 0.8
+id = "label_push"
+base_color = [0.98, 0.50, 0.03]
+roughness = 0.55
+metallic = 0.0
+emission = 0.6
+
+[[material]]
+id = "label_pull"
+base_color = [0.16, 0.52, 0.98]
+roughness = 0.55
+metallic = 0.0
+emission = 0.6
+
+# The bore wall is a large concave surface facing the key, so it is the
+# brightest thing in the section whatever it is made of. Measured: dropping
+# metallic to 0.25 made it WORSE, not better - the diffuse term took over and
+# it rendered as white plastic. The lever that works is base colour. At 0.08
+# against the chrome rod's 0.66 the section finally has three separable tones:
+# dark bore, bright rod, gold piston.
+[[material]]
+id = "steel_cut"
+base_color = [0.075, 0.080, 0.090]
+roughness = 0.48
+metallic = 1.0
 
 [[material]]
 id = "load"
@@ -85,7 +110,7 @@ uv_scale = 2.0
 
 [[material]]
 id = "hiviz"
-base_color = [0.72, 0.42, 0.06]
+base_color = [0.50, 0.26, 0.02]
 roughness = 0.80
 metallic = 0.0
 
@@ -117,7 +142,7 @@ metallic = 0.0
 
 [[material]]
 id = "hardhat"
-base_color = [0.72, 0.60, 0.08]
+base_color = [0.48, 0.38, 0.04]
 roughness = 0.38
 metallic = 0.0
 
@@ -211,7 +236,7 @@ segments = 64
 [[part]]
 id = "cyl_barrel_cut"
 gen = "cylinder_body"
-material = "steel"
+material = "steel_cut"
 loc = [0.0, 0.0, 0.0]
 rot = [0.0, 34.0, 0.0]
 shots = ["c08", "c09"]
@@ -260,7 +285,7 @@ emit = "piston"
 [[part]]
 id = "callout_push"
 gen = "label"
-material = "face"
+material = "label_push"
 loc = [-0.31, -0.16, 0.50]
 shots = ["c01", "c02", "c04"]
 [part.params]
@@ -272,7 +297,7 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "callout_pull"
 gen = "label"
-material = "rodface"
+material = "label_pull"
 loc = [0.33, -0.16, -0.50]
 shots = ["c03", "c04"]
 [part.params]
@@ -386,7 +411,7 @@ dims = [0.62, 0.62, 0.31]
 [[part]]
 id = "load_label_push"
 gen = "label"
-material = "face"
+material = "label_push"
 loc = [-0.58, -0.34, 0.50]
 shots = ["c06"]
 [part.params]
@@ -398,7 +423,7 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "load_label_pull"
 gen = "label"
-material = "rodface"
+material = "label_pull"
 loc = [-0.58, -0.34, 0.26]
 shots = ["c07"]
 [part.params]
@@ -791,7 +816,7 @@ look_at = [0.0, 0.0, 0.0]
 [[light]]
 id = "fill"
 type = "AREA"
-shots = ["c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c14"]
+shots = ["c01", "c02", "c03", "c04", "c06", "c07", "c08", "c09", "c14"]
 energy = 45.0
 color = [0.62, 0.72, 0.95]
 loc = [-2.40, -1.60, 0.50]
@@ -815,10 +840,24 @@ color = [0.34, 0.46, 0.72]
 loc = [0.0, 2.10, 2.40]
 look_at = [0.0, 3.30, -0.60]
 
+# c05 is the only shot where the subject is NOT at the origin - the figure
+# stands 1.0 m to the left, which puts it 1.4 m from the fill against the
+# cylinder's 2.9 m. Inverse square makes that four times the fill, so the
+# figure came out flat and bright beside a moody cylinder and the two looked
+# composited from different films. Same light, own energy.
+[[light]]
+id = "scale_fill"
+type = "AREA"
+shots = ["c05"]
+energy = 12.0
+color = [0.62, 0.72, 0.95]
+loc = [-2.40, -1.60, 0.50]
+look_at = [0.0, 0.0, 0.0]
+
 [[light]]
 id = "section_fill"
 type = "AREA"
-energy = 34.0
+energy = 12.0
 loc = [-0.30, -0.80, 0.24]
 look_at = [-0.20, 0.10, 0.0]
 shots = ["c08", "c09"]
