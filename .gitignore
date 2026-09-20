@@ -8,6 +8,11 @@ __pycache__/
 renders/
 *.blend
 *.blend1
+# ...except the CC0 assets the harness BUILDS FROM. `*.blend` exists to keep
+# render artefacts out; assets/ is source, and gen_figure refuses to build
+# without it. Committing it silently ignored would break a fresh clone with an
+# error about a missing file nobody deleted.
+!assets/*.blend
 blender_tx/
 *.exr
 

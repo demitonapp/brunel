@@ -193,13 +193,13 @@ extrude = 0.006
 # decoration.
 [[part]]
 id = "witness"
-gen = "crew"
+gen = "figure"
 material = "hiviz"
 loc = [-1.25, 0.15, -0.95]
 shots = ["c05"]
+smooth = 40.0
 [part.params]
 height = 1.70
-pose = "stand"
 facing = 0.0
 
 # --- the load demonstration ----------------------------------------------

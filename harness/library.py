@@ -324,6 +324,8 @@ _add(Component(
         "pose": Param("stand", "", "silhouette and arm position",
                       choices=("stand", "work", "bend")),
         "facing": Param(0.0, "deg", "about Z; 0 faces -Y, the direction of drive"),
+        "hat": Param("cap", "", "cap (period) | hardhat (modern site) | none",
+                     ("cap", "hardhat", "none")),
     },
     provenance="1.70 m nominal working height. Rebuilt 2026-09-18 from a "
                "cylinder-and-sphere stand-in that read as a peg, after the "
@@ -517,6 +519,29 @@ loc = [0.0, -0.9, 0.62]
 [part.params]
 text = "55 t"
 size = 0.22''',
+))
+
+
+_add(Component(
+    name="figure", category=CHR, measured=True,
+    summary="A real human figure from a CC0 base mesh, scaled so it measures `height` exactly.",
+    params={
+        "height": Param(1.70, "m", "the number assert_scene checks"),
+        "facing": Param(0.0, "deg", "about Z; 0 faces -Y"),
+    },
+    provenance=(
+        "Blender Studio Human Base Meshes v1.4.1, CC0. One object extracted to "
+        "assets/figure_standing.blend (617 KB from a 47 MB bundle; the original carried a "
+        "MULTIRES modifier holding every sculpt level). Registered in legal/licences.json. "
+        "`crew` is kept for ep01 - 1840s tunnellers in a shield cell are not this mesh."
+    ),
+    example='''[[part]]
+id = "witness"
+gen = "figure"
+material = "hiviz"
+loc = [-1.25, 0.15, -0.95]
+[part.params]
+height = 1.70''',
 ))
 
 

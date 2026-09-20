@@ -38,7 +38,7 @@ GENERATORS = {
     "box", "cylinder", "sphere", "plane",
     "shield", "brick_wall", "crew", "ring",
     "boat", "dock", "train", "arch", "timber", "screw", "lining",
-    "cylinder_body", "cylinder_rod", "area_disc", "label",
+    "cylinder_body", "cylinder_rod", "area_disc", "label", "figure",
 }
 # Allowed generator parameters. This lives here, not in generators.py, so that
 # `validate` works on a machine with no Blender; build.py asserts the two agree.
@@ -53,7 +53,7 @@ GENERATOR_PARAMS = {
     "shield": {"frames", "levels", "width", "height", "depth", "plate", "hood"},
     "brick_wall": {"length", "height", "brick_l", "brick_h", "brick_d", "mortar",
                    "max_bricks"},
-    "crew": {"height", "pose", "facing"},
+    "crew": {"height", "pose", "facing", "hat"},
     "ring": {"radius", "thickness", "height", "segments"},
     "boat": {"length", "beam", "depth"},
     "dock": {"length", "height", "depth", "blocks"},
@@ -69,6 +69,7 @@ GENERATOR_PARAMS = {
     "cylinder_rod": {"bore", "rod", "length", "piston", "section", "segments", "emit"},
     "area_disc": {"outer", "inner", "depth", "segments"},
     "label": {"text", "size", "extrude"},
+    "figure": {"height", "facing"},
 }
 # Every part may carry this regardless of generator.
 UNIVERSAL_PART_PARAMS = {"camera_inside_ok"}

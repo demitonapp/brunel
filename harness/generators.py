@@ -8,6 +8,7 @@ by ``build.build_parts``. Generators must never assume they are the root.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Any
 
 import bmesh
@@ -234,87 +235,103 @@ def gen_brick_wall(name: str, params: dict[str, Any], collection: Any) -> list[A
 def gen_crew(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     """A human figure of the given height, feet at local z = 0.
 
-    The scale witness in every hero frame - and, since ad02, a character in it.
-    Its height is asserted, because a wrong scale figure silently poisons every
-    judgement about scale made from that frame.
+    The scale witness in every hero frame. Its height is asserted, because a
+    wrong scale figure silently poisons every judgement about scale made from
+    that frame.
 
-    **Rebuilt 2026-09-18.** The first version was a cylinder torso, a sphere
-    head and two leg cylinders, with no arms - which was honest as a *scale
-    witness* and useless as a *person*. The feedback on the first cut was blunt
-    and correct: "why does the human look so unlike a human?" A figure meant to
-    stand inside a cell and be understood as a man at work needs shoulders, arms
-    and a head that sits on a neck.
+    **Rebuilt twice.** v1 was a cylinder torso, a sphere head and two legs, with
+    no arms. v2 added shoulders and arms and still read as a mannequin: every
+    limb was ONE cylinder, so there were no knees, no elbows, no feet, and the
+    silhouette had no joints for the eye to find. The note on the s01 look
+    frames was "that person looks terrible", and it was right.
 
-    Proportions are the standard human figure broken at the real landmarks, so a
-    1.70 m figure measures 1.70 m and reads at a glance:
+    v3 segments every limb at its real joint and gives the figure feet. A human
+    silhouette is read from its joints - that is what separates a person from a
+    bundle of rods - so thigh and shin, upper arm and forearm are separate
+    tapered pieces meeting at a knee and an elbow.
 
-        feet 0.00 · knee 0.29 · hip 0.47 · shoulder 0.82 · eye 0.93 · top 1.00
+    Landmarks as fractions of height, the standard figure:
+
+        foot 0.000 · ankle 0.045 · knee 0.285 · hip 0.470 · wrist 0.480
+        waist 0.600 · elbow 0.630 · chest 0.720 · shoulder 0.820
+        chin 0.870 · eye 0.935 · top 1.000
 
     Params:
         height  metres, default 1.70 - the number the assertion checks
-        pose    ``stand`` (default) | ``work`` (arms forward and down, torso
-                leaning into the job) | ``bend`` (folded at the waist, digging)
-        facing  degrees about Z. 0 faces -Y, which is the direction of drive.
+        pose    ``stand`` | ``work`` (arms forward, leaning in) | ``bend``
+        facing  degrees about Z. 0 faces -Y, the direction of drive.
+        hat     ``cap`` (default, period flat cap) | ``hardhat`` | ``none``.
+                A parameter rather than a fork: ep01 is 1840s tunnellers and the
+                civil-construction slate is modern, and one generator serves
+                both (library/README.md rule 2).
     """
-    height = float(params.get("height", CREW_HEIGHT_M))
+    h = float(params.get("height", CREW_HEIGHT_M))
     pose = str(params.get("pose", "stand"))
     facing = float(params.get("facing", 0.0))
+    hat = str(params.get("hat", "cap"))
+    if hat not in {"cap", "hardhat", "none"}:
+        raise BuildError(f"crew: unknown hat {hat!r}; use cap | hardhat | none")
     objs: list[Any] = []
+    SEG = 18
 
-    hip_z = height * 0.47
-    shoulder_z = height * 0.82
-    torso_len = shoulder_z - hip_z
-
-    lean = 0.0
-    arm_pitch = 0.0
-    arm_swing = 6.0
+    lean, arm_pitch, elbow = 0.0, 4.0, 6.0
     if pose == "work":
-        lean = 14.0
-        arm_pitch = 46.0
-        arm_swing = 10.0
+        lean, arm_pitch, elbow = 14.0, 46.0, 34.0
     elif pose == "bend":
-        lean = 36.0
-        arm_pitch = 74.0
-        arm_swing = 14.0
+        lean, arm_pitch, elbow = 36.0, 74.0, 28.0
     elif pose != "stand":
         raise BuildError(f"crew: unknown pose {pose!r}; use stand | work | bend")
 
-    # legs - thigh and shin as separate segments so a bent pose is possible later
-    for side, sx in (("l", -1.0), ("r", 1.0)):
-        objs.append(_place(
-            _cyl(f"{name}_leg_{side}", height * 0.053, height * 0.47, collection),
-            (sx * height * 0.062, 0.0, height * 0.235)))
-    # hips
-    objs.append(_place(
-        _cone(f"{name}_hips", height * 0.088, height * 0.082, height * 0.10, collection),
-        (0.0, 0.0, hip_z + height * 0.02)))
-    # torso, tapering up to the shoulders
-    objs.append(_place(
-        _cone(f"{name}_torso", height * 0.085, height * 0.105, torso_len, collection),
-        (0.0, 0.0, hip_z + torso_len * 0.5), (lean, 0.0, 0.0)))
-    # shoulders
-    objs.append(_place(
-        _cyl(f"{name}_shoulders", height * 0.052, height * 0.21, collection),
-        (0.0, 0.0, shoulder_z), (0.0, 90.0, 0.0)))
-    # arms, hanging or reaching depending on the pose
-    for side, sx in (("l", -1.0), ("r", 1.0)):
-        objs.append(_place(
-            _cyl(f"{name}_arm_{side}", height * 0.034, height * 0.34, collection),
-            (sx * height * 0.115, 0.0, shoulder_z - height * 0.17),
-            (lean + arm_pitch, sx * arm_swing, 0.0)))
-    # neck and head
-    objs.append(_place(
-        _cyl(f"{name}_neck", height * 0.038, height * 0.05, collection),
-        (0.0, 0.0, shoulder_z + height * 0.025)))
-    objs.append(_place(
-        _sphere(f"{name}_head", height * 0.072, collection),
-        (0.0, 0.0, height * 0.93)))
+    def seg(nm: str, r1: float, r2: float, length: float, loc: tuple[float, float, float],
+            rot: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> None:
+        objs.append(_place(_cone(f"{name}_{nm}", r1 * h, r2 * h, length * h,
+                                 collection, segments=SEG),
+                           (loc[0] * h, loc[1] * h, loc[2] * h), rot))
 
-    # A flat cap. Period labourers wore one, and it does more for reading a
-    # silhouette as "a person" than any amount of extra limb detail.
-    objs.append(_place(
-        _cyl(f"{name}_cap", height * 0.082, height * 0.045, collection),
-        (0.0, 0.0, height * 0.975)))
+    # legs: thigh and shin meet at a knee, which is the joint that makes a leg
+    # read as a leg rather than a post.
+    for side, sx in (("l", -1.0), ("r", 1.0)):
+        seg(f"thigh_{side}", 0.058, 0.046, 0.185, (sx * 0.062, 0.0, 0.3775))
+        seg(f"shin_{side}", 0.044, 0.030, 0.240, (sx * 0.062, 0.0, 0.165))
+        objs.append(_place(_sphere(f"{name}_knee_{side}", 0.046 * h, collection,
+                                   segments=12), (sx * 0.062 * h, 0.0, 0.285 * h)))
+        # a foot, pointing the way the figure faces
+        objs.append(_place(_box(f"{name}_foot_{side}", (0.072 * h, 0.155 * h, 0.045 * h),
+                                collection), (sx * 0.062 * h, -0.030 * h, 0.022 * h)))
+
+    seg("hips", 0.088, 0.078, 0.090, (0.0, 0.0, 0.512))
+    seg("waist", 0.078, 0.086, 0.130, (0.0, 0.0, 0.622), (lean, 0.0, 0.0))
+    seg("chest", 0.090, 0.104, 0.150, (0.0, 0.0, 0.760), (lean, 0.0, 0.0))
+    objs.append(_place(_cyl(f"{name}_shoulders", 0.050 * h, 0.225 * h, collection,
+                            segments=SEG), (0.0, 0.0, 0.818 * h), (0.0, 90.0, 0.0)))
+
+    # arms: upper and fore, meeting at an elbow
+    for side, sx in (("l", -1.0), ("r", 1.0)):
+        seg(f"upperarm_{side}", 0.034, 0.028, 0.175, (sx * 0.118, 0.0, 0.725),
+            (lean + arm_pitch, sx * 4.0, 0.0))
+        seg(f"forearm_{side}", 0.027, 0.021, 0.155, (sx * 0.124, 0.0, 0.552),
+            (lean + arm_pitch + elbow, sx * 4.0, 0.0))
+        objs.append(_place(_sphere(f"{name}_elbow_{side}", 0.029 * h, collection,
+                                   segments=10), (sx * 0.120 * h, 0.0, 0.632 * h)))
+        objs.append(_place(_sphere(f"{name}_hand_{side}", 0.031 * h, collection,
+                                   segments=10), (sx * 0.126 * h, 0.0, 0.468 * h)))
+
+    seg("neck", 0.036, 0.034, 0.048, (0.0, 0.0, 0.850))
+    objs.append(_place(_sphere(f"{name}_head", 0.068 * h, collection, segments=16),
+                       (0.0, 0.0, 0.928 * h)))
+
+    if hat == "cap":
+        # A flat cap. Period labourers wore one, and it does more for reading a
+        # silhouette as "a person" than any amount of extra limb detail.
+        objs.append(_place(_cyl(f"{name}_cap", 0.082 * h, 0.030 * h, collection,
+                                segments=SEG), (0.0, -0.012 * h, 0.984 * h)))
+    elif hat == "hardhat":
+        # A dome with a brim: the modern site silhouette, and the reason a
+        # figure on a civil-construction frame reads as a worker at a glance.
+        objs.append(_place(_sphere(f"{name}_helmet", 0.080 * h, collection, segments=16),
+                           (0.0, 0.0, 0.952 * h)))
+        objs.append(_place(_cyl(f"{name}_brim", 0.098 * h, 0.014 * h, collection,
+                                segments=SEG), (0.0, -0.008 * h, 0.948 * h)))
 
     if facing:
         for o in objs:
@@ -656,6 +673,92 @@ def gen_label(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     collection.objects.link(obj)
     return [obj]
 
+
+#: CC0 assets that ship with the repo. See legal/licences.json.
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
+
+def gen_figure(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """A real human figure, appended from a CC0 base mesh and scaled to height.
+
+    `crew` was hand-built from cones and spheres and was rewritten twice, and
+    both times the review said the same thing: it looks like a mannequin. The
+    third rewrite was halfway done when the obvious question landed - is there
+    not a template for this? There is, and it is CC0.
+
+    Source: Blender Studio's Human Base Meshes bundle v1.4.1, CC0. One object
+    (`GEO-body_male_realistic`, 10,590 polys) extracted into
+    `assets/figure_standing.blend`. The bundle is 47 MB of seventeen assets; the
+    extract is 617 KB, because the original carried a MULTIRES modifier holding
+    every sculpt subdivision level - detail that will never survive a figure
+    forty pixels tall.
+
+    The mesh is scaled so the figure measures `height` EXACTLY and stands with
+    its feet at local z = 0, because `assert_scene` checks that number and a
+    scale witness that lies about its own height poisons every judgement of
+    scale made from the frame.
+
+    `crew` is kept, not replaced: ep01 is 1840s tunnellers in a shield cell and
+    this is a modern body with no clothes and no cap. Two generators, one for
+    each job, rather than a parameter that has to be both.
+    """
+    height = float(params.get("height", CREW_HEIGHT_M))
+    facing = float(params.get("facing", 0.0))
+    asset = ASSETS_DIR / "figure_standing.blend"
+    if not asset.exists():
+        raise BuildError(
+            f"figure: missing {asset}. It is a CC0 extract from Blender Studio's "
+            f"Human Base Meshes and is tracked in legal/licences.json."
+        )
+
+    before = set(bpy.data.objects)
+    with bpy.data.libraries.load(str(asset), link=False) as (src, dst):
+        if "figure_standing" not in src.objects:
+            raise BuildError(f"figure: {asset} has no object 'figure_standing'")
+        dst.objects = ["figure_standing"]
+    appended = [o for o in bpy.data.objects if o not in before]
+    if not appended:
+        raise BuildError(f"figure: nothing appended from {asset}")
+    obj = appended[0]
+    obj.name = name
+    obj.data.name = name
+    collection.objects.link(obj)
+
+    # An appended object brings its own transform from the source file, and this
+    # one sits at x = -2.264 in the bundle. Every generator in this module lays
+    # its geometry out in LOCAL space with the part origin at (0, 0, 0) - see
+    # the module docstring - so bake whatever the asset came with into the mesh
+    # and reset the object. Without this the figure rendered three metres left
+    # of where the spec put it, which looked exactly like "the figure is
+    # missing" rather than "the figure is misplaced".
+    me = obj.data
+    # DISCARD the asset's own transform rather than baking it: it records where
+    # the object sat in the source bundle's layout (x = -2.264 here), which is
+    # not a fact about the figure. Baking it put the witness three metres left
+    # of where the spec asked for it, which reads as "the figure is missing".
+    obj.matrix_basis = Matrix.Identity(4)
+
+    xs = [v.co.x for v in me.vertices]
+    ys = [v.co.y for v in me.vertices]
+    zs = [v.co.z for v in me.vertices]
+    current = max(zs) - min(zs)
+    if current <= 0.0:
+        raise BuildError("figure: asset has no height")
+    factor = height / current
+    me.transform(Matrix.Diagonal((factor, factor, factor, 1.0)))
+
+    # Centred on its own footprint in X and Y, feet at z = 0 - the contract this
+    # module's docstring states for every generator.
+    xs = [v.co.x for v in me.vertices]
+    ys = [v.co.y for v in me.vertices]
+    zs = [v.co.z for v in me.vertices]
+    me.transform(Matrix.Translation((
+        -(max(xs) + min(xs)) / 2.0, -(max(ys) + min(ys)) / 2.0, -min(zs))))
+
+    if facing:
+        obj.rotation_euler.z = math.radians(facing)
+    return [obj]
+
 def gen_simple(gen: str, name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     if gen == "box":
         dims = params.get("dims", [1.0, 1.0, 1.0])
@@ -689,6 +792,7 @@ GENERATORS = {
     "cylinder_rod": gen_cylinder_rod,
     "area_disc": gen_area_disc,
     "label": gen_label,
+    "figure": gen_figure,
 }
 
 GENERATOR_NAMES = sorted(set(GENERATORS) | {"box", "cylinder", "sphere", "plane"})

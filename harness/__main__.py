@@ -243,6 +243,79 @@ def cmd_captions(args: argparse.Namespace) -> int:
 
 
 
+
+def cmd_look(args: argparse.Namespace) -> int:
+    """The style frame: one shot, FULL quality, judged for finish and nothing else.
+
+    Studios approve the look before the board and separately, because a
+    storyboard answers "what is the story" and a style frame answers "what does
+    it look like" - and the style frame stage is where most of the visual debate
+    belongs. An afternoon there is cheaper than a re-render.
+
+    Deliberately NOT `--fast`. You cannot judge materials, a highlight or type
+    at 480x854 and 8 samples; the whole point is finish. One frame at delivery
+    settings costs under a minute where the film costs hours.
+    """
+    from . import boardgate
+    from .build import BuildError
+    from .render import render
+
+    full = load(args.spec)
+    known = {sh["id"] for sh in full.shots}
+    shot_ids = _parse_shots(args.shot) or [full.shots[0]["id"]]
+    unknown = [s for s in shot_ids if s not in known]
+    if unknown:
+        print(f"no such shot(s) {unknown}; spec has {', '.join(sorted(known))}",
+              file=sys.stderr)
+        return 2
+    ep = full.with_overrides(shots=shot_ids)
+
+    # A look frame cannot show what is not in it. One frame of s01 shows five of
+    # eight materials, so signing off on it approves three families sight
+    # unseen. This is a fact about what is in shot, not a judgement about
+    # whether it is good, so it can be checked.
+    scope = boardgate.look_scope(full)
+    want = set(scope["materials"]) | set(scope["global_parts"])
+    seen = boardgate.seen_in(full, shot_ids)
+    unseen = sorted(want - seen)
+
+    print(f"look frames: {ep.id} {', '.join(shot_ids)} at "
+          f"{ep.meta['width']}x{ep.meta['height']} @ {ep.meta['samples']} spp")
+    print("  judging: materials, lights, backdrop, type. NOT staging or timing.")
+    print(f"  palette coverage: {len(want) - len(unseen)}/{len(want)}"
+          + (f"  NOT SHOWN: {', '.join(unseen)}" if unseen else "  (complete)"))
+    for m in ep.materials:
+        em = f"  emission {m['emission']}" if m.get("emission") else ""
+        print(f"    mat  {m['id']:<10} rough {m['roughness']:<5} metal {m['metallic']}{em}")
+    for li in ep.lights:
+        lit = ",".join(li.get("shots", [])) or "all"
+        print(f"    light {li['id']:<14} {li['type']:<6} {li['energy']:>6}W  [{lit}]")
+
+    # A SEPARATE root, and this is not tidiness. The look frame is rendered at
+    # different settings from the board, so it carries a different fingerprint,
+    # so writing it beside the board frames makes render() correctly invalidate
+    # and DELETE them. Dressing one shot destroyed 25 preview frames of it
+    # before this line existed.
+    look_root = Path(args.out) / "_look"
+    try:
+        render(ep, out_root=look_root, device=args.device,
+               stills_only=True, force=True)
+    except BuildError as exc:
+        print(f"build FAILED\n{exc}", file=sys.stderr)
+        return 2
+
+    frames = [f for sid in shot_ids
+              for f in sorted((look_root / ep.id / sid).glob("frame_*.png"))[-1:]]
+    if not frames:
+        print("no look frame was written", file=sys.stderr)
+        return 2
+    fp = boardgate.look_fingerprint(full)
+    for f in frames:
+        print(f"\n  {f}")
+    print(f"  look fingerprint {fp}")
+    print(f"\n  sign it off with:  harness board {args.spec} --approve-look")
+    return 0
+
 def cmd_board(args: argparse.Namespace) -> int:
     """The storyboard gate - record that a human looked, and revoke it on change."""
     from . import boardgate
@@ -1204,6 +1277,14 @@ def build_parser() -> argparse.ArgumentParser:
                         "exists because a gate with no escape hatch gets routed around "
                         "rather than used.")
     r.set_defaults(func=cmd_render)
+
+    lk = sub.add_parser("look", help="the style frame - one shot at FULL quality, for the look gate")
+    lk.add_argument("spec")
+    lk.add_argument("--shot", help="comma-separated shots to dress "
+                    "(default: the first). Use enough to show every material.")
+    lk.add_argument("--out", default="renders", help="output root (default: renders)")
+    lk.add_argument("--device", choices=["CPU", "GPU", "METAL", "OPTIX", "CUDA"])
+    lk.set_defaults(func=cmd_look)
 
     bd = sub.add_parser("board", help="the storyboard gate - sign off shots before a full render")
     bd.add_argument("spec")

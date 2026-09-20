@@ -89,10 +89,41 @@ def look_fingerprint(ep: Any) -> str:
     return _digest({
         "materials": sorted(ep.materials, key=lambda m: m["id"]),
         "lights": sorted(ep.lights, key=lambda li: li["id"]),
+        # Parts with no `shots` scope are in EVERY frame, which makes them set
+        # dressing rather than staging - the backdrop is the obvious one. Without
+        # this, deleting the backdrop left the look approved, and the backdrop is
+        # the single element that cost s01 the most.
+        "global_parts": sorted(global_parts(ep), key=lambda x: str(x.get("id"))),
         "engine": ep.meta["engine"],
         "samples": ep.meta["samples"],
         "frame": [ep.meta["width"], ep.meta["height"]],
     })
+
+
+def global_parts(ep: Any) -> list[dict[str, Any]]:
+    """Parts visible in every shot - set dressing, therefore look, not staging."""
+    return [p for p in ep.parts if not p.get("shots")]
+
+
+def look_scope(ep: Any) -> dict[str, list[str]]:
+    """Everything a look sign-off covers, so it can be listed and checked off."""
+    return {
+        "materials": sorted(m["id"] for m in ep.materials),
+        "lights": sorted(li["id"] for li in ep.lights),
+        "global_parts": sorted(str(p["id"]) for p in global_parts(ep)),
+    }
+
+
+def seen_in(ep: Any, shot_ids: list[str]) -> set[str]:
+    """Which materials and global parts actually appear in these shots."""
+    seen: set[str] = set()
+    for sid in shot_ids:
+        for part in ep.parts_for_shot(sid):
+            if part.get("material"):
+                seen.add(str(part["material"]))
+            if not part.get("shots"):
+                seen.add(str(part["id"]))
+    return seen
 
 
 def _now() -> str:
