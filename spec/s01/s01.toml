@@ -90,6 +90,38 @@ roughness = 0.80
 metallic = 0.0
 
 [[material]]
+id = "area_gold"
+base_color = [0.86, 0.40, 0.05]
+roughness = 0.55
+metallic = 0.0
+emission = 0.75
+
+[[material]]
+id = "area_blue"
+base_color = [0.10, 0.34, 0.76]
+roughness = 0.55
+metallic = 0.0
+emission = 0.75
+
+[[material]]
+id = "skin"
+base_color = [0.44, 0.30, 0.22]
+roughness = 0.72
+metallic = 0.0
+
+[[material]]
+id = "workwear_dark"
+base_color = [0.055, 0.075, 0.115]
+roughness = 0.88
+metallic = 0.0
+
+[[material]]
+id = "hardhat"
+base_color = [0.72, 0.60, 0.08]
+roughness = 0.38
+metallic = 0.0
+
+[[material]]
 id = "annot"
 base_color = [0.62, 0.66, 0.72]
 roughness = 0.9
@@ -116,6 +148,50 @@ rot = [90.0, 0.0, 0.0]
 size = 26.0
 
 # --- the hero cylinder ----------------------------------------------------
+[[part]]
+id = "witness_vest"
+gen = "workwear"
+material = "hiviz"
+loc = [-1.02, 0.15, -0.95]
+shots = ["c05"]
+smooth = 40.0
+[part.params]
+height = 1.70
+emit = "vest"
+
+[[part]]
+id = "witness_legs"
+gen = "workwear"
+material = "workwear_dark"
+loc = [-1.02, 0.15, -0.95]
+shots = ["c05"]
+smooth = 40.0
+[part.params]
+height = 1.70
+emit = "legs"
+
+[[part]]
+id = "witness_boots"
+gen = "workwear"
+material = "workwear_dark"
+loc = [-1.02, 0.15, -0.95]
+shots = ["c05"]
+smooth = 40.0
+[part.params]
+height = 1.70
+emit = "boots"
+
+[[part]]
+id = "witness_hat"
+gen = "workwear"
+material = "hardhat"
+loc = [-1.02, 0.15, -0.95]
+shots = ["c05"]
+smooth = 40.0
+[part.params]
+height = 1.70
+emit = "hat"
+
 [[part]]
 id = "cyl_barrel"
 gen = "cylinder_body"
@@ -212,8 +288,8 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "witness"
 gen = "figure"
-material = "hiviz"
-loc = [-1.25, 0.15, -0.95]
+material = "skin"
+loc = [-1.02, 0.15, -0.95]
 shots = ["c05"]
 smooth = 40.0
 [part.params]
@@ -302,7 +378,7 @@ emit = "rod"
 id = "pull_load"
 gen = "box"
 material = "load"
-loc = [0.0, 0.0, -0.055]
+loc = [0.0, 0.0, -0.078]
 shots = ["c07"]
 [part.params]
 dims = [0.62, 0.62, 0.31]
@@ -334,8 +410,8 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "sum_bore"
 gen = "label"
-material = "face"
-loc = [0.0, -0.02, 0.150]
+material = "area_gold"
+loc = [0.0, -0.02, 0.092]
 shots = ["c13"]
 [part.params]
 text = "154"
@@ -346,8 +422,8 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "sum_minus"
 gen = "label"
-material = "rodface"
-loc = [0.0, -0.02, 0.112]
+material = "area_blue"
+loc = [0.0, -0.02, 0.060]
 shots = ["c13"]
 [part.params]
 text = "- 79"
@@ -358,8 +434,8 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "sum_eq"
 gen = "label"
-material = "face"
-loc = [0.0, -0.02, 0.074]
+material = "area_gold"
+loc = [0.0, -0.02, 0.028]
 shots = ["c13"]
 [part.params]
 text = "= 75"
@@ -371,10 +447,10 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 id = "sum_units"
 gen = "label"
 material = "annot"
-loc = [0.0, -0.02, -0.150]
+loc = [0.0, -0.02, -0.004]
 shots = ["c13"]
 [part.params]
-text = "cm2 each face"
+text = "cm² each face"
 size = 0.014
 extrude = 0.001
 font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
@@ -383,45 +459,71 @@ font = "assets/fonts/IBMPlexMono-SemiBold.ttf"
 [[part]]
 id = "area_whole"
 gen = "area_disc"
-material = "face"
+material = "area_gold"
 loc = [0.0, 0.0, 0.0]
 shots = ["c10"]
 [part.params]
 outer = 0.140
 inner = 0.0
+depth = 0.020
+bevel = 0.004
 
 [[part]]
 id = "area_ring"
 gen = "area_disc"
-material = "face"
-loc = [-0.058, 0.0, -0.055]
+material = "area_gold"
+loc = [-0.058, 0.0, -0.078]
 shots = ["c11", "c12"]
 [part.params]
 outer = 0.140
 inner = 0.100
+depth = 0.020
+bevel = 0.004
 
 [[part]]
 id = "area_plug"
 gen = "area_disc"
-material = "rodface"
-loc = [0.058, 0.0, -0.055]
-shots = ["c11", "c12", "c13"]
+material = "area_blue"
+loc = [0.058, 0.0, -0.078]
+shots = ["c11", "c12"]
 [part.params]
 outer = 0.100
 inner = 0.0
+depth = 0.020
+bevel = 0.004
 
 # 98.0 mm: the 75.40 cm2 annulus re-formed as a solid disc, against the rod's
-# 100.0 mm circle beside it. Measured on a probe: the RING does not read as
-# half - it reads as about a third - so it is re-formed rather than asserted.
+# 100.0 mm circle. Measured on a probe: the RING does not read as half - it
+# reads as about a third - so it is re-formed rather than asserted.
+#
+# Staged as overlapping coins, not side by side and not concentric. Side by
+# side, the eye cannot judge two diameters 2 mm apart across a gap. Dead
+# concentric, the gold covers the blue entirely and the frame reads as one
+# circle with a stray outline. Offset by roughly half a radius, both outlines
+# stay visible and cross - which is how you actually compare two circles.
+[[part]]
+id = "area_plug_c13"
+gen = "area_disc"
+material = "area_blue"
+loc = [-0.026, 0.0, -0.070]
+shots = ["c13"]
+[part.params]
+outer = 0.100
+inner = 0.0
+depth = 0.020
+bevel = 0.004
+
 [[part]]
 id = "area_eq"
 gen = "area_disc"
-material = "face"
-loc = [-0.058, 0.0, -0.055]
+material = "area_gold"
+loc = [0.026, -0.014, -0.070]
 shots = ["c13"]
 [part.params]
 outer = 0.098
 inner = 0.0
+depth = 0.020
+bevel = 0.004
 
 [[part]]
 id = "arm_boom_barrel"
@@ -680,6 +782,7 @@ look_at = [0.0, 0.0, 0.0]
 [[light]]
 id = "key"
 type = "AREA"
+shots = ["c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c14"]
 energy = 150.0
 color = [0.86, 0.92, 1.0]
 loc = [1.60, -2.00, 2.20]
@@ -688,6 +791,7 @@ look_at = [0.0, 0.0, 0.0]
 [[light]]
 id = "fill"
 type = "AREA"
+shots = ["c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c14"]
 energy = 45.0
 color = [0.62, 0.72, 0.95]
 loc = [-2.40, -1.60, 0.50]
@@ -696,6 +800,7 @@ look_at = [0.0, 0.0, 0.0]
 [[light]]
 id = "kicker"
 type = "AREA"
+shots = ["c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c14"]
 energy = 120.0
 color = [1.0, 0.74, 0.42]
 loc = [-1.70, 1.30, 1.10]

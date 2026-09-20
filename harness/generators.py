@@ -135,6 +135,13 @@ def _solid_bm(radius: float, length: float, segments: int) -> Any:
     return bm
 
 
+
+def _sphere_bm(radius: float, segments: int = 16) -> Any:
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=segments // 2,
+                              radius=radius)
+    return bm
+
 def _section_bm(bm: Any) -> Any:
     """Cut the -Y half away, exposing the interior to a camera on -Y.
 
@@ -626,10 +633,20 @@ def gen_area_disc(name: str, params: dict[str, Any], collection: Any) -> list[An
     depth = float(params.get("depth", 0.008))
     segments = int(params.get("segments", 96))
 
+    bevel = float(params.get("bevel", 0.0))
     if inner <= 0.0:
         bm = _solid_bm(outer / 2.0, depth, segments)
     else:
         bm = _tube_bm(inner / 2.0, outer / 2.0, depth, segments)
+    if bevel > 0.0:
+        # A chamfered rim. A flat disc shot head-on under flat light has no
+        # edge, no gradient and no specular - it renders as a shape from a
+        # slide deck, which is exactly the note these got. A bevel gives the
+        # HDRI something to catch and the figure reads as a machined face.
+        bmesh.ops.bevel(
+            bm, geom=list(bm.verts) + list(bm.edges), offset=bevel,
+            segments=3, affect="EDGES", clamp_overlap=True, profile=0.6)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bmesh.ops.rotate(bm, verts=bm.verts, cent=(0.0, 0.0, 0.0),
                      matrix=Matrix.Rotation(math.radians(90.0), 3, "X"))
     return [_link(name, bm, collection)]
@@ -767,6 +784,104 @@ def gen_figure(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
         obj.rotation_euler.z = math.radians(facing)
     return [obj]
 
+
+def gen_workwear(name: str, params: dict[str, Any], collection: Any) -> list[Any]:
+    """Hi-viz, trousers and a hard hat, derived FROM the figure mesh.
+
+    v1 built the garments from cones and boxes and it read as a scarecrow: a
+    tabard that floated as a slab, trousers with gaps at the knee and ankle, a
+    bare midriff between them. Primitive shells cannot follow an anatomical
+    mesh, because the body has taper and curve that a cone does not.
+
+    v2 takes the SAME CC0 body, keeps only the band of it the garment covers,
+    and pushes those vertices out along their own normals. Clothing cut from
+    the body it dresses fits by construction - there is no gap to appear.
+
+    `emit` splits the pieces so each carries its own material, the same reason
+    `cylinder_rod` splits piston from rod: a part carries one material, and
+    workwear that is all one colour is not workwear.
+    """
+    h = float(params.get("height", CREW_HEIGHT_M))
+    emit = str(params.get("emit", "vest"))
+    # The bands OVERLAP on purpose. Cut to abut exactly and the render shows a
+    # bare strip of midriff, because two surfaces meeting at one z never quite
+    # meet once each is pushed out along its own normals.
+    # The bands OVERLAP on purpose. Cut to abut exactly and the render shows a
+    # bare strip, because two surfaces meeting at one z never quite meet once
+    # each is pushed out along its own normals.
+    #
+    # Boots are their own band and not just the bottom of the trousers: a foot's
+    # upper surface has normals pointing UP, so offsetting along them lifts the
+    # garment clear of the foot and the toes render bare. A separate piece with
+    # a bigger offset encloses it.
+    bands = {                       # fractions of height, and how proud it sits
+        "vest": (0.470, 0.850, 0.016),
+        "legs": (0.055, 0.520, 0.013),
+        "boots": (0.000, 0.098, 0.020),
+    }
+    if emit == "hat":
+        # A helmet is not body-shaped, so it stays a primitive. A whole sphere
+        # hangs over the face - the eye line is 0.935 - so it is CUT at the
+        # brim and only the dome above survives. A hard hat sits on the crown;
+        # it does not swallow the head.
+        brim_z = 0.947 * h
+        dome = _sphere_bm(0.079 * h, 20)
+        bmesh.ops.translate(dome, verts=dome.verts, vec=(0.0, 0.0, brim_z))
+        bmesh.ops.bisect_plane(
+            dome, geom=list(dome.verts) + list(dome.edges) + list(dome.faces),
+            plane_co=(0.0, 0.0, brim_z), plane_no=(0.0, 0.0, 1.0), clear_inner=True)
+        return [_link(f"{name}_helmet", dome, collection),
+                _place(_cyl(f"{name}_brim", 0.100 * h, 0.011 * h, collection, segments=22),
+                       (0.0, -0.008 * h, brim_z))]
+    if emit not in bands:
+        raise BuildError(f"workwear: unknown emit {emit!r}; use vest | legs | boots | hat")
+
+    lo, hi, proud = bands[emit]
+    asset = ASSETS_DIR / "figure_standing.blend"
+    if not asset.exists():
+        raise BuildError(f"workwear: missing {asset}")
+    before = set(bpy.data.objects)
+    with bpy.data.libraries.load(str(asset), link=False) as (src, dst):
+        dst.objects = ["figure_standing"]
+    obj = next(o for o in bpy.data.objects if o not in before)
+    obj.name = f"{name}_{emit}"
+    obj.data.name = obj.name
+    collection.objects.link(obj)
+    obj.matrix_basis = Matrix.Identity(4)
+
+    me = obj.data
+    zs = [v.co.z for v in me.vertices]
+    factor = h / (max(zs) - min(zs))
+    me.transform(Matrix.Diagonal((factor, factor, factor, 1.0)))
+    xs = [v.co.x for v in me.vertices]
+    ys = [v.co.y for v in me.vertices]
+    zs = [v.co.z for v in me.vertices]
+    me.transform(Matrix.Translation((
+        -(max(xs) + min(xs)) / 2.0, -(max(ys) + min(ys)) / 2.0, -min(zs))))
+
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    for z, clear_up in ((hi * h, True), (lo * h, False)):
+        bmesh.ops.bisect_plane(
+            bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
+            plane_co=(0.0, 0.0, z), plane_no=(0.0, 0.0, 1.0),
+            clear_outer=clear_up, clear_inner=not clear_up)
+    # Proud of the skin along each vertex's own normal - but NOT uniformly. An
+    # even offset is a decal: it follows every contour of the body exactly and
+    # reads as paint. Real clothing is thickest at its edges, where the fabric
+    # is folded and stitched, so vertices near a cut get a heavier offset and
+    # the garment gains a collar, a hem and cuffs.
+    roll = 0.030 * h                       # how far the thickening reaches
+    for v in bm.verts:
+        near = min(abs(v.co.z - hi * h), abs(v.co.z - lo * h))
+        boost = max(0.0, 1.0 - near / roll) ** 0.6
+        v.co += v.normal * (proud * h * (1.0 + 0.85 * boost))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    return [obj]
+
+
 def gen_simple(gen: str, name: str, params: dict[str, Any], collection: Any) -> list[Any]:
     if gen == "box":
         dims = params.get("dims", [1.0, 1.0, 1.0])
@@ -801,6 +916,7 @@ GENERATORS = {
     "area_disc": gen_area_disc,
     "label": gen_label,
     "figure": gen_figure,
+    "workwear": gen_workwear,
 }
 
 GENERATOR_NAMES = sorted(set(GENERATORS) | {"box", "cylinder", "sphere", "plane"})

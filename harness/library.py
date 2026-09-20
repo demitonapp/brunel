@@ -479,6 +479,7 @@ _add(Component(
         "inner": Param(0.0, "m", "inner diameter; 0 for a solid disc"),
         "depth": Param(0.008, "m", "thickness of the figure"),
         "segments": Param(96, "", "segments around the circumference"),
+        "bevel": Param(0.0, "m", "chamfer the rim; a flat disc head-on has no edge to light"),
     },
     provenance=(
         "S1 Beat 3. A 140/100 annulus does NOT read as half a 140 disc - measured on a storyboard "
@@ -543,6 +544,30 @@ material = "hiviz"
 loc = [-1.25, 0.15, -0.95]
 [part.params]
 height = 1.70''',
+))
+
+
+_add(Component(
+    name="workwear", category=CHR, measured=False,
+    summary="Hi-viz tabard, trousers, boots and a hard hat, sized to sit on `figure`.",
+    params={
+        "height": Param(1.70, "m", "match the figure it dresses"),
+        "emit": Param("all", "", "vest | legs | boots | hat - split so each takes its own material",
+                      ("vest", "legs", "boots", "hat")),
+    },
+    provenance=(
+        "measured: false - workwear has no cited dimension; it follows the standard figure's "
+        "landmarks. Deliberately NOT a re-modelled human: the anatomy is bought (see `figure`), "
+        "and only the clothing is hand-built, which is the part worth building."
+    ),
+    example='''[[part]]
+id = "witness_vest"
+gen = "workwear"
+material = "hiviz"
+loc = [-1.25, 0.15, -0.95]
+[part.params]
+height = 1.70
+emit = "vest"''',
 ))
 
 
