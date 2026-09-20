@@ -5,20 +5,20 @@
     "board_revision": 1
   },
   "look": {
-    "fingerprint": "e57b463d7c046fc0",
+    "fingerprint": "7ce1b496d0c4c456",
     "review": {
       "state": "approved",
-      "by": "justin",
-      "at": "2026-09-19T22:34:03Z",
-      "note": null
+      "by": "Justin Trollip",
+      "at": "2026-09-20T06:52:56Z",
+      "note": "look set 7ce1b496d0c4c456"
     }
   },
   "shots": [
     {
       "id": "c01",
       "name": "The conclusion",
-      "fingerprint": "1fa94a1641d74a1a",
-      "coverage": 59.1,
+      "fingerprint": "3c1c5979af292dd9",
+      "coverage": 62.9,
       "review": {
         "state": "unreviewed",
         "by": null,
@@ -29,7 +29,7 @@
     {
       "id": "c02",
       "name": "Pushing",
-      "fingerprint": "5cc8472925f3bed5",
+      "fingerprint": "b265d5708e278f49",
       "coverage": 58.2,
       "review": {
         "state": "unreviewed",
@@ -41,8 +41,8 @@
     {
       "id": "c03",
       "name": "Pulling",
-      "fingerprint": "60fe178e2f300d77",
-      "coverage": 57.6,
+      "fingerprint": "ecc25fe4f2a8958a",
+      "coverage": 58.8,
       "review": {
         "state": "unreviewed",
         "by": null,
@@ -53,8 +53,8 @@
     {
       "id": "c04",
       "name": "Same pressure",
-      "fingerprint": "241f869b4944ad3f",
-      "coverage": 58.2,
+      "fingerprint": "61789cb58c4a6a15",
+      "coverage": 59.5,
       "review": {
         "state": "unreviewed",
         "by": null,
@@ -65,121 +65,121 @@
     {
       "id": "c05",
       "name": "How big",
-      "fingerprint": "dddc1da728591316",
-      "coverage": 49.5,
+      "fingerprint": "eccb4ffde0c0761d",
+      "coverage": 48.7,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c06",
       "name": "Push lifts this",
-      "fingerprint": "d2503c88f6416333",
-      "coverage": 55.6,
+      "fingerprint": "e95eb9f62cbf97b2",
+      "coverage": 55.5,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c07",
       "name": "Pull lifts half",
-      "fingerprint": "92007b8d84434fa0",
-      "coverage": 53.9,
+      "fingerprint": "2f3417ff2eb35383",
+      "coverage": 53.2,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c08",
       "name": "Inside",
-      "fingerprint": "67658eaaa54fd6fd",
-      "coverage": 57.3,
+      "fingerprint": "c1242efb96a387f1",
+      "coverage": 55.6,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c09",
       "name": "Two faces",
-      "fingerprint": "e184c0b918084303",
-      "coverage": 51.2,
+      "fingerprint": "26ad0f2beb442759",
+      "coverage": 53.6,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c10",
       "name": "The whole piston",
-      "fingerprint": "5e1d0f1e15f10d81",
-      "coverage": 14.3,
+      "fingerprint": "5361f8fa09b59498",
+      "coverage": 30.7,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c11",
       "name": "The rod is in the way",
-      "fingerprint": "3cdc3ac3d857b84d",
-      "coverage": 14.4,
+      "fingerprint": "97f61c9af2548c94",
+      "coverage": 31.8,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c12",
       "name": "A ring",
-      "fingerprint": "3eeedfdce4b31642",
-      "coverage": null,
+      "fingerprint": "8a147fa876f81cff",
+      "coverage": 31.7,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c13",
       "name": "The same size",
-      "fingerprint": "c3da621201becff0",
-      "coverage": null,
+      "fingerprint": "f8e585106cb3b73d",
+      "coverage": 27.6,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     },
     {
       "id": "c14",
       "name": "Three of them",
-      "fingerprint": "e0dba5eabf9e8fdc",
-      "coverage": null,
+      "fingerprint": "7b4e6ec07e28b851",
+      "coverage": 58.7,
       "review": {
-        "state": "approved",
-        "by": "justin",
-        "at": "2026-09-19T22:34:03Z",
-        "note": null
+        "state": "unreviewed",
+        "by": null,
+        "at": null,
+        "note": "staging changed since sign-off"
       }
     }
   ]
