@@ -320,6 +320,47 @@ def cmd_look(args: argparse.Namespace) -> int:
     print(f"\n  sign it off with:  harness board {args.spec} --approve-look")
     return 0
 
+def _board_sheet(ep: Any, ep_dir: Path) -> Path | None:
+    """The storyboard itself: every shot in order, start/mid/end, with its line.
+
+    The gate recorded approvals against a table of shot ids and coverage
+    numbers, so the thing being approved was never actually in front of the
+    person approving it. A board is a page you read top to bottom.
+    """
+    ff = shutil.which("ffmpeg")
+    if not ff:
+        return None
+    font = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "IBMPlexSans.ttf"
+    work = ep_dir / "_board"
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    n = 0
+    for sh in ep.shots:
+        stills = sorted((ep_dir / sh["id"]).glob("frame_*.png"))
+        if not stills:
+            continue
+        pick = [stills[0], stills[len(stills) // 2], stills[-1]]
+        # textfile, not text=: narration carries apostrophes and commas, and
+        # drawtext's escaping rules for those are a trap.
+        (work / "head.txt").write_text(f"{sh['id']}   {sh['name']}   {float(sh['seconds']):.1f} s")
+        (work / "line.txt").write_text(sh.get("narration") or "-")
+        vf = ("[0][1][2]hstack=3,scale=720:-1,pad=iw:ih+96:0:0:0x0b0d12,"
+              f"drawtext=fontfile={font}:textfile=head.txt:x=16:y=h-86:fontsize=26:fontcolor=white,"
+              f"drawtext=fontfile={font}:textfile=line.txt:x=16:y=h-46:fontsize=24:fontcolor=0xb8c4d6")
+        ins = [a for p in pick for a in ("-i", str(p.resolve()))]
+        subprocess.run([ff, "-y", "-v", "error", *ins, "-filter_complex", vf,
+                        "-frames:v", "1", f"row_{n:02d}.png"], cwd=work, check=True)
+        n += 1
+    if not n:
+        return None
+    out = ep_dir / "board.png"
+    subprocess.run([ff, "-y", "-v", "error", "-i", "row_%02d.png",
+                    "-vf", f"tile=2x{(n + 1) // 2}:padding=8:margin=8:color=0x0b0d12",
+                    "-frames:v", "1", str(out.resolve())], cwd=work, check=True)
+    shutil.rmtree(work, ignore_errors=True)
+    return out
+
+
 def cmd_board(args: argparse.Namespace) -> int:
     """The storyboard gate - record that a human looked, and revoke it on change."""
     from . import boardgate
@@ -362,6 +403,9 @@ def cmd_board(args: argparse.Namespace) -> int:
         note = e["review"].get("note") or ""
         print(f"  {e['id']:<5} {e['review']['state']:<10} {cov}  {e['name'][:26]:<28}"
               + (f"  ({note})" if note else ""))
+    sheet = _board_sheet(ep, ep_dir)
+    if sheet:
+        print(f"\n  storyboard: {sheet}")
     blocked = boardgate.blocking(ledger)
     if blocked or boardgate.look_blocking(ledger):
         print(f"\n  {len(blocked)} shot(s) not approved; a full render is blocked.")
